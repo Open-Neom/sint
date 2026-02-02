@@ -1,0 +1,36 @@
+---
+---
+/* Esto le dice a GitHub que compile el archivo */
+
+@import "{{ site.theme }}"; /* Carga la base del tema que elegiste (minimal o cayman) */
+
+/* Custom SINT / Open Neom Overrides */
+:root {
+  --primary-color: #8e24aa;    /* Open Neom Purple */
+  --accent-color: #00e5ff;     /* SINT Cyan */
+  --bg-dark: #0d0d1a;          /* Deep Space Blue/Black */
+  --text-main: #e0e0e0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  background-image: radial-gradient(circle at top right, rgba(142, 36, 170, 0.15), transparent);
+}
+
+header {
+  background: linear-gradient(135deg, #4a148c 0%, #0d0d1a 100%);
+  border-bottom: 2px solid var(--accent-color);
+  padding: 2rem 0;
+}
+
+/* Pillar Badges - High Fidelity Colors */
+.pillar-s { color: var(--accent-color); font-weight: bold; }
+.pillar-i { color: #00e676; font-weight: bold; }
+.pillar-n { color: #ff9100; font-weight: bold; }
+.pillar-t { color: #f50057; font-weight: bold; }
+
+code {
+  background: #1a1a2e;
+  border-left: 3px solid var(--primary-color);
+}

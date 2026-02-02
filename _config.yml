@@ -1,1 +1,28 @@
-theme: jekyll-theme-cayman
+# SINT Framework - Official Documentation Configuration
+title: SINT Framework
+description: >- # High-Fidelity Flutter Infrastructure
+  State, Injection, Navigation, Translation. 
+  The four pillars of the SRZNVRS ecosystem.
+remote_theme: pages-themes/minimal@v0.2.0
+
+# Language & SEO
+lang: en-US
+keywords: "Flutter, SINT, State Management, Clean Architecture, Open Neom"
+url: "https://openneom.dev"
+
+# Branding Colors (Internal reference for scripts)
+branding:
+  primary_purple: "#6a1b9a" # Open Neom Deep Purple
+  sint_blue: "#00e5ff"     # S - State (Cyan)
+  sint_green: "#00e676"    # I - Injection (Green)
+  sint_orange: "#ff9100"   # N - Navigation (Orange)
+  sint_pink: "#f50057"     # T - Translation (Pink/Purple)
+
+# Sidebar / Navigation
+show_downloads: true
+google_analytics: [TU-ID-DE-ANALYTICS]
+
+# Social Links
+github:
+  is_project_page: true
+  repository_url: https://github.com/Open-Neom/sint

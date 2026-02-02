@@ -1,196 +1,140 @@
+// SINT v1.0.0 - Infrastructure Performance Summary
+// High-Fidelity Audit for Open Neom
+// ignore_for_file: avoid_print
+
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/state_manager.dart';
-
-int times = 30;
-
-void printValue(String value) {
-  // ignore: avoid_print
-  print(value);
-}
-
-Future<int> valueNotifier() {
-  final c = Completer<int>();
-  final value = ValueNotifier<int>(0);
-  final timer = Stopwatch();
-  timer.start();
-
-  value.addListener(() {
-    if (times == value.value) {
-      timer.stop();
-      printValue(
-          """${value.value} listeners notified | [VALUE_NOTIFIER] time: ${timer.elapsedMicroseconds}ms""");
-      c.complete(timer.elapsedMicroseconds);
-    }
-  });
-
-  for (var i = 0; i < times + 1; i++) {
-    value.value = i;
-  }
-
-  return c.future;
-}
-
-Future<int> getValue() {
-  final c = Completer<int>();
-  final value = Value<int>(0);
-  final timer = Stopwatch();
-  timer.start();
-
-  value.addListener(() {
-    if (times == value.value) {
-      timer.stop();
-      printValue(
-          """${value.value} listeners notified | [GETX_VALUE] time: ${timer.elapsedMicroseconds}ms""");
-      c.complete(timer.elapsedMicroseconds);
-    }
-  });
-
-  for (var i = 0; i < times + 1; i++) {
-    value.value = i;
-  }
-
-  return c.future;
-}
-
-Future<int> stream() {
-  final c = Completer<int>();
-
-  final value = StreamController<int>();
-  final timer = Stopwatch();
-  timer.start();
-
-  value.stream.listen((v) {
-    if (times == v) {
-      timer.stop();
-      printValue(
-          """$v listeners notified | [STREAM] time: ${timer.elapsedMicroseconds}ms""");
-      c.complete(timer.elapsedMicroseconds);
-      value.close();
-    }
-  });
-
-  for (var i = 0; i < times + 1; i++) {
-    value.add(i);
-  }
-
-  return c.future;
-}
-
-// Future<int> getStream() {
-//   final c = Completer<int>();
-
-//   final value = GetStream<int>();
-//   final timer = Stopwatch();
-//   timer.start();
-
-//   value.listen((v) {
-//     if (times == v) {
-//       timer.stop();
-//       printValue(
-// """$v listeners notified |
-// [GET_STREAM] time: ${timer.elapsedMicroseconds}ms""");
-//       c.complete(timer.elapsedMicroseconds);
-//     }
-//   });
-
-//   for (var i = 0; i < times + 1; i++) {
-//     value.add(i);
-//   }
-
-//   return c.future;
-// }
-
-Future<int> miniStream() {
-  final c = Completer<int>();
-
-  final value = MiniStream<int>();
-  final timer = Stopwatch();
-  timer.start();
-
-  value.listen((v) {
-    if (times == v) {
-      timer.stop();
-      printValue(
-          """$v listeners notified | [MINI_STREAM] time: ${timer.elapsedMicroseconds}ms""");
-      c.complete(timer.elapsedMicroseconds);
-    }
-  });
-
-  for (var i = 0; i < times + 1; i++) {
-    value.add(i);
-  }
-
-  return c.future;
-}
+import 'package:sint/sint.dart';
 
 void main() {
-  test('percentage test', () {
-    printValue('============================================');
-    printValue('PERCENTAGE TEST');
+  // Reset SINT registry between tests for high-fidelity isolation
+  tearDown(() => Sint.reset());
 
-    const referenceValue = 200;
-    const requestedValue = 100;
+  group('Open Neom: 5-Pillar Performance Audit', () {
 
-    printValue('''
-referenceValue is ${calculePercentage(referenceValue, requestedValue)}% more than requestedValue''');
-    expect(calculePercentage(referenceValue, requestedValue), 100);
-  });
-  test('run benchmarks from ValueNotifier', () async {
-    times = 30;
-    printValue('============================================');
-    printValue('VALUE_NOTIFIER X GETX_VALUE TEST');
-    printValue('-----------');
-    await getValue();
-    await valueNotifier();
-    printValue('-----------');
+    test('1. Pillar S: Reactive Benchmark vs Native Tools', () async {
+      print('\n' + '='*50 + '\nPILLAR S: HIGH-LOAD REACTIVE AUDIT\n' + '='*50);
+      const int iterations = 30000;
+      final rxTimer = Stopwatch()..start();
+      final rxCompleter = Completer<int>();
+      final rx = 0.obs;
 
-    times = 30000;
-    final getx = await getValue();
-    final dart = await valueNotifier();
-    printValue('-----------');
+      rx.listen((v) {
+        if (v == iterations) {
+          rxTimer.stop();
+          rxCompleter.complete(rxTimer.elapsedMicroseconds);
+        }
+      });
 
-    printValue('ValueNotifier delay $dart ms to made $times requests');
-    printValue('GetValue delay $getx ms to made $times requests');
-    printValue('-----------');
-    printValue('''
-GetValue is ${calculePercentage(dart, getx).round()}% faster than Default ValueNotifier with $times requests''');
-  });
+      for (var i = 1; i <= iterations; i++) rx.value = i;
+      final sintRxTime = await rxCompleter.future;
 
-  test('run benchmarks from Streams', () async {
-    times = 30;
-    printValue('============================================');
-    printValue('DART STREAM X GET_STREAM X GET_MINI_STREAM TEST');
-    printValue('-----------');
-    // var getx = await getStream();
-    var mini = await miniStream();
-    var dart = await stream();
-    printValue('-----------');
-    printValue('''
-GetStream is ${calculePercentage(dart, mini).round()}% faster than Default Stream with $times requests''');
-    printValue('-----------');
+      print('SINT Rx Total Time: ${sintRxTime}us');
+      print('Avg Speed: ${(sintRxTime / iterations).toStringAsFixed(4)}us/op');
+    });
 
-    times = 30000;
-    dart = await stream();
-    // getx = await getStream();
-    mini = await miniStream();
+    testWidgets('2. Pillar T: Translation with Dynamic Parameters', (tester) async {
+      print('\n[PILLAR T] Benchmarking trParams Interpolation');
 
-    times = 60000;
-    dart = await stream();
-    // getx = await getStream();
-    mini = await miniStream();
-    printValue('-----------');
-    printValue('dart_stream delay $dart ms to made $times requests');
-    // printValue('getx_stream delay $getx ms to made $times requests');
-    printValue('getx_mini_stream delay $mini ms to made $times requests');
-    printValue('-----------');
-    printValue('''
-GetStream is ${calculePercentage(dart, mini).round()}% faster than Default Stream with $times requests''');
+      await tester.pumpWidget(SintMaterialApp(
+        translations: BenchmarkTranslations(),
+        locale: const Locale('en', 'US'),
+        home: const Scaffold(),
+      ));
+
+      // [FIX] Ensure initialization timers are settled before starting benchmark
+      await tester.pumpAndSettle();
+
+      final timer = Stopwatch()..start();
+      const iterations = 10000;
+      for (var i = 0; i < iterations; i++) {
+        final _ = 'welcome_user'.trParams({'name': 'Serzen', 'id': '$i'});
+      }
+      timer.stop();
+
+      print('Iterations: $iterations dynamic lookups');
+      print('Avg Speed:  ${(timer.elapsedMicroseconds / iterations).toStringAsFixed(4)}us/op');
+
+      // [FIX] Clear any remaining timers from SintRoot before disposing
+      await tester.pumpAndSettle();
+    });
+
+    test('3. Pillar I: Deep Dependency Resolution', () async {
+      print('\n[PILLAR I] Registering and Finding Nested Controllers');
+      for(int i=0; i<10; i++) Sint.put(BenchmarkController(), tag: 'depth_$i');
+
+      final timer = Stopwatch()..start();
+      const iterations = 5000;
+      for (var i = 0; i < iterations; i++) {
+        Sint.find<BenchmarkController>(tag: 'depth_9');
+      }
+      timer.stop();
+
+      print('Lookup iterations: $iterations (Depth: 10)');
+      print('Avg Latency:       ${(timer.elapsedMicroseconds / iterations).toStringAsFixed(4)}us/find');
+    });
+
+    testWidgets('4. Pillar N: Multiple Middleware Chain Execution', (tester) async {
+      print('\n[PILLAR N] Measuring 5 Middleware Interception Layers');
+
+      await tester.pumpWidget(SintMaterialApp(
+        initialRoute: '/',
+        sintPages: [
+          SintPage(name: '/', page: () => const SizedBox()),
+          SintPage(
+            name: '/protected',
+            page: () => const SizedBox(),
+            transition: Transition.noTransition,
+            middlewares: List.generate(5, (_) => BenchmarkAuthMiddleware()),
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final timer = Stopwatch()..start();
+      Sint.toNamed('/protected');
+
+      // [FIX] Multiple pumps to ensure the 5-layer middleware chain
+      // and the global Sint.currentRoute state are fully synchronized.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 10));
+
+      timer.stop();
+
+      print('Total Middleware Chain Latency (5 layers): ${timer.elapsedMicroseconds}us');
+      expect(Sint.currentRoute, '/protected');
+    });
+
+    test('5. Core: Stream-to-Rx Synchronization Latency', () async {
+      print('\n[CORE] Stream-to-Rx Binding Latency');
+      final controller = StreamController<int>();
+      final rx = 0.obs;
+      rx.bindStream(controller.stream);
+
+      final timer = Stopwatch()..start();
+      controller.add(100);
+
+      // Yielding to microtask queue for high-fidelity sync
+      await Future.delayed(Duration.zero);
+      timer.stop();
+
+      print('Stream-to-Rx Sync Latency: ${timer.elapsedMicroseconds}us');
+      await controller.close();
+      print('\n' + '='*50 + '\n');
+    });
   });
 }
 
-int calculePercentage(int dart, int getx) {
-  return (dart / getx * 100).round() - 100;
+// --- INFRASTRUCTURE MOCKS ---
+class BenchmarkController extends SintController {}
+class BenchmarkAuthMiddleware extends SintMiddleware {
+  @override
+  Future<RouteDecoder?> redirectDelegate(RouteDecoder decoder) async => decoder;
+}
+class BenchmarkTranslations extends Translations {
+  @override
+  Map<String, Map<String, String>> get keys => {
+    'en_US': {'welcome_user': 'Welcome, @name! Your ID is @id.'},
+  };
 }

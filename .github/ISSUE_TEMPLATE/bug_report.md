@@ -1,61 +1,53 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: jonataslaw
+name: 🐛 Bug Report
+about: Create a report to help us maintain High-Fidelity infrastructure
+title: '[BUG] '
+labels: 'bug'
+assignees: 'emmanuel-montoya'
 
 ---
-**ATTENTION: DO NOT USE THIS FIELD TO ASK SUPPORT QUESTIONS. USE THE PLATFORM CHANNELS FOR THIS. THIS SPACE IS DEDICATED ONLY FOR BUGS DESCRIPTION.**
-**Fill in the template. Issues that do not respect the model will be closed.**
 
-**Describe the bug**
+**ATTENTION: DO NOT USE THIS FIELD TO ASK SUPPORT QUESTIONS. Use the Open Neom Discussions for that. This space is dedicated strictly to technical bug descriptions.**
+
+**Fill in the template completely. Issues that do not respect the architectural model will be closed.**
+
+## 🎯 Affected Pillar
+Which pillar is failing?
+- [ ] **S (State):** Reactivity errors or controller lifecycle issues.
+- [ ] **I (Injection):** Dependency resolution or memory leaks.
+- [ ] **N (Navigation):** Routing errors, middleware loops, or overlay failures.
+- [ ] **T (Translation):** Localization mismatches or key resolution bugs.
+
+## 🐛 Description
 A clear and concise description of what the bug is.
 
-**Reproduction code
-NOTE: THIS IS MANDATORY, IF YOUR ISSUE DOES NOT CONTAIN IT, IT WILL BE CLOSED PRELIMINARY)**
-
-example:
+## 🚀 Minimal Reproduction Code (MANDATORY)
+Provide a minimal, standalone `main.dart` that demonstrates the issue using SINT standards.
 
 ```dart
-void main() => runApp(MaterialApp(home: Home()));
+import 'package:flutter/material.dart';
+import 'package:sint/sint.dart';
+
+void main() => runApp(SintMaterialApp(home: Home()));
+
+class Controller extends SintController {
+  final count = 0.obs;
+  void increment() => count.value++;
+}
 
 class Home extends StatelessWidget {
-  final count = 0.obs;
   @override
-  Widget build(context) => Scaffold(
-      appBar: AppBar(title: Text("counter")),
+  Widget build(BuildContext context) {
+    final c = Sint.put(Controller());
+    return Scaffold(
+      appBar: AppBar(title: const Text("SINT Bug Reproduction")),
       body: Center(
-        child: Obx(() => Text("$count")),
+        child: Obx(() => Text("Count: ${c.count}")),
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => count.value++,
-      ));
+        onPressed: c.increment,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
 }
-```
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
-
-**Expected behavior**
-A clear and concise description of what you expected to happen.
-
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Flutter Version:**
-Enter the version of the Flutter you are using
-
-**Getx Version:**
-Enter the version of the Getx you are using
-
-**Describe on which device you found the bug:**
-ex: Moto z2 - Android.
-
-**Minimal reproduce code**
-Provide a minimum reproduction code for the problem

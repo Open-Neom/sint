@@ -1,34 +1,44 @@
-#The name of your workflow.
+# SINT v1.0.0 - Infrastructure CI Pipeline
+# High-Fidelity Validation for Open Neom
 name: build
-# Trigger the workflow on push or pull request
+
 on:
   push:
-    branches: [master]
+    branches: [master, main] # Added main to support modern naming standards
   pull_request:
-    branches: [master]
-#A workflow run is made up of one or more jobs. Jobs run in parallel by default.
+    branches: [master, main]
+
 jobs:
   test:
-    #The type of machine to run the job on. [windows,macos, ubuntu , self-hosted]
     defaults:
       run:
         working-directory: ./
     runs-on: ubuntu-latest
-    #sequence of tasks called
+
     steps:
-      # The branch or tag ref that triggered the workflow will be checked out.
-      # https://github.com/actions/checkout
-      - uses: actions/checkout@v4
-      # Setup a flutter environment.
-      # https://github.com/marketplace/actions/flutter-action
-      - uses: subosito/flutter-action@v2
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.32.1"
+          # Updated to match the high-fidelity standard for SINT 1.0.0
+          flutter-version: "3.22.1"
           channel: "stable"
-      - run: flutter pub get
-      #- run: flutter analyze
-      # run  flutter widgets tests  and unit tests
-      - run: flutter test --coverage
-      # Upload coverage reports to Codecov
-      # https://github.com/marketplace/actions/codecov
-      - uses: codecov/codecov-action@v4
+          cache: true # Enabled caching to speed up modular builds
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # Re-enabled analysis to ensure Clean Architecture compliance
+      - name: Static Analysis
+        run: flutter analyze
+
+      - name: Run SINT Performance Audit
+        # High-fidelity tests including the 5-pillar benchmarks
+        run: flutter test --coverage --test-randomize-ordering-seed=random
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # Required for version 4+

@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sint/sint.dart';
 
@@ -314,6 +315,9 @@ extension NavigationExtension on SintInterface {
       if (canPop) {
         if (searchDelegate(id).canBack == true) {
           return searchDelegate(id).back<T>(result);
+        } else if (kIsWeb) {
+          // Web without internal history: do nothing, browser handles it
+          return;
         }
       } else {
         return searchDelegate(id).back<T>(result);
@@ -599,6 +603,75 @@ extension NavigationExtension on SintInterface {
     }
     return Uri.tryParse(name)?.toString() ?? name;
   }
+
+  // ─── Web-Aware Navigation ──────────────────────────────────
+
+  /// Returns `true` when running on Flutter web (browser environment).
+  /// Use this to conditionally hide back buttons, adjust layouts, or
+  /// switch navigation strategies between web and mobile.
+  bool get isWeb => kIsWeb;
+
+  /// Returns `false` on web (browser back/forward arrows handle navigation)
+  /// and `true` on mobile (where an in-app back button is needed).
+  ///
+  /// Usage in AppBars:
+  /// ```dart
+  /// AppBar(
+  ///   automaticallyImplyLeading: Sint.showBackButton,
+  /// )
+  /// ```
+  bool get showBackButton => !kIsWeb;
+
+  /// Hard-reset the app to its initial route, clearing **everything**.
+  ///
+  /// Discards the entire navigation stack, disposes all non-permanent
+  /// controllers, and reloads `initialRoute` from scratch — as if the
+  /// app was just opened.
+  ///
+  /// [keep] — Optional set of types to preserve during the reset.
+  /// Controllers in this set won't be deleted, useful for auth services
+  /// or global state that must survive the reset.
+  ///
+  /// ```dart
+  /// // Full hard reset (default):
+  /// Sint.toInitial();
+  ///
+  /// // Keep AuthController alive during reset:
+  /// Sint.toInitial(keep: {AuthController});
+  /// ```
+  Future<void> toInitial({
+    Set<Type>? keep,
+    String? id,
+  }) async {
+    final delegate = searchDelegate(id);
+    final initialRoute = rootController.config.initialRoute
+        ?? delegate.registeredRoutes.firstOrNull?.name
+        ?? '/';
+
+    // Hard reset: delete all non-permanent dependencies except [keep]
+    if (keep != null && keep.isNotEmpty) {
+      final keys = InjectionExtension.registeredKeys.toList();
+      for (final key in keys) {
+        final shouldKeep = keep.any((type) => key.startsWith(type.toString()));
+        if (!shouldKeep) {
+          delete(key: key, force: false);
+        }
+      }
+    } else {
+      deleteAll(force: false);
+    }
+
+    // Navigate to initial route, forcing a full reload
+    offAllNamed(initialRoute, id: id);
+  }
+
+  /// **DEPRECATED** — Logic merged into [back]. Use `Sint.back()` directly.
+  @Deprecated('Web-safe logic is now built into back(). Use Sint.back() directly.')
+  void webBack<T>({T? result, String? id}) {
+    back<T>(result: result, id: id);
+  }
+
+  // ─── End Web-Aware Navigation ────────────────────────────
 
   Future<void> updateLocale(Locale l) async {
     Sint.locale = l;

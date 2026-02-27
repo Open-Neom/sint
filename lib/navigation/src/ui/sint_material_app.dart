@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sint/sint.dart';
@@ -5,7 +7,18 @@ import 'package:sint/sint.dart';
 class SintMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
   final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
+
+  /// **DEPRECATED** — Use [initialRoute] + [sintPages] instead.
+  ///
+  /// The `home` widget creates an implicit route that conflicts with
+  /// the string-based routing system (`initialRoute` + `sintPages`).
+  /// When both are provided, priority is ambiguous and the route tree
+  /// becomes inconsistent. Always define routes via [sintPages] and
+  /// set [initialRoute] to the desired starting route name.
+  @Deprecated('Use initialRoute + sintPages instead. '
+      'home will be removed in SINT 2.0')
   final Widget? home;
+
   final Map<String, WidgetBuilder>? routes;
   final String? initialRoute;
   final RouteFactory? onGenerateRoute;
@@ -180,6 +193,7 @@ class SintMaterialApp extends StatelessWidget {
     this.unknownRoute,
   })  : navigatorKey = null,
         onGenerateRoute = null,
+        // ignore: deprecated_member_use_from_same_package
         home = null,
         onGenerateInitialRoutes = null,
         onUnknownRoute = null,
@@ -198,6 +212,7 @@ class SintMaterialApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        // ignore: deprecated_member_use_from_same_package
         home: home,
         initialRoute: initialRoute,
         locale: locale,
@@ -261,7 +276,19 @@ class SintMaterialApp extends StatelessWidget {
           showSemanticsDebugger: showSemanticsDebugger,
           debugShowCheckedModeBanner: debugShowCheckedModeBanner,
           shortcuts: shortcuts,
-          scrollBehavior: scrollBehavior,
+          // On web, enable drag scrolling + mouse wheel for all pointer types.
+          // Flutter web defaults to mouse-only scrolling which feels broken
+          // when users expect touch-like drag behavior in embedded webviews.
+          scrollBehavior: scrollBehavior ?? (kIsWeb
+              ? const MaterialScrollBehavior().copyWith(
+                  scrollbars: true,
+                  dragDevices: {
+                    ui.PointerDeviceKind.touch,
+                    ui.PointerDeviceKind.mouse,
+                    ui.PointerDeviceKind.trackpad,
+                  },
+                )
+              : null),
         );
       }),
     );

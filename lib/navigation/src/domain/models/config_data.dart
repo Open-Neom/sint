@@ -35,7 +35,11 @@ class ConfigData {
   final Locale? fallbackLocale;
   final String? initialRoute;
   final CustomTransition? customTransition;
+
+  /// **DEPRECATED** — Use [initialRoute] + [sintPages] instead.
+  @Deprecated('Use initialRoute + sintPages instead')
   final Widget? home;
+
   final bool testMode;
   final Key? unikey;
   final ThemeData? theme;
@@ -165,7 +169,8 @@ class ConfigData {
       fallbackLocale: fallbackLocale ?? this.fallbackLocale,
       initialRoute: initialRoute ?? this.initialRoute,
       customTransition: customTransition ?? this.customTransition,
-      home: home ?? this.home,
+      // ignore: deprecated_member_use_from_same_package
+      home: home ?? this.home, // Kept for backward compat until SINT 2.0
       testMode: testMode ?? this.testMode,
       unikey: unikey ?? this.unikey,
       theme: theme ?? this.theme,
@@ -217,6 +222,7 @@ class ConfigData {
         other.fallbackLocale == fallbackLocale &&
         other.initialRoute == initialRoute &&
         other.customTransition == customTransition &&
+        // ignore: deprecated_member_use_from_same_package
         other.home == home &&
         other.testMode == testMode &&
         other.unikey == unikey &&
@@ -262,6 +268,7 @@ class ConfigData {
     fallbackLocale.hashCode ^
     initialRoute.hashCode ^
     customTransition.hashCode ^
+    // ignore: deprecated_member_use_from_same_package
     home.hashCode ^
     testMode.hashCode ^
     unikey.hashCode ^

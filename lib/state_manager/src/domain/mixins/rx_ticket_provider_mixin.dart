@@ -49,6 +49,7 @@ mixin SintTickerProviderStateMixin on SintController implements TickerProvider {
   }
 
   void didChangeDependencies(BuildContext context) {
+    // ignore: deprecated_member_use
     final muted = !TickerMode.of(context);
     if (_tickers != null) {
       for (final ticker in _tickers!) {

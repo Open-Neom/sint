@@ -8,6 +8,9 @@ extension InjectionExtension on SintInterface {
   /// `Sint.put()`
   static final Map<String, _InstanceBuilderFactory> _singl = {};
 
+  /// Exposes the registered dependency keys for internal use (e.g. selective cleanup).
+  static Iterable<String> get registeredKeys => _singl.keys;
+
   ///
   S put<S>(
     S dependency, {
@@ -86,6 +89,30 @@ extension InjectionExtension on SintInterface {
       builder: builder,
       permanent: permanent,
     );
+  }
+
+  /// Registers a dependency that requires **async initialization**.
+  ///
+  /// The [asyncBuilder] is executed immediately and the instance is stored
+  /// once the Future completes. After `await putAsync(...)`, the instance
+  /// is available via `Sint.find<S>()` like any other singleton.
+  ///
+  /// Useful for: SharedPreferences, database connections, HTTP clients, etc.
+  ///
+  /// ```dart
+  /// await Sint.putAsync<SharedPreferences>(
+  ///   () => SharedPreferences.getInstance(),
+  /// );
+  /// // Later:
+  /// final prefs = Sint.find<SharedPreferences>();
+  /// ```
+  Future<S> putAsync<S>(
+    Future<S> Function() asyncBuilder, {
+    String? tag,
+    bool permanent = false,
+  }) async {
+    final instance = await asyncBuilder();
+    return put<S>(instance, tag: tag, permanent: permanent);
   }
 
   /// Injects the Instance [S] builder into the `_singleton` HashMap.

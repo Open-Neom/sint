@@ -76,16 +76,21 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   void onInit() {
+    // ignore: deprecated_member_use_from_same_package
     if (config.sintPages == null && config.home == null) {
-      throw 'You need add pages or home';
+      throw 'You need to provide sintPages (recommended) or home (deprecated). '
+          'Use initialRoute + sintPages for string-based routing.';
     }
 
     if (config.routerDelegate == null) {
       final newDelegate = SintDelegate.createDelegate(
+        // ignore: deprecated_member_use_from_same_package
         pages: config.sintPages ??
             [
               SintPage(
+                // ignore: deprecated_member_use_from_same_package
                 name: cleanRouteName("/${config.home.runtimeType}"),
+                // ignore: deprecated_member_use_from_same_package
                 page: () => config.home!,
               ),
             ],
@@ -108,6 +113,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
           SintInformationParser.createInformationParser(
         initialRoute: config.initialRoute ??
             config.sintPages?.first.name ??
+            // ignore: deprecated_member_use_from_same_package
             cleanRouteName("/${config.home.runtimeType}"),
       );
 
@@ -154,6 +160,10 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   Transition? getThemeTransition() {
+    // On web, use lightweight fade transitions by default to avoid
+    // heavy GPU-intensive animations that can cause jank in browsers.
+    if (kIsWeb) return Transition.fade;
+
     final platform = context.theme.platform;
     final matchingTransition =
         Sint.theme.pageTransitionsTheme.builders[platform];

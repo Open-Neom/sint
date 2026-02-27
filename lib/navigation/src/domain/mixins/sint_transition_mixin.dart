@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -109,7 +107,9 @@ Cannot read the previousTitle for a route that has not yet been installed''',
   }
 
   static bool canSwipe(SintPageRoute route) =>
-      route.popGesture ?? Sint.defaultPopGesture ?? Platform.isIOS;
+      route.popGesture ??
+      Sint.defaultPopGesture ??
+      (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Returns a [CupertinoFullscreenDialogTransition] if [route] is a full
   /// screen dialog, otherwise a [CupertinoPageTransition] is returned.

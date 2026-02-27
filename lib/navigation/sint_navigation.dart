@@ -34,6 +34,7 @@ export 'src/domain/models/path_decoded.dart';
 export 'src/domain/models/route_data.dart';
 export 'src/domain/models/route_node.dart';
 export 'src/domain/models/routing.dart';
+export 'src/domain/models/sint_snackbar_style.dart';
 
 // Domain - Typedefs
 export 'src/domain/navigation_typedef.dart';

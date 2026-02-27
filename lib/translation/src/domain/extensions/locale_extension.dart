@@ -33,5 +33,24 @@ extension LocalesIntl on SintInterface {
       }
     });
   }
+
+  /// Loads translations asynchronously from a [loader] callback and merges
+  /// them with existing translations (does not replace).
+  ///
+  /// Useful for lazy-loading translations per module/feature, from assets,
+  /// network, or any async source.
+  ///
+  /// ```dart
+  /// await Sint.loadTranslations(() async {
+  ///   final json = await rootBundle.loadString('assets/i18n/es.json');
+  ///   return {'es': Map<String, String>.from(jsonDecode(json))};
+  /// });
+  /// ```
+  Future<void> loadTranslations(
+    Future<Map<String, Map<String, String>>> Function() loader,
+  ) async {
+    final newTranslations = await loader();
+    appendTranslations(newTranslations);
+  }
 }
 

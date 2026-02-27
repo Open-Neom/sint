@@ -4,6 +4,7 @@ import 'package:sint/core/src/domain/typedefs/core_typedefs.dart';
 import 'package:sint/core/src/domain/enums/smart_management.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
+import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/router/index.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_queue.dart';
 import 'package:sint/translation/src/domain/interfaces/translations.dart';
@@ -35,7 +36,11 @@ class ConfigData {
   final Locale? fallbackLocale;
   final String? initialRoute;
   final CustomTransition? customTransition;
+
+  /// **DEPRECATED** — Use [initialRoute] + [sintPages] instead.
+  @Deprecated('Use initialRoute + sintPages instead')
   final Widget? home;
+
   final bool testMode;
   final Key? unikey;
   final ThemeData? theme;
@@ -49,6 +54,7 @@ class ConfigData {
   final Duration defaultDialogTransitionDuration;
   final Routing routing;
   final Map<String, String?> parameters;
+  final SintSnackBarStyle? snackBarStyle;
   final SnackBarQueue snackBarQueue = SnackBarQueue();
 
   ConfigData({
@@ -91,6 +97,7 @@ class ConfigData {
     this.defaultDialogTransitionDuration = const Duration(milliseconds: 300),
     this.parameters = const {},
     required this.defaultPopGesture,
+    this.snackBarStyle,
     Routing? routing,
   }) : routing = routing ?? Routing();
 
@@ -133,6 +140,7 @@ class ConfigData {
     Curve? defaultTransitionCurve,
     Curve? defaultDialogTransitionCurve,
     Duration? defaultDialogTransitionDuration,
+    SintSnackBarStyle? snackBarStyle,
     Routing? routing,
     Map<String, String?>? parameters,
   }) {
@@ -165,7 +173,8 @@ class ConfigData {
       fallbackLocale: fallbackLocale ?? this.fallbackLocale,
       initialRoute: initialRoute ?? this.initialRoute,
       customTransition: customTransition ?? this.customTransition,
-      home: home ?? this.home,
+      // ignore: deprecated_member_use_from_same_package
+      home: home ?? this.home, // Kept for backward compat until SINT 2.0
       testMode: testMode ?? this.testMode,
       unikey: unikey ?? this.unikey,
       theme: theme ?? this.theme,
@@ -181,6 +190,7 @@ class ConfigData {
       defaultDialogTransitionCurve ?? this.defaultDialogTransitionCurve,
       defaultDialogTransitionDuration: defaultDialogTransitionDuration ??
           this.defaultDialogTransitionDuration,
+      snackBarStyle: snackBarStyle ?? this.snackBarStyle,
       routing: routing ?? this.routing,
       parameters: parameters ?? this.parameters,
     );
@@ -217,6 +227,7 @@ class ConfigData {
         other.fallbackLocale == fallbackLocale &&
         other.initialRoute == initialRoute &&
         other.customTransition == customTransition &&
+        // ignore: deprecated_member_use_from_same_package
         other.home == home &&
         other.testMode == testMode &&
         other.unikey == unikey &&
@@ -231,6 +242,7 @@ class ConfigData {
         other.defaultDialogTransitionDuration ==
             defaultDialogTransitionDuration &&
         other.routing == routing &&
+        other.snackBarStyle == snackBarStyle &&
         mapEquals(other.parameters, parameters);
   }
 
@@ -262,6 +274,7 @@ class ConfigData {
     fallbackLocale.hashCode ^
     initialRoute.hashCode ^
     customTransition.hashCode ^
+    // ignore: deprecated_member_use_from_same_package
     home.hashCode ^
     testMode.hashCode ^
     unikey.hashCode ^
@@ -275,6 +288,7 @@ class ConfigData {
     defaultDialogTransitionCurve.hashCode ^
     defaultDialogTransitionDuration.hashCode ^
     routing.hashCode ^
+    snackBarStyle.hashCode ^
     parameters.hashCode;
   }
 }

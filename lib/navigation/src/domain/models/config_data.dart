@@ -4,6 +4,7 @@ import 'package:sint/core/src/domain/typedefs/core_typedefs.dart';
 import 'package:sint/core/src/domain/enums/smart_management.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
+import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/router/index.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_queue.dart';
 import 'package:sint/translation/src/domain/interfaces/translations.dart';
@@ -53,6 +54,7 @@ class ConfigData {
   final Duration defaultDialogTransitionDuration;
   final Routing routing;
   final Map<String, String?> parameters;
+  final SintSnackBarStyle? snackBarStyle;
   final SnackBarQueue snackBarQueue = SnackBarQueue();
 
   ConfigData({
@@ -95,6 +97,7 @@ class ConfigData {
     this.defaultDialogTransitionDuration = const Duration(milliseconds: 300),
     this.parameters = const {},
     required this.defaultPopGesture,
+    this.snackBarStyle,
     Routing? routing,
   }) : routing = routing ?? Routing();
 
@@ -137,6 +140,7 @@ class ConfigData {
     Curve? defaultTransitionCurve,
     Curve? defaultDialogTransitionCurve,
     Duration? defaultDialogTransitionDuration,
+    SintSnackBarStyle? snackBarStyle,
     Routing? routing,
     Map<String, String?>? parameters,
   }) {
@@ -186,6 +190,7 @@ class ConfigData {
       defaultDialogTransitionCurve ?? this.defaultDialogTransitionCurve,
       defaultDialogTransitionDuration: defaultDialogTransitionDuration ??
           this.defaultDialogTransitionDuration,
+      snackBarStyle: snackBarStyle ?? this.snackBarStyle,
       routing: routing ?? this.routing,
       parameters: parameters ?? this.parameters,
     );
@@ -237,6 +242,7 @@ class ConfigData {
         other.defaultDialogTransitionDuration ==
             defaultDialogTransitionDuration &&
         other.routing == routing &&
+        other.snackBarStyle == snackBarStyle &&
         mapEquals(other.parameters, parameters);
   }
 
@@ -282,6 +288,7 @@ class ConfigData {
     defaultDialogTransitionCurve.hashCode ^
     defaultDialogTransitionDuration.hashCode ^
     routing.hashCode ^
+    snackBarStyle.hashCode ^
     parameters.hashCode;
   }
 }

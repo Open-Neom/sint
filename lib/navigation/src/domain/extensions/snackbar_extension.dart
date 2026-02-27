@@ -5,11 +5,16 @@ import 'package:sint/core/src/sint_engine.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_style.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/domain/navigation_typedef.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_controller.dart';
 
 extension SnackbarExtension on SintInterface {
+
+  /// Resolves the global [SintSnackBarStyle] from [ConfigData], or null.
+  SintSnackBarStyle? get _globalStyle => rootController.config.snackBarStyle;
+
   SnackbarController rawSnackbar({
     String? title,
     String? message,
@@ -17,72 +22,74 @@ extension SnackbarExtension on SintInterface {
     Widget? messageText,
     Widget? icon,
     bool instantInit = true,
-    bool shouldIconPulse = true,
+    bool? shouldIconPulse,
     double? maxWidth,
-    EdgeInsets margin = const EdgeInsets.all(0.0),
-    EdgeInsets padding = const EdgeInsets.all(16),
-    double borderRadius = 0.0,
+    EdgeInsets? margin,
+    EdgeInsets? padding,
+    double? borderRadius,
     Color? borderColor,
-    double borderWidth = 1.0,
-    Color backgroundColor = const Color(0xFF303030),
+    double? borderWidth,
+    Color? backgroundColor,
     Color? leftBarIndicatorColor,
     List<BoxShadow>? boxShadows,
     Gradient? backgroundGradient,
     Widget? mainButton,
     OnTap? onTap,
-    Duration? duration = const Duration(seconds: 3),
-    bool isDismissible = true,
+    Duration? duration,
+    bool? isDismissible,
     DismissDirection? dismissDirection,
-    bool showProgressIndicator = false,
+    bool? showProgressIndicator,
     AnimationController? progressIndicatorController,
     Color? progressIndicatorBackgroundColor,
     Animation<Color>? progressIndicatorValueColor,
-    SnackPosition snackPosition = SnackPosition.bottom,
-    SnackStyle snackStyle = SnackStyle.floating,
-    Curve forwardAnimationCurve = Curves.easeOutCirc,
-    Curve reverseAnimationCurve = Curves.easeOutCirc,
-    Duration animationDuration = const Duration(seconds: 1),
+    SnackPosition? snackPosition,
+    SnackStyle? snackStyle,
+    Curve? forwardAnimationCurve,
+    Curve? reverseAnimationCurve,
+    Duration? animationDuration,
     SnackbarStatusCallback? snackbarStatus,
-    double barBlur = 0.0,
-    double overlayBlur = 0.0,
+    double? barBlur,
+    double? overlayBlur,
     Color? overlayColor,
     Form? userInputForm,
   }) {
+    final s = _globalStyle;
+
     final getSnackBar = SintSnackBar(
       snackbarStatus: snackbarStatus,
       title: title,
       message: message,
       titleText: titleText,
       messageText: messageText,
-      snackPosition: snackPosition,
-      borderRadius: borderRadius,
-      margin: margin,
-      duration: duration,
-      barBlur: barBlur,
-      backgroundColor: backgroundColor,
-      icon: icon,
-      shouldIconPulse: shouldIconPulse,
-      maxWidth: maxWidth,
-      padding: padding,
-      borderColor: borderColor,
-      borderWidth: borderWidth,
-      leftBarIndicatorColor: leftBarIndicatorColor,
-      boxShadows: boxShadows,
-      backgroundGradient: backgroundGradient,
-      mainButton: mainButton,
+      snackPosition: snackPosition ?? s?.snackPosition ?? SnackPosition.bottom,
+      borderRadius: borderRadius ?? s?.borderRadius ?? 0.0,
+      margin: margin ?? s?.margin ?? const EdgeInsets.all(0.0),
+      duration: duration ?? s?.duration ?? const Duration(seconds: 3),
+      barBlur: barBlur ?? s?.barBlur ?? 0.0,
+      backgroundColor: backgroundColor ?? s?.backgroundColor ?? const Color(0xFF303030),
+      icon: icon ?? s?.icon,
+      shouldIconPulse: shouldIconPulse ?? s?.shouldIconPulse ?? true,
+      maxWidth: maxWidth ?? s?.maxWidth,
+      padding: padding ?? s?.padding ?? const EdgeInsets.all(16),
+      borderColor: borderColor ?? s?.borderColor,
+      borderWidth: borderWidth ?? s?.borderWidth ?? 1.0,
+      leftBarIndicatorColor: leftBarIndicatorColor ?? s?.leftBarIndicatorColor,
+      boxShadows: boxShadows ?? s?.boxShadows,
+      backgroundGradient: backgroundGradient ?? s?.backgroundGradient,
+      mainButton: mainButton ?? s?.mainButton,
       onTap: onTap,
-      isDismissible: isDismissible,
+      isDismissible: isDismissible ?? s?.isDismissible ?? true,
       dismissDirection: dismissDirection,
-      showProgressIndicator: showProgressIndicator,
+      showProgressIndicator: showProgressIndicator ?? s?.showProgressIndicator ?? false,
       progressIndicatorController: progressIndicatorController,
       progressIndicatorBackgroundColor: progressIndicatorBackgroundColor,
       progressIndicatorValueColor: progressIndicatorValueColor,
-      snackStyle: snackStyle,
-      forwardAnimationCurve: forwardAnimationCurve,
-      reverseAnimationCurve: reverseAnimationCurve,
-      animationDuration: animationDuration,
-      overlayBlur: overlayBlur,
-      overlayColor: overlayColor,
+      snackStyle: snackStyle ?? s?.snackStyle ?? SnackStyle.floating,
+      forwardAnimationCurve: forwardAnimationCurve ?? s?.forwardAnimationCurve ?? Curves.easeOutCirc,
+      reverseAnimationCurve: reverseAnimationCurve ?? s?.reverseAnimationCurve ?? Curves.easeOutCirc,
+      animationDuration: animationDuration ?? s?.animationDuration ?? const Duration(seconds: 1),
+      overlayBlur: overlayBlur ?? s?.overlayBlur ?? 0.0,
+      overlayColor: overlayColor ?? s?.overlayColor,
       userInputForm: userInputForm,
     );
 
@@ -108,7 +115,7 @@ extension SnackbarExtension on SintInterface {
       String title,
       String message, {
         Color? colorText,
-        Duration? duration = const Duration(seconds: 3),
+        Duration? duration,
 
         /// with instantInit = false you can put snackbar on initState
         bool instantInit = true,
@@ -146,13 +153,17 @@ extension SnackbarExtension on SintInterface {
         Color? overlayColor,
         Form? userInputForm,
       }) {
+    // Cascade: call-site param > global SintSnackBarStyle > hardcoded default
+    final s = _globalStyle;
+    final resolvedColorText = colorText ?? s?.colorText ?? iconColor ?? Colors.black;
+
     final getSnackBar = SintSnackBar(
         snackbarStatus: snackbarStatus,
         titleText: titleText ??
             Text(
               title,
               style: TextStyle(
-                color: colorText ?? iconColor ?? Colors.black,
+                color: resolvedColorText,
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -161,41 +172,41 @@ extension SnackbarExtension on SintInterface {
             Text(
               message,
               style: TextStyle(
-                color: colorText ?? iconColor ?? Colors.black,
+                color: resolvedColorText,
                 fontWeight: FontWeight.w300,
                 fontSize: 14,
               ),
             ),
-        snackPosition: snackPosition ?? SnackPosition.top,
-        borderRadius: borderRadius ?? 15,
-        margin: margin ?? const EdgeInsets.symmetric(horizontal: 10),
-        duration: duration,
-        barBlur: barBlur ?? 7.0,
-        backgroundColor: backgroundColor ?? Colors.grey.withValues(alpha: 0.2),
-        icon: icon,
-        shouldIconPulse: shouldIconPulse ?? true,
-        maxWidth: maxWidth,
-        padding: padding ?? const EdgeInsets.all(16),
-        borderColor: borderColor,
-        borderWidth: borderWidth,
-        leftBarIndicatorColor: leftBarIndicatorColor,
-        boxShadows: boxShadows,
-        backgroundGradient: backgroundGradient,
-        mainButton: mainButton,
+        snackPosition: snackPosition ?? s?.snackPosition ?? SnackPosition.top,
+        borderRadius: borderRadius ?? s?.borderRadius ?? 15,
+        margin: margin ?? s?.margin ?? const EdgeInsets.symmetric(horizontal: 10),
+        duration: duration ?? s?.duration ?? const Duration(seconds: 3),
+        barBlur: barBlur ?? s?.barBlur ?? 7.0,
+        backgroundColor: backgroundColor ?? s?.backgroundColor ?? Colors.grey.withValues(alpha: 0.2),
+        icon: icon ?? s?.icon,
+        shouldIconPulse: shouldIconPulse ?? s?.shouldIconPulse ?? true,
+        maxWidth: maxWidth ?? s?.maxWidth,
+        padding: padding ?? s?.padding ?? const EdgeInsets.all(16),
+        borderColor: borderColor ?? s?.borderColor,
+        borderWidth: borderWidth ?? s?.borderWidth,
+        leftBarIndicatorColor: leftBarIndicatorColor ?? s?.leftBarIndicatorColor,
+        boxShadows: boxShadows ?? s?.boxShadows,
+        backgroundGradient: backgroundGradient ?? s?.backgroundGradient,
+        mainButton: mainButton ?? s?.mainButton,
         onTap: onTap,
         onHover: onHover,
-        isDismissible: isDismissible ?? true,
+        isDismissible: isDismissible ?? s?.isDismissible ?? true,
         dismissDirection: dismissDirection,
-        showProgressIndicator: showProgressIndicator ?? false,
+        showProgressIndicator: showProgressIndicator ?? s?.showProgressIndicator ?? false,
         progressIndicatorController: progressIndicatorController,
         progressIndicatorBackgroundColor: progressIndicatorBackgroundColor,
         progressIndicatorValueColor: progressIndicatorValueColor,
-        snackStyle: snackStyle ?? SnackStyle.floating,
-        forwardAnimationCurve: forwardAnimationCurve ?? Curves.easeOutCirc,
-        reverseAnimationCurve: reverseAnimationCurve ?? Curves.easeOutCirc,
-        animationDuration: animationDuration ?? const Duration(seconds: 1),
-        overlayBlur: overlayBlur ?? 0.0,
-        overlayColor: overlayColor ?? Colors.transparent,
+        snackStyle: snackStyle ?? s?.snackStyle ?? SnackStyle.floating,
+        forwardAnimationCurve: forwardAnimationCurve ?? s?.forwardAnimationCurve ?? Curves.easeOutCirc,
+        reverseAnimationCurve: reverseAnimationCurve ?? s?.reverseAnimationCurve ?? Curves.easeOutCirc,
+        animationDuration: animationDuration ?? s?.animationDuration ?? const Duration(seconds: 1),
+        overlayBlur: overlayBlur ?? s?.overlayBlur ?? 0.0,
+        overlayColor: overlayColor ?? s?.overlayColor ?? Colors.transparent,
         userInputForm: userInputForm);
 
     final controller = SnackbarController(getSnackBar);
@@ -203,7 +214,6 @@ extension SnackbarExtension on SintInterface {
     if (instantInit) {
       controller.show();
     } else {
-      //routing.isSnackbar = true;
       SintEngine.instance.addPostFrameCallback((_) {
         controller.show();
       });

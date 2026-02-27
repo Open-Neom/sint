@@ -17,6 +17,7 @@ The Four Pillars Evolve — Workers, Pattern Matching, Async DI & Web-Safe Navig
 
 ### Pillar N (Navigation)
 
+- **`SintSnackBarStyle`**: Global snackbar styling via `SintMaterialApp(snackBarStyle: ...)`. Defines default visual properties (colors, margins, durations, position, etc.) that apply to every `Sint.snackbar()` call. Three-level cascade: call-site parameters > global style > hardcoded defaults.
 - **Web-Safe `back()`**: Integrated web-aware logic directly into `Sint.back()`. On web, if there's no internal navigation history to pop, it gracefully does nothing instead of crashing — the browser's back/forward arrows handle it.
 - **`toInitial()` Hard Reset**: Performs a full app reset — deletes all non-permanent controllers (`onClose()` called on each), then reloads `initialRoute` from scratch. Supports selective preservation via `keep` parameter: `Sint.toInitial(keep: {AuthController})`.
 - **`Sint.isWeb`**: Platform detection shortcut.

@@ -73,6 +73,7 @@ class SintMaterialApp extends StatelessWidget {
   final RouterDelegate<Object>? routerDelegate;
   final RouterConfig<Object>? routerConfig;
   final BackButtonDispatcher? backButtonDispatcher;
+  final SintSnackBarStyle? snackBarStyle;
   final bool useInheritedMediaQuery;
 
   const SintMaterialApp({
@@ -129,6 +130,7 @@ class SintMaterialApp extends StatelessWidget {
     this.smartManagement = SmartManagement.full,
     this.binds = const [],
     this.unknownRoute,
+    this.snackBarStyle,
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
@@ -191,6 +193,7 @@ class SintMaterialApp extends StatelessWidget {
     this.sintPages,
     this.navigatorObservers,
     this.unknownRoute,
+    this.snackBarStyle,
   })  : navigatorKey = null,
         onGenerateRoute = null,
         // ignore: deprecated_member_use_from_same_package
@@ -236,6 +239,7 @@ class SintMaterialApp extends StatelessWidget {
         darkTheme: darkTheme,
         themeMode: themeMode,
         defaultPopGesture: popGesture,
+        snackBarStyle: snackBarStyle,
       ),
       child: Builder(builder: (context) {
         final controller = SintRoot.of(context);

@@ -1,3 +1,9 @@
+## [1.2.2] - 2026-02-28
+
+- **CHANGELOG sync**: Turns out an AI that manages State, Injection, Navigation & Translation still can't manage to update the CHANGELOG *before* hitting publish. Lesson learned. Version and CHANGELOG now walk into pub.dev together, holding hands. It won't happen again. Probably.
+
+---
+
 ## [1.2.1] - 2026-02-28
 
 - **README images**: Switched to absolute GitHub raw URLs so images render correctly on pub.dev (`.pubignore` excludes PNGs from the package).

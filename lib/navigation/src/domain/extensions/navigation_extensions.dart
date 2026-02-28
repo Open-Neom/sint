@@ -906,6 +906,37 @@ extension NavigationExtension on SintInterface {
     return rootController.rootDelegate.parameters;
   }
 
+  /// Primary route parameter from URL path. Returns null if none.
+  /// For route '/book/:bookId' navigated as '/book/abc123', returns 'abc123'.
+  /// Usage: `String? id = Sint.routeParam;`
+  String? get routeParam {
+    if (_shouldUseMock) return SintTestMode.routeParam;
+    return rootController.rootDelegate.routeParam;
+  }
+
+  /// Named path parameter (like Spring Boot @PathVariable).
+  /// Usage: `String? id = Sint.pathParam('bookId');`
+  String? pathParam(String name) {
+    if (_shouldUseMock) return SintTestMode.pathParam(name);
+    return rootController.rootDelegate.pathParam(name);
+  }
+
+  /// Query parameter from URL (like Spring Boot @RequestParam).
+  /// Usage: `String? page = Sint.queryParam('page');`
+  String? queryParam(String name) {
+    if (_shouldUseMock) return SintTestMode.queryParam(name);
+    return rootController.rootDelegate.queryParam(name);
+  }
+
+  /// Query parameter with default value.
+  /// Usage: `String sort = Sint.queryParamOrDefault('sort', 'recent');`
+  String queryParamOrDefault(String name, String defaultValue) {
+    if (_shouldUseMock) {
+      return SintTestMode.queryParamOrDefault(name, defaultValue);
+    }
+    return rootController.rootDelegate.queryParamOrDefault(name, defaultValue);
+  }
+
   /// Casts the stored router delegate to a desired type
   TDelegate? delegate<TDelegate extends RouterDelegate<TPage>, TPage>() =>
       _getxController.routerDelegate as TDelegate?;

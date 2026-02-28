@@ -1,3 +1,38 @@
+## [1.2.0] - 2026-02-28
+
+RESTful Navigation & i18n URL Routing.
+
+133 lines of new code. Zero new dependencies. Pillars N and T upgraded.
+
+### Pillar N (Navigation)
+
+- **RESTful Route Parameters** (Spring Boot-inspired API):
+  - `Sint.routeParam` — Primary path parameter value. For route `/book/:bookId` navigated as `/book/abc123`, returns `'abc123'`. Equivalent to Spring Boot's `@PathVariable`.
+  - `Sint.pathParam('bookId')` — Named path parameter. Equivalent to `@PathVariable("bookId")`.
+  - `Sint.queryParam('page')` — Query parameter from URL. Equivalent to `@RequestParam`.
+  - `Sint.queryParamOrDefault('sort', 'recent')` — Query parameter with fallback. Equivalent to `@RequestParam(defaultValue = "recent")`.
+  - Full test mode support via `SintTestMode`.
+- **`translateEndpoints` flag**: New parameter on `SintMaterialApp` and `ConfigData` that enables automatic i18n URL routing. When `true`, SINT builds a `PathTranslator` from registered translations and routes.
+- **`setUrlStrategy()` resilience**: Wrapped in try-catch to handle "URL strategy already set" when the Flutter engine is already initialized — prevents web startup crashes on hot restart.
+
+### Pillar T (Translation)
+
+- **`PathTranslator`** — New class for internationalized URL routing:
+  - `canonicalizePath()` — Converts localized URLs to canonical English before route matching. e.g. `/libro/abc123` → `/book/abc123`.
+  - `localizePath()` — Converts canonical URLs to the current locale for the browser URL bar. e.g. `/book/abc123` → `/libro/abc123` (ES) or `/livre/abc123` (FR).
+  - `extractSegments()` — Automatically extracts static route segments from registered `SintPage` names (skips `:param` segments).
+  - Built-in diacritics normalization (`Publicación` → `publicacion`) for clean URLs.
+  - Zero-config: built automatically from existing app translations when `translateEndpoints: true`. No external localization file needed.
+- **`Sint.pathTranslator`** — Getter/setter on the `SintInterface` to access the URL translator. Stored in `IntlHost` and cleaned up on `SintRoot.onClose()`.
+- **`SintInformationParser` integration** — Automatic canonicalization on `parseRouteInformation()` and localization on `restoreRouteInformation()`. Browser URL bar shows localized paths; internal routing uses canonical English.
+
+### Housekeeping
+
+- **Example app**: Added `example/main.dart` demonstrating all four SINT pillars (State, Injection, Navigation, Translation) in a counter app. Targets 160/160 pub points.
+- **TickerMode.of deprecation**: Suppressed for cross-SDK compatibility in `RxTickerProviderMixin`.
+
+---
+
 ## [1.1.0] - 2026-02-26
 
 The Four Pillars Evolve — Workers, Pattern Matching, Async DI & Web-Safe Navigation.

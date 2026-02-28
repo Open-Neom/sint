@@ -90,7 +90,13 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
             body: Center(child: Text('Route not found')),
           ),
         ) {
-    if (!showHashOnUrl && kIsWeb) setUrlStrategy();
+    if (!showHashOnUrl && kIsWeb) {
+      try {
+        setUrlStrategy();
+      } catch (_) {
+        // URL strategy already set or engine already initialized — safe to ignore.
+      }
+    }
     addPages(pages);
     addPage(notFoundRoute);
     Sint.log('GetDelegate is created !');
@@ -160,6 +166,37 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   PageSettings? get pageSettings {
     return currentConfiguration?.pageSettings;
+  }
+
+  /// Primary route path parameter value (first path param).
+  /// For route '/book/:bookId' navigated as '/book/abc123', returns 'abc123'.
+  /// Returns null if no path parameter exists.
+  /// Inspired by Spring Boot's @PathVariable annotation.
+  String? get routeParam {
+    final ps = currentConfiguration?.pageSettings;
+    if (ps == null) return null;
+    final allParams = ps.params;
+    if (allParams.isEmpty) return null;
+    final queryKeys = ps.query.keys.toSet();
+    for (final entry in allParams.entries) {
+      if (!queryKeys.contains(entry.key)) return entry.value;
+    }
+    return null;
+  }
+
+  /// Named path parameter (like Spring Boot @PathVariable("bookId")).
+  String? pathParam(String name) {
+    return currentConfiguration?.pageSettings?.params[name];
+  }
+
+  /// Query parameter only (like Spring Boot @RequestParam).
+  String? queryParam(String name) {
+    return currentConfiguration?.pageSettings?.query[name];
+  }
+
+  /// Query parameter with default (like @RequestParam(defaultValue = "10")).
+  String queryParamOrDefault(String name, String defaultValue) {
+    return currentConfiguration?.pageSettings?.query[name] ?? defaultValue;
   }
 
   Future<void> _pushHistory(RouteDecoder config) async {

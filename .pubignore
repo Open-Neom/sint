@@ -1,0 +1,11 @@
+assets/*.png
+assets/css/
+build/
+.dart_tool/
+.idea/
+.github/
+SINT_GETX_COMPARISON.docx
+SINT_GETX_COMPARISON.md
+SINT_GETX_EVOLUTION_BRIEF.md
+_config.yml
+index.md

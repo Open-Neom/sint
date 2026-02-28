@@ -55,6 +55,7 @@ class ConfigData {
   final Routing routing;
   final Map<String, String?> parameters;
   final SintSnackBarStyle? snackBarStyle;
+  final bool translateEndpoints;
   final SnackBarQueue snackBarQueue = SnackBarQueue();
 
   ConfigData({
@@ -98,6 +99,7 @@ class ConfigData {
     this.parameters = const {},
     required this.defaultPopGesture,
     this.snackBarStyle,
+    this.translateEndpoints = false,
     Routing? routing,
   }) : routing = routing ?? Routing();
 
@@ -141,6 +143,7 @@ class ConfigData {
     Curve? defaultDialogTransitionCurve,
     Duration? defaultDialogTransitionDuration,
     SintSnackBarStyle? snackBarStyle,
+    bool? translateEndpoints,
     Routing? routing,
     Map<String, String?>? parameters,
   }) {
@@ -191,6 +194,7 @@ class ConfigData {
       defaultDialogTransitionDuration: defaultDialogTransitionDuration ??
           this.defaultDialogTransitionDuration,
       snackBarStyle: snackBarStyle ?? this.snackBarStyle,
+      translateEndpoints: translateEndpoints ?? this.translateEndpoints,
       routing: routing ?? this.routing,
       parameters: parameters ?? this.parameters,
     );
@@ -243,6 +247,7 @@ class ConfigData {
             defaultDialogTransitionDuration &&
         other.routing == routing &&
         other.snackBarStyle == snackBarStyle &&
+        other.translateEndpoints == translateEndpoints &&
         mapEquals(other.parameters, parameters);
   }
 
@@ -289,6 +294,7 @@ class ConfigData {
     defaultDialogTransitionDuration.hashCode ^
     routing.hashCode ^
     snackBarStyle.hashCode ^
+    translateEndpoints.hashCode ^
     parameters.hashCode;
   }
 }

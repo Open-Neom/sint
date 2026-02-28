@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:sint/core/src/domain/interfaces/sint_interface.dart';
 import 'package:sint/translation/src/domain/models/intl_host.dart';
+import 'package:sint/translation/src/domain/models/path_translator.dart';
 
 extension LocalesIntl on SintInterface {
   static final _intlHost = IntlHost();
@@ -15,6 +16,11 @@ extension LocalesIntl on SintInterface {
   set fallbackLocale(Locale? newLocale) => _intlHost.fallbackLocale = newLocale;
 
   Map<String, Map<String, String>> get translations => _intlHost.translations;
+
+  /// URL path translator (built when `translateEndpoints: true`).
+  PathTranslator? get pathTranslator => _intlHost.pathTranslator;
+
+  set pathTranslator(PathTranslator? value) => _intlHost.pathTranslator = value;
 
   void addTranslations(Map<String, Map<String, String>> tr) {
     translations.addAll(tr);

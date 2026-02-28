@@ -1,5 +1,9 @@
 # SINT
 
+<p align="center">
+  <img src="assets/SINT%20-%20Logo%20-%202026.png" alt="SINT Framework" width="280"/>
+</p>
+
 **State, Injection, Navigation, Translation — The Four Pillars of High-Fidelity Flutter Infrastructure.**
 
 [![pub package](https://img.shields.io/pub/v/sint.svg?label=sint&color=blue)](https://pub.dev/packages/sint)
@@ -26,6 +30,7 @@
 ---
 
 - [About SINT](#about-sint)
+- [What's New in 1.2.0](#whats-new-in-120)
 - [What's New in 1.1.0](#whats-new-in-110)
 - [Installing](#installing)
 - [The Four Pillars](#the-four-pillars)
@@ -33,6 +38,7 @@
   - [Injection (I)](#injection-i)
   - [Navigation (N)](#navigation-n)
   - [Translation (T)](#translation-t)
+- [Flutter Web & Deep Links](#flutter-web--deep-links)
 - [Counter App with SINT](#counter-app-with-sint)
 - [Migration from GetX](#migration-from-getx)
 - [Origin & Philosophy](#origin--philosophy)
@@ -47,8 +53,8 @@ SINT is an architectural evolution of GetX (v5.0.0-rc), built as a focused frame
 |---|---|
 | **S** — State Management | `SintController`, `SintBuilder`, `Obx`, `.obs`, Rx types, Workers, `SintStatus`, `SintListener` |
 | **I** — Injection | `Sint.put`, `Sint.find`, `Sint.lazyPut`, `Sint.putAsync`, Bindings, SmartManagement |
-| **N** — Navigation | `SintPage`, `Sint.toNamed`, `Sint.toInitial`, middleware, `SintMaterialApp`, web-safe `back()` |
-| **T** — Translation | `.tr` extension, `Translations` class, locale management, `loadTranslations` |
+| **N** — Navigation | `SintPage`, `Sint.toNamed`, `Sint.toInitial`, `routeParam`, `pathParam`, `queryParam`, middleware, `SintMaterialApp`, `SintSnackBarStyle`, web-safe `back()` |
+| **T** — Translation | `.tr` extension, `Translations` class, locale management, `loadTranslations`, `PathTranslator`, `translateEndpoints` |
 
 Everything outside these four pillars has been removed: no HTTP client, no animations, no string validators, no generic utilities. The result is **37.7% less code** than GetX — 12,849 LOC vs 20,615 LOC.
 
@@ -57,6 +63,109 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 - **PERFORMANCE:** No Streams or ChangeNotifier overhead. Minimal RAM consumption.
 - **PRODUCTIVITY:** Simple syntax. One import: `import 'package:sint/sint.dart';`
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
+
+---
+
+## What's New in 1.2.0
+
+**Focus: Flutter Web, Deep Links & i18n URL Routing — without breaking mobile.**
+
+### RESTful Route Parameters
+
+Spring Boot-inspired parameter extraction that works identically on mobile and web:
+
+```dart
+// Define routes with path parameters (same as before)
+SintPage(name: '/book/:bookId', page: () => BookDetail()),
+SintPage(name: '/shop/product/:productId', page: () => ProductPage()),
+
+// Navigate (works on all platforms)
+Sint.toNamed('/book/abc123');
+Sint.toNamed('/shop/product/42?color=red&size=lg');
+
+// Extract parameters — clean API, no manual parsing
+String? bookId    = Sint.routeParam;                       // 'abc123'
+String? productId = Sint.pathParam('productId');           // '42'
+String? color     = Sint.queryParam('color');              // 'red'
+String  size      = Sint.queryParamOrDefault('size', 'm'); // 'lg'
+```
+
+| Method | Equivalent (Spring Boot) | Description |
+|--------|--------------------------|-------------|
+| `Sint.routeParam` | `@PathVariable` | First path parameter value |
+| `Sint.pathParam('id')` | `@PathVariable("id")` | Named path parameter |
+| `Sint.queryParam('q')` | `@RequestParam` | Query string parameter |
+| `Sint.queryParamOrDefault('sort', 'asc')` | `@RequestParam(defaultValue)` | Query with fallback |
+
+All four methods support `SintTestMode` for unit testing without a running app.
+
+### i18n URL Routing (translateEndpoints)
+
+Localized URLs in the browser address bar — zero configuration beyond what you already have:
+
+```dart
+SintMaterialApp(
+  translateEndpoints: true,  // Enable URL localization
+  translationsKeys: AppTranslations.keys,
+  locale: Locale('es'),
+  sintPages: [
+    SintPage(name: '/book/:bookId', page: () => BookDetail()),
+    SintPage(name: '/event/:eventId', page: () => EventDetail()),
+  ],
+)
+```
+
+Your existing translations automatically power the URL routing:
+
+```dart
+// In your translations file — no extra config needed
+'es': { 'book': 'libro', 'event': 'evento', ... }
+'fr': { 'book': 'livre', 'event': 'evenement', ... }
+'de': { 'book': 'buch', 'event': 'veranstaltung', ... }
+```
+
+Result:
+
+| Locale | Browser URL | Internal Route |
+|--------|-------------|----------------|
+| EN | `/book/abc123` | `/book/abc123` |
+| ES | `/libro/abc123` | `/book/abc123` |
+| FR | `/livre/abc123` | `/book/abc123` |
+| DE | `/buch/abc123` | `/book/abc123` |
+
+**How it works:**
+
+1. `PathTranslator` is built automatically from your registered routes + translations
+2. Incoming URLs are canonicalized before route matching (`/libro/x` → `/book/x`)
+3. Outgoing URLs are localized for the browser bar (`/book/x` → `/libro/x`)
+4. Diacritics are normalized automatically (`Publicación` → `publicacion`)
+5. On mobile, `translateEndpoints` has zero overhead — path translation only activates for web URL parsing
+
+### Global Snackbar Theming
+
+Define snackbar appearance once, apply everywhere:
+
+```dart
+SintMaterialApp(
+  snackBarStyle: SintSnackBarStyle(
+    backgroundColor: Colors.grey[900],
+    colorText: Colors.white,
+    borderRadius: 12,
+    margin: EdgeInsets.all(16),
+    snackPosition: SnackPosition.bottom,
+    duration: Duration(seconds: 3),
+  ),
+)
+
+// All snackbar calls inherit the global style
+Sint.snackbar('Title', 'Message');
+// Call-site params still override when needed
+Sint.snackbar('Error', 'Failed', backgroundColor: Colors.red);
+```
+
+Three-level cascade: **call-site > global style > hardcoded defaults**.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list of changes.
 
 ---
 
@@ -146,7 +255,7 @@ Add SINT to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  sint: ^1.1.0
+  sint: ^1.2.0
 ```
 
 Import it:
@@ -179,6 +288,10 @@ SINT is built for speed. Every pillar is audited against the Open Neom Standard.
 ---
 
 ## The Four Pillars
+
+<p align="center">
+  <img src="assets/SINT%20-%20Framework%20-%202026.png" alt="SINT — The Four Pillars" width="700"/>
+</p>
 
 ### State Management (S)
 
@@ -233,21 +346,33 @@ final controller = Sint.find<AuthController>();
 
 ### Navigation (N)
 
-Route management without context:
+Route management without context — optimized for web deep links and mobile alike:
 
 ```dart
 SintMaterialApp(
   initialRoute: '/',
+  translateEndpoints: true,                          // i18n URLs (web)
+  snackBarStyle: SintSnackBarStyle(...),              // Global theming
   sintPages: [
     SintPage(name: '/', page: () => Home()),
-    SintPage(name: '/details', page: () => Details()),
+    SintPage(name: '/book/:bookId', page: () => BookDetail()),
+    SintPage(name: '/search', page: () => Search()),
   ],
 )
 
-Sint.toNamed('/details');
+// Navigation
+Sint.toNamed('/book/abc123?ref=home');
 Sint.back();                                         // Web-safe
 Sint.toInitial();                                    // Hard reset to home
 Sint.toInitial(keep: {AuthController});              // Keep specific controllers
+
+// RESTful parameter extraction
+String? id   = Sint.routeParam;                      // 'abc123'
+String? id   = Sint.pathParam('bookId');              // 'abc123'
+String? ref  = Sint.queryParam('ref');                // 'home'
+String  sort = Sint.queryParamOrDefault('sort', 'a'); // 'a' (default)
+
+// Snackbar with global style
 Sint.snackbar('Title', 'Message');
 ```
 
@@ -255,7 +380,7 @@ Sint.snackbar('Title', 'Message');
 
 ### Translation (T)
 
-Internationalization with `.tr`:
+Internationalization with `.tr` — now powers URL routing too:
 
 ```dart
 Text('hello'.tr);
@@ -267,9 +392,73 @@ await Sint.loadTranslations(() async {
   final json = await rootBundle.loadString('assets/i18n/shop.json');
   return {'es': Map<String, String>.from(jsonDecode(json))};
 });
+
+// URL path translation (automatic when translateEndpoints: true)
+// Your translation keys double as URL segment mappings:
+//   'book' → 'libro' (ES), 'livre' (FR), 'buch' (DE)
+//
+// PathTranslator handles:
+//   canonicalizePath('/libro/abc')  → '/book/abc'   (incoming)
+//   localizePath('/book/abc', 'es') → '/libro/abc'  (outgoing)
 ```
 
 [Full documentation](documentation/en_US/translation_management.md)
+
+---
+
+## Flutter Web & Deep Links
+
+SINT is designed with a **web-first, mobile-safe** philosophy. Every feature works identically across platforms, but web gets extra optimizations:
+
+| Feature | Web Behavior | Mobile Behavior |
+|---------|-------------|-----------------|
+| `Sint.back()` | No-op if no internal history (browser arrows handle it) | Standard `Navigator.pop()` |
+| `Sint.routeParam` | Extracted from browser URL path | Extracted from route arguments |
+| `Sint.queryParam()` | Extracted from URL query string `?key=value` | Extracted from route arguments |
+| `translateEndpoints` | Localizes browser URL bar + canonicalizes incoming URLs | No overhead — flag is ignored |
+| `Sint.showBackButton` | `false` (browser has native arrows) | `true` |
+| Default transition | `Transition.fade` (GPU-light for web canvas) | Platform default (Cupertino/Material) |
+| Scroll behavior | Drag enabled for touch, mouse, and trackpad | Platform default |
+| `SintSnackBarStyle` | Same styling across web and mobile | Same styling across web and mobile |
+
+### Deep Link Example (Web + Mobile)
+
+```dart
+// 1. Define routes with parameters
+SintMaterialApp(
+  initialRoute: '/',
+  translateEndpoints: true,
+  translationsKeys: AppTranslations.keys,
+  locale: Locale('es'),
+  sintPages: [
+    SintPage(name: '/', page: () => HomePage()),
+    SintPage(name: '/book/:bookId', page: () => BookDetail()),
+    SintPage(name: '/profile/:userId', page: () => ProfilePage()),
+  ],
+)
+
+// 2. In your controller — same code works everywhere
+class BookDetailController extends SintController {
+  late final String bookId;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Works from: browser URL, deep link, or Sint.toNamed()
+    bookId = Sint.routeParam ?? '';
+    loadBook(bookId);
+  }
+}
+```
+
+**On web:** User visits `https://myapp.com/libro/abc123` →
+SINT canonicalizes to `/book/abc123` → routes to `BookDetail` →
+`Sint.routeParam` returns `'abc123'` → browser shows `/libro/abc123`.
+
+**On mobile:** `Sint.toNamed('/book/abc123')` →
+routes to `BookDetail` → `Sint.routeParam` returns `'abc123'`.
+
+**Same controller. Same routes. Same parameters. Zero platform checks.**
 
 ---
 

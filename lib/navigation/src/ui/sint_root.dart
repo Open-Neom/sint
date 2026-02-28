@@ -61,6 +61,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   void onClose() {
     config.onDispose?.call();
     Sint.clearTranslations();
+    Sint.pathTranslator = null;
     config.snackBarQueue.disposeControllers();
     RouterReportManager.instance.clearRouteKeys();
     RouterReportManager.dispose();
@@ -131,6 +132,18 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
       Sint.addTranslations(config.translations!.keys);
     } else if (config.translationsKeys != null) {
       Sint.addTranslations(config.translationsKeys!);
+    }
+
+    // Build path translator for URL segment localization (web).
+    if (config.translateEndpoints) {
+      final delegate = config.routerDelegate as SintDelegate;
+      final segments = PathTranslator.extractSegments(
+        delegate.registeredRoutes,
+      );
+      Sint.pathTranslator = PathTranslator.build(
+        translations: Sint.translations,
+        routeSegments: segments,
+      );
     }
 
     Sint.smartManagement = config.smartManagement;

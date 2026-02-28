@@ -34,6 +34,12 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
       location = initialRoute;
     }
 
+    // URL Canonicalization: normalize localized segments to canonical English
+    // e.g. '/libro/abc123' → '/book/abc123' before route matching
+    if (Sint.pathTranslator != null) {
+      location = Sint.pathTranslator!.canonicalizePath(location);
+    }
+
     Sint.log('GetInformationParser: route location: $location');
 
     return SynchronousFuture(RouteDecoder.fromRoute(location));
@@ -41,8 +47,16 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
 
   @override
   RouteInformation restoreRouteInformation(RouteDecoder configuration) {
+    var name = configuration.pageSettings?.name ?? '';
+
+    // URL Localization: translate canonical segments to current locale
+    // e.g. '/book/abc123' → '/libro/abc123' for the browser URL bar
+    if (Sint.pathTranslator != null && Sint.locale != null) {
+      name = Sint.pathTranslator!.localizePath(name, Sint.locale!.languageCode);
+    }
+
     return RouteInformation(
-      uri: Uri.tryParse(configuration.pageSettings?.name ?? ''),
+      uri: Uri.tryParse(name),
       state: null,
     );
   }

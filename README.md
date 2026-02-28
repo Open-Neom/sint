@@ -1,7 +1,7 @@
 # SINT
 
 <p align="center">
-  <img src="assets/SINT%20-%20Logo%20-%202026.png" alt="SINT Framework" width="280"/>
+  <img src="https://raw.githubusercontent.com/Open-Neom/sint/main/assets/SINT%20-%20Logo%20-%202026.png" alt="SINT Framework" width="280"/>
 </p>
 
 **State, Injection, Navigation, Translation — The Four Pillars of High-Fidelity Flutter Infrastructure.**
@@ -290,7 +290,7 @@ SINT is built for speed. Every pillar is audited against the Open Neom Standard.
 ## The Four Pillars
 
 <p align="center">
-  <img src="assets/SINT%20-%20Framework%20-%202026.png" alt="SINT — The Four Pillars" width="700"/>
+  <img src="https://raw.githubusercontent.com/Open-Neom/sint/main/assets/SINT%20-%20Framework%20-%202026.png" alt="SINT — The Four Pillars" width="700"/>
 </p>
 
 ### State Management (S)

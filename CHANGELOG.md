@@ -1,3 +1,9 @@
+## [1.2.1] - 2026-02-28
+
+- **README images**: Switched to absolute GitHub raw URLs so images render correctly on pub.dev (`.pubignore` excludes PNGs from the package).
+
+---
+
 ## [1.2.0] - 2026-02-28
 
 RESTful Navigation & i18n URL Routing.

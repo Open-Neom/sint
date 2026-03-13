@@ -30,6 +30,7 @@
 ---
 
 - [About SINT](#about-sint)
+- [What's New in 1.3.0](#whats-new-in-130)
 - [What's New in 1.2.0](#whats-new-in-120)
 - [What's New in 1.1.0](#whats-new-in-110)
 - [Installing](#installing)
@@ -63,6 +64,53 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 - **PERFORMANCE:** No Streams or ChangeNotifier overhead. Minimal RAM consumption.
 - **PRODUCTIVITY:** Simple syntax. One import: `import 'package:sint/sint.dart';`
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
+
+---
+
+## What's New in 1.3.0
+
+**Focus: Vanity URLs & Slug Resolution — the missing web piece.**
+
+### Vanity / Slug URL Resolution
+
+Single-segment vanity URLs now route correctly through `unknownRoute`:
+
+```dart
+SintMaterialApp(
+  initialRoute: '/',
+  unknownRoute: SintPage(name: '/not-found', page: () => SlugResolverPage()),
+  sintPages: [
+    SintPage(name: '/', page: () => HomePage()),
+    SintPage(name: '/book/:bookId', page: () => BookDetail()),
+  ],
+)
+
+// User visits: https://myapp.com/serzenmontoya
+// Before 1.3.0: silently redirected to HomePage (GetX bug)
+// After 1.3.0:  routes to SlugResolverPage with original URL preserved
+```
+
+**The problem (inherited from GetX):** Any URL starting with `/` matched the root route `/`, so `unknownRoute` never triggered for paths like `/serzenmontoya`. GetX documents this as: *"any string that starts with '/' will correspond to the '/' route"*. SINT 1.3.0 fixes this.
+
+### URL-Preserving unknownRoute
+
+When `unknownRoute` fires, `Sint.currentRoute` now returns the **original requested URL** — not `/not-found`:
+
+```dart
+// In your SlugResolverPage
+final currentRoute = Sint.currentRoute;  // '/serzenmontoya' ✓ (not '/not-found')
+final slug = currentRoute.replaceFirst('/', '').split('/').first;
+
+// Resolve the slug against your backend
+final match = await MySlugRouter.resolve(slug);
+if (match != null) {
+  Sint.offAllNamed(match.targetRoute);
+}
+```
+
+This enables **catch-all resolver pages** that read the original slug and perform async lookups (Firestore, API, etc.) to identify the content type and navigate to the correct page.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list of changes.
 
 ---
 
@@ -255,7 +303,7 @@ Add SINT to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  sint: ^1.2.0
+  sint: ^1.3.0
 ```
 
 Import it:
@@ -416,6 +464,7 @@ SINT is designed with a **web-first, mobile-safe** philosophy. Every feature wor
 | `Sint.routeParam` | Extracted from browser URL path | Extracted from route arguments |
 | `Sint.queryParam()` | Extracted from URL query string `?key=value` | Extracted from route arguments |
 | `translateEndpoints` | Localizes browser URL bar + canonicalizes incoming URLs | No overhead — flag is ignored |
+| Vanity / slug URLs | `unknownRoute` fires correctly for `/slug` paths; original URL preserved | Same behavior via deep links |
 | `Sint.showBackButton` | `false` (browser has native arrows) | `true` |
 | Default transition | `Transition.fade` (GPU-light for web canvas) | Platform default (Cupertino/Material) |
 | Scroll behavior | Drag enabled for touch, mouse, and trackpad | Platform default |

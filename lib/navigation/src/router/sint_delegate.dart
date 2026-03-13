@@ -780,11 +780,36 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   Future<void> setNewRoutePath(RouteDecoder configuration) async {
     final page = configuration.route;
     if (page == null) {
-      goToUnknownPage();
+      // Route not found — push the notFoundRoute but preserve the
+      // original requested URL so the browser URL bar keeps the vanity
+      // slug (e.g. /serzenmontoya) and Sint.currentRoute returns it.
+      final requestedUrl =
+          configuration.pageSettings?.name ?? notFoundRoute.name;
+      _pushNotFoundWithOriginalUrl(requestedUrl);
       return;
     } else {
       _push(configuration);
     }
+  }
+
+  /// Push the [notFoundRoute] page while keeping [requestedUrl] as the
+  /// visible route name.  This allows SlugResolverPage to read the
+  /// vanity slug via `Sint.currentRoute`.
+  void _pushNotFoundWithOriginalUrl(String requestedUrl) {
+    final pageSettings = _buildPageSettings(requestedUrl);
+    final decoder = RouteDecoder(
+      [
+        notFoundRoute.copyWith(
+          name: requestedUrl,
+          key: ValueKey(requestedUrl),
+          completer: _activePages.isEmpty ? null : Completer(),
+          arguments: pageSettings,
+          parameters: pageSettings.params,
+        ),
+      ],
+      pageSettings,
+    );
+    _push(decoder);
   }
 
   @override

@@ -20,7 +20,7 @@ class PageRedirect {
   SintPageRoute<T> getPageToRoute<T>(
       SintPage rou, SintPage? unk, BuildContext context) {
     while (needRecheck(context)) {}
-    final r = (isUnknown ? unk : rou)!;
+    final r = (isUnknown ? (unk ?? rou) : rou);
 
     return SintPageRoute<T>(
       page: r.page,

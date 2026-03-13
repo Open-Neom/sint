@@ -38,6 +38,23 @@ class RouteParser {
         .map((e) => MapEntry(e.key, e.value!.copyWith(key: ValueKey(e.key))))
         .toList();
 
+    // ── Slug / vanity-URL fix ──────────────────────────────────────────
+    // When the URL has segments beyond "/" (e.g. "/serzenmontoya") but
+    // only a parent segment like "/" matched, the full URL is NOT a
+    // registered route.  Return an empty tree so unknownRoute triggers
+    // (which resolves vanity slugs via SlugResolverPage).
+    if (treeBranch.isNotEmpty && cumulativePaths.length > 1) {
+      final lastMatchedPath = treeBranch.last.key;
+      final lastCumulativePath = cumulativePaths.last;
+      if (lastMatchedPath != lastCumulativePath) {
+        // Only a parent matched — the full URL is unknown.
+        final params = Map<String, String>.from(uri.queryParameters);
+        arguments?.params.clear();
+        arguments?.params.addAll(params);
+        return RouteDecoder([], arguments);
+      }
+    }
+
     final params = Map<String, String>.from(uri.queryParameters);
     if (treeBranch.isNotEmpty) {
       //route is found, do further parsing to get nested query params

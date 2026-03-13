@@ -1,3 +1,39 @@
+## [1.3.0] - 2026-03-11
+
+Vanity URLs & Slug Resolution — The Missing Web Piece.
+
+### Pillar N (Navigation)
+
+- **Vanity / Slug URL Resolution**: Fixed a long-standing GetX limitation where `unknownRoute` never triggered for single-segment URLs like `/serzenmontoya`. The root cause: `RouteParser.matchRoute()` builds cumulative paths (`['/', '/serzenmontoya']`), and since `/` always matches the root route, the tree was never empty — so `unknownRoute` was silently bypassed. SINT now detects when only a parent segment matched but the full URL did not, and correctly returns an empty tree to trigger `unknownRoute`.
+- **URL-Preserving `unknownRoute`**: When an unregistered URL triggers `unknownRoute`, SINT now preserves the original URL in the route stack. `Sint.currentRoute` returns the actual requested path (e.g. `/serzenmontoya`) instead of `/not-found`. This enables catch-all resolver pages (like `SlugResolverPage`) to read the original slug and resolve it to the correct content via async lookups.
+
+**Why this matters:** Vanity URLs (`emxi.org/serzenmontoya`, `emxi.org/quemando-mis-razones`) are essential for shareable, human-friendly links on the web. Before this fix, these URLs silently redirected to the home page. Now, they correctly route through `unknownRoute` where a resolver page can perform parallel Firestore queries to identify the content type and navigate accordingly.
+
+**GetX comparison:** GetX explicitly documents this as a known limitation: *"any string that starts with '/' will correspond to the '/' route"*. SINT 1.3.0 solves this without breaking existing route matching.
+
+```dart
+// Register a catch-all resolver as unknownRoute
+SintMaterialApp(
+  initialRoute: '/',
+  unknownRoute: SintPage(name: '/not-found', page: () => SlugResolverPage()),
+  sintPages: [
+    SintPage(name: '/', page: () => HomePage()),
+    SintPage(name: '/book/:bookId', page: () => BookDetail()),
+    // ... registered routes
+  ],
+)
+
+// In SlugResolverPage — read the original vanity URL
+final slug = Sint.currentRoute.replaceFirst('/', '');
+// → 'serzenmontoya' (not '/not-found')
+
+// Resolve the slug against your data layer
+final match = await SlugRouter.resolve(slug);
+// → profile, item, event, band, post, etc.
+```
+
+---
+
 ## [1.2.2] - 2026-02-28
 
 - **CHANGELOG sync**: Turns out an AI that manages State, Injection, Navigation & Translation still can't manage to update the CHANGELOG *before* hitting publish. Lesson learned. Version and CHANGELOG now walk into pub.dev together, holding hands. It won't happen again. Probably.

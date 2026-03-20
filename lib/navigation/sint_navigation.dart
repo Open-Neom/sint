@@ -97,6 +97,7 @@ export 'src/ui/transitions/zoom_in_transition.dart';
 
 // UI - Widgets
 export 'src/ui/widgets/directionality_drag_gesture_recognizer.dart';
+export 'src/ui/widgets/sint_app_bar.dart';
 export 'src/ui/widgets/sint_back_gesture_detector.dart';
 
 // Utils

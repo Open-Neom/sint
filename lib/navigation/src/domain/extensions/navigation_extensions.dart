@@ -406,6 +406,25 @@ extension NavigationExtension on SintInterface {
     searchDelegate(id).navigatorKey.currentState?.pop(result);
   }
 
+  /// Pop the topmost overlay (dialog, bottomsheet, modal) without
+  /// navigating back in the route stack.
+  ///
+  /// This is the safe alternative to [back] when you only want to
+  /// dismiss a dialog or bottomsheet — [back] pops the route stack
+  /// which can be too aggressive for modals.
+  ///
+  /// Usage: `Sint.pop()` or `Sint.pop(result)`
+  void pop<T>([T? result]) {
+    if (isDialogOpen ?? false) {
+      closeDialog(result: result);
+    } else if (isBottomSheetOpen ?? false) {
+      closeBottomSheet(result: result);
+    } else {
+      // Fallback: pop via Navigator (covers custom modals, popups)
+      searchDelegate(null).navigatorKey.currentState?.pop(result);
+    }
+  }
+
   void closeAllBottomSheets({
     String? id,
   }) {

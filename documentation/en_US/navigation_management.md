@@ -238,7 +238,7 @@ SintPage(
 
 Tests for Navigation are retained from the original GetX test suite. Future enhancements:
 
-- **Deep link standardization** across Cyberneom, EMXI, and Gigmeout
+- **Deep link standardization** across AppInUse
 - **Route analytics** integration with `neom_analytics`
 - **Nested navigation improvements** for tab-based flows
 - **VR/XR/AR spatial routing** via SintPage and middleware extensions

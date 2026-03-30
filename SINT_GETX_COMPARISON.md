@@ -221,7 +221,7 @@ Each language folder contains:
 
 #### Navigation (N)
 - VR/XR/AR spatial routing via SintPage and middleware extensions
-- Deep link standardization across Cyberneom, EMXI, and Gigmeout
+- Deep link standardization across AppInUse
 - Route analytics feeding into `neom_analytics`
 - Nested navigation improvements for tab-based flows
 

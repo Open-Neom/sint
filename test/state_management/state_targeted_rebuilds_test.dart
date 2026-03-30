@@ -14,7 +14,7 @@ void main() {
   group('Open Neom: 5-Pillar Performance Audit', () {
 
     test('1. Pillar S: Reactive Benchmark vs Native Tools', () async {
-      print('\n' + '='*50 + '\nPILLAR S: HIGH-LOAD REACTIVE AUDIT\n' + '='*50);
+      print('\n${'='*50}\nPILLAR S: HIGH-LOAD REACTIVE AUDIT\n${'='*50}');
       const int iterations = 30000;
       final rxTimer = Stopwatch()..start();
       final rxCompleter = Completer<int>();
@@ -27,7 +27,9 @@ void main() {
         }
       });
 
-      for (var i = 1; i <= iterations; i++) rx.value = i;
+      for (var i = 1; i <= iterations; i++) {
+        rx.value = i;
+      }
       final sintRxTime = await rxCompleter.future;
 
       print('SINT Rx Total Time: ${sintRxTime}us');
@@ -63,7 +65,9 @@ void main() {
     test('3. Pillar I: Deep Dependency Resolution', () async {
       print('\n[PILLAR I] Registering and Finding Nested Controllers');
       // Setup dependency chain
-      for(int i=0; i<10; i++) Sint.put(BenchmarkController(), tag: 'depth_$i');
+      for(int i=0; i<10; i++) {
+        Sint.put(BenchmarkController(), tag: 'depth_$i');
+      }
 
       final timer = Stopwatch()..start();
       const iterations = 5000;
@@ -121,7 +125,7 @@ void main() {
 
       print('Stream-to-Rx Sync Latency: ${timer.elapsedMicroseconds}us');
       await controller.close();
-      print('\n' + '='*50 + '\n');
+      print('\n${'='*50}\n');
     });
   });
 }

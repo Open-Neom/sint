@@ -2,7 +2,7 @@
 
 ## 1. Context & Vision
 
-- **Stakeholder:** Serzen (Founder & Architect of SRZNVERSO)
+- **Stakeholder:** Serzen (Founder & Architect of Open Neom)
 - **Origin:** GetX v5.0.0-rc — an open-source Flutter framework with state management, dependency injection, routing, HTTP, animations, and utilities
 - **Problem:** GetX's original repository became inactive. Over 8 years, the "do everything" approach accumulated unused code, introduced maintenance overhead, and made the package harder to understand, extend, and keep aligned with Flutter SDK updates.
 - **Solution:** Fork GetX and evolve it into SINT — a focused framework built around four pillars only, restructured with Clean Architecture principles.
@@ -31,7 +31,7 @@ Everything outside these four pillars has been removed.
 ## 4. What Was Removed and Why
 
 ### `get_connect/` (27 files, 3,417 LOC)
-HTTP client, WebSocket, and GraphQL support. Not used in any of the 21+ neom_modules or the apps (Cyberneom, EMXI, Gigmeout). HTTP communication is handled by dedicated packages elsewhere in the ecosystem. An HTTP client is not a state management concern.
+HTTP client, WebSocket, and GraphQL support. Not used in any of the 21+ neom_modules or the AppInUse. HTTP communication is handled by dedicated packages elsewhere in the ecosystem. An HTTP client is not a state management concern.
 
 ### `get_animations/` (4 files, 736 LOC)
 Widget animation extensions (`.fadeIn()`, `.bounce()`, `.spin()`). Not used across the ecosystem. Animation belongs in a dedicated package (e.g., `neom_animation`), not inside a state management library.
@@ -82,7 +82,7 @@ Key structural changes:
 SINT serves as the base infrastructure for the Open Neom ecosystem:
 
 - **21+ neom_modules** share SINT as their common state management, DI, navigation, and translation layer
-- **3 apps** (Cyberneom, EMXI, Gigmeout) use SINT through their modules
+- **4 AppInUse** use SINT through their modules
 - **Multirepo architecture** with `neom_modules/` — each module can be cloned and developed independently, but all share the same SINT foundation
 - **`pubspec_overrides.yaml`** in each module points `sint:` to `../sint` during development
 - **458+ dart files** migrated from `package:get/get.dart` to `package:sint/sint.dart`

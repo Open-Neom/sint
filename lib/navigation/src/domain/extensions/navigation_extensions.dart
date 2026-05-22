@@ -318,6 +318,9 @@ extension NavigationExtension on SintInterface {
         } else if (kIsWeb) {
           // Web without internal history: do nothing, browser handles it
           return;
+        } else {
+          // Mobile: no route to pop — navigate back to the initial route.
+          searchDelegate(id).offNamed(searchDelegate(id).initialRoute);
         }
       } else {
         return searchDelegate(id).back<T>(result);

@@ -16,6 +16,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     PreventDuplicateHandlingMode preventDuplicateHandlingMode =
         PreventDuplicateHandlingMode.reorderRoutes,
     GlobalKey<NavigatorState>? navigatorKey,
+    String? initialRoute,
   }) {
     return SintDelegate(
       notFoundRoute: notFoundRoute,
@@ -25,6 +26,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       preventDuplicateHandlingMode: preventDuplicateHandlingMode,
       pages: pages,
       navigatorKey: navigatorKey,
+      initialRoute: initialRoute,
     );
   }
 
@@ -33,6 +35,10 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   final PreventDuplicateHandlingMode preventDuplicateHandlingMode;
 
   final SintPage notFoundRoute;
+
+  /// The initial route of the app, used as fallback when Sint.back() has
+  /// no route to pop (e.g. after Sint.offNamed replaced the whole stack).
+  final String initialRoute;
 
   final List<NavigatorObserver>? navigatorObservers;
   final TransitionDelegate<dynamic>? transitionDelegate;
@@ -82,8 +88,10 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     this.restorationScopeId,
     bool showHashOnUrl = false,
     GlobalKey<NavigatorState>? navigatorKey,
+    String? initialRoute,
     required List<SintPage> pages,
   })  : navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
+        initialRoute = initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
         notFoundRoute = notFoundRoute ??= SintPage(
           name: '/404',
           page: () => const Scaffold(

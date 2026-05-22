@@ -84,17 +84,19 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     }
 
     if (config.routerDelegate == null) {
+      // ignore: deprecated_member_use_from_same_package
+      final resolvedPages = config.sintPages ??
+          [
+            SintPage(
+              // ignore: deprecated_member_use_from_same_package
+              name: cleanRouteName("/${config.home.runtimeType}"),
+              // ignore: deprecated_member_use_from_same_package
+              page: () => config.home!,
+            ),
+          ];
       final newDelegate = SintDelegate.createDelegate(
-        // ignore: deprecated_member_use_from_same_package
-        pages: config.sintPages ??
-            [
-              SintPage(
-                // ignore: deprecated_member_use_from_same_package
-                name: cleanRouteName("/${config.home.runtimeType}"),
-                // ignore: deprecated_member_use_from_same_package
-                page: () => config.home!,
-              ),
-            ],
+        pages: resolvedPages,
+        initialRoute: config.initialRoute ?? resolvedPages.first.name,
         notFoundRoute: config.unknownRoute,
         navigatorKey: config.navigatorKey,
         navigatorObservers: (config.navigatorObservers == null

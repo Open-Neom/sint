@@ -2,7 +2,14 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/domain/navigation_typedef.dart';
+import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
+import 'package:sint/navigation/src/domain/enums/snackbar_status.dart';
+import 'package:sint/navigation/src/domain/enums/snackbar_style.dart';
+import 'package:sint/navigation/src/domain/extensions/snackbar_extension.dart';
+import 'package:sint/navigation/src/ui/snackbar/snackbar_controller.dart';
+import 'package:sint/navigation/src/domain/enums/row_style.dart';
 
 class SintSnackBar extends StatefulWidget {
   /// A callback for you to listen to the different Snack status

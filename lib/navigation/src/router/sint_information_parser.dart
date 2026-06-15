@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/translation/sint_translation.dart';
+import 'package:sint/navigation/src/router/route_decoder.dart';
 
 class SintInformationParser extends RouteInformationParser<RouteDecoder> {
   factory SintInformationParser.createInformationParser(

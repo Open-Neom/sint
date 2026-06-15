@@ -4,7 +4,9 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/utils/navigation_constants.dart';
 
 class SintBackGestureController<T> {
   SintBackGestureController({

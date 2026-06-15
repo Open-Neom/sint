@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
-import 'package:sint/navigation/src/router/sint_page.dart';
+
+
 import 'package:sint/navigation/src/router/route_decoder.dart';
 
 /// The Page Middlewares.
@@ -71,7 +71,7 @@ abstract class SintMiddleware {
   /// }
   /// ```
   /// {@end-tool}
-  SintPage? onPageCalled(SintPage? page) => page;
+  dynamic onPageCalled(dynamic page) => page;
 
   /// This function will be called right before the [BindingsInterface] are initialize.
   /// Here you can change [BindingsInterface] for this page
@@ -89,7 +89,7 @@ abstract class SintMiddleware {
   List<R>? onBindingsStart<R>(List<R>? bindings) => bindings;
 
   /// This function will be called right after the [BindingsInterface] are initialize.
-  GetPageBuilder? onPageBuildStart(GetPageBuilder? page) => page;
+  Widget Function()? onPageBuildStart(Widget Function()? page) => page;
 
   /// This function will be called right after the
   /// GetPage.page function is called and will give you the result

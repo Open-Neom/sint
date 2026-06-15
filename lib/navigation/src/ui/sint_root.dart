@@ -1,7 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../../sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/injection/sint_injection.dart';
+import 'package:sint/translation/sint_translation.dart';
+import 'package:sint/navigation/src/domain/enums/transition.dart';
+import 'package:sint/navigation/src/router/route_decoder.dart';
+import 'package:sint/navigation/src/domain/extensions/event_loop_extension.dart';
+import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/router/sint_page.dart';
+import 'package:sint/navigation/src/sint_navigation_observer.dart';
+import 'package:sint/navigation/src/router/sint_information_parser.dart';
+import 'package:sint/navigation/src/router/sint_test_mode.dart';
+import 'package:sint/navigation/src/domain/extensions/context_extensions.dart';
+import 'package:sint/navigation/src/domain/models/config_data.dart';
+import 'package:sint/navigation/src/router/sint_delegate.dart';
+import 'package:sint/navigation/src/router/router_report_manager.dart';
 
 class SintRoot extends StatefulWidget {
   const SintRoot({

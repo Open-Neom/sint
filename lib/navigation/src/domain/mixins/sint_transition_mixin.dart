@@ -3,7 +3,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_controller.dart';
 
-import '../../../../sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/router/sint_page_route.dart';
+import 'package:sint/navigation/src/ui/transitions/circular_reveal_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/fade_in_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/left_to_right_fade_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/no_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/right_to_left_fade_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/size_transitions.dart';
+import 'package:sint/navigation/src/ui/transitions/slide_down_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/slide_left_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/slide_right_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/slide_top_transition.dart';
+import 'package:sint/navigation/src/ui/transitions/zoom_in_transition.dart';
+import 'package:sint/navigation/src/utils/navigation_constants.dart';
+import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/domain/enums/transition.dart';
+import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_detector.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 
 mixin SintPageRouteTransitionMixin<T> on PageRoute<T> {
   ValueNotifier<String?>? _previousTitle;

@@ -2,7 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_controller.dart';
-import 'package:sint/sint.dart';
+import 'directionality_drag_gesture_recognizer.dart';
+import 'package:sint/navigation/src/domain/extensions/context_extensions.dart';
 
 class SintBackGestureDetector<T> extends StatefulWidget {
   const SintBackGestureDetector({

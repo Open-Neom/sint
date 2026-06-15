@@ -1,7 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/injection/sint_injection.dart';
+import 'package:sint/navigation/src/domain/models/routing.dart';
+import 'package:sint/translation/sint_translation.dart';
+import 'package:sint/translation/src/domain/extensions/locale_extension.dart';
+import 'package:sint/navigation/src/router/sint_page.dart';
+import 'package:sint/navigation/src/router/sint_information_parser.dart';
+import 'package:sint/navigation/src/router/sint_delegate.dart';
+import 'package:sint/navigation/src/domain/enums/transition.dart';
+import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
+import 'package:sint/navigation/src/domain/models/config_data.dart';
 
 class SintCupertinoApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;

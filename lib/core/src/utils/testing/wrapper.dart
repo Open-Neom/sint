@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/translation/sint_translation.dart';
+import 'package:sint/navigation/src/domain/enums/transition.dart';
+import 'package:sint/navigation/src/ui/sint_material_app.dart';
+import 'package:sint/navigation/src/router/sint_page.dart';
 
 class Wrapper extends StatelessWidget {
   final Widget? child;

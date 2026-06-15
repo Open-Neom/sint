@@ -1,3 +1,8 @@
+# Changelog - sint
+
+## Unreleased - System updates
+- Actualizaciones de estabilidad y compatibilidad.
+
 ## [1.3.0] - 2026-03-11
 
 Vanity URLs & Slug Resolution — The Missing Web Piece.

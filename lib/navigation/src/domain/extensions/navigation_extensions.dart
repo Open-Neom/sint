@@ -2,7 +2,24 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/injection/sint_injection.dart';
+import 'package:sint/translation/sint_translation.dart';
+import 'package:sint/navigation/src/router/sint_delegate.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
+import 'package:sint/navigation/src/domain/models/routing.dart';
+import 'package:sint/navigation/src/ui/snackbar/snackbar_controller.dart';
+import 'package:sint/navigation/src/router/sint_test_mode.dart';
+import 'package:sint/navigation/src/domain/enums/transition.dart';
+import 'package:sint/navigation/src/domain/enums/prevent_duplicate_handling_mode.dart';
+import 'package:sint/navigation/src/domain/models/config_data.dart';
+import 'package:sint/navigation/src/router/sint_page.dart';
+import 'package:sint/navigation/src/router/sint_page_route.dart';
+import 'package:sint/navigation/src/router/route_decoder.dart';
+import 'package:sint/navigation/src/router/sint_navigator.dart';
+import 'package:sint/navigation/src/router/router_report_manager.dart';
+import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
+import 'package:sint/navigation/src/sint_navigation_observer.dart';
 
 /// It replaces the Flutter Navigator, but needs no context.
 /// You can to use navigator.push(YourRoute()) rather

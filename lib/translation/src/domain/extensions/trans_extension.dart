@@ -1,4 +1,5 @@
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/translation/src/domain/extensions/locale_extension.dart';
 
 extension TransExtension on String {
   // Checks whether the language code and country code are present, and

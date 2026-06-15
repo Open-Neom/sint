@@ -1,6 +1,8 @@
 
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/ui/dialog/dialog_route.dart';
+import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 
 extension DialogExtension on SintInterface {
   /// Show a dialog.

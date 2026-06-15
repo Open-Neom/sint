@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/translation/sint_translation.dart';
 
 class WrapperTranslations extends Translations {
   static const fallbackLocale = Locale('en', 'US');

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
+import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
+import 'package:sint/state_manager/sint_state_manager.dart';
 import 'package:sint/injection/src/ui/bind_element.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
 

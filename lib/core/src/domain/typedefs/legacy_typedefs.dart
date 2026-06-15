@@ -1,5 +1,7 @@
 import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_controller.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/state_manager/sint_state_manager.dart';
+import 'package:sint/navigation/sint_navigation.dart';
+import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_detector.dart';
 
 // --- LEGACY GETX ALIASES (Migration to Sint Ecosystem) ---
 

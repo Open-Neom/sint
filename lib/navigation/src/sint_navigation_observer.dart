@@ -1,5 +1,10 @@
 import 'package:flutter/widgets.dart';
-import 'package:sint/sint.dart';
+import 'package:sint/core/sint_core.dart';
+import 'package:sint/navigation/src/domain/models/routing.dart';
+import 'package:sint/navigation/src/domain/models/route_data.dart';
+import 'package:sint/navigation/src/router/router_report_manager.dart';
+import 'package:sint/navigation/src/utils/navigation_utilities.dart';
+import 'package:sint/navigation/src/router/sint_page_route.dart';
 
 
 class SintNavigationObserver extends NavigatorObserver {

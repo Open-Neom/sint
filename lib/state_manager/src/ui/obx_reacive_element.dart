@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:sint/state_manager/src/domain/notify_data.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
-import 'package:sint/state_manager/src/ui/obx_widget.dart';
+// import 'obx_widget.dart';
 import 'package:sint/state_manager/src/engine/notifier.dart';
 
 class ObxReactiveElement extends StatelessElement {
 
-  ObxReactiveElement(Obx super.widget);
+  ObxReactiveElement(StatelessWidget super.widget);
 
   List<Disposer>? disposers = <Disposer>[];
 

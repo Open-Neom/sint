@@ -1,5 +1,9 @@
 # Changelog - sint
 
+## [1.1.0] - 2026-07-09
+- Optimize transitions and layout configurations in sint_root.dart.
+
+
 ## Unreleased - System updates
 - Actualizaciones de estabilidad y compatibilidad.
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';

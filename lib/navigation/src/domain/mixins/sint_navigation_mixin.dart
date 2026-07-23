@@ -68,6 +68,8 @@ mixin SintNavigationMixin {
     String? id,
     bool preventDuplicates = true,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   });
 
   Future<T?> offNamed<T>(
@@ -75,6 +77,8 @@ mixin SintNavigationMixin {
     dynamic arguments,
     String? id,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   });
 
   Future<T?>? offAllNamed<T>(
@@ -82,6 +86,8 @@ mixin SintNavigationMixin {
     dynamic arguments,
     String? id,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   });
 
   Future<T?>? offNamedUntil<T>(

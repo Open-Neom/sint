@@ -30,6 +30,9 @@
 ---
 
 - [About SINT](#about-sint)
+- [What's New in 1.5.0](#whats-new-in-150)
+- [What's New in 1.4.0](#whats-new-in-140)
+- [What's New in 1.3.1](#whats-new-in-131)
 - [What's New in 1.3.0](#whats-new-in-130)
 - [What's New in 1.2.0](#whats-new-in-120)
 - [What's New in 1.1.0](#whats-new-in-110)
@@ -54,7 +57,7 @@ SINT is an architectural evolution of GetX (v5.0.0-rc), built as a focused frame
 |---|---|
 | **S** — State Management | `SintController`, `SintBuilder`, `Obx`, `.obs`, Rx types, Workers, `SintStatus`, `SintListener` |
 | **I** — Injection | `Sint.put`, `Sint.find`, `Sint.lazyPut`, `Sint.putAsync`, Bindings, SmartManagement |
-| **N** — Navigation | `SintPage`, `Sint.toNamed`, `Sint.toInitial`, `routeParam`, `pathParam`, `queryParam`, middleware, `SintMaterialApp`, `SintSnackBarStyle`, web-safe `back()` |
+| **N** — Navigation | `SintPage`, `Sint.toNamed`, `Sint.toInitial`, `routeParam`, `pathParam`, `queryParam`, `pathParams`/`queryParams` API, pattern params & wildcards, O(k) route index, middleware, `SintMaterialApp`, `SintSnackBarStyle`, `SintUrlStrategy`, web-safe `back()` |
 | **T** — Translation | `.tr` extension, `Translations` class, locale management, `loadTranslations`, `PathTranslator`, `translateEndpoints` |
 
 Everything outside these four pillars has been removed: no HTTP client, no animations, no string validators, no generic utilities. The result is **37.7% less code** than GetX — 12,849 LOC vs 20,615 LOC.
@@ -64,6 +67,95 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 - **PERFORMANCE:** No Streams or ChangeNotifier overhead. Minimal RAM consumption.
 - **PRODUCTIVITY:** Simple syntax. One import: `import 'package:sint/sint.dart';`
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
+
+---
+
+## What's New in 1.5.0
+
+**Focus: Navigation overhaul — O(k) route matching, extended route syntax, pathParams/queryParams API and real browser-history sync. All additive and backwards compatible.**
+
+### Segment Route Index (O(k) matching)
+
+Route matching no longer scans the full route table with one regex per route. Routes are indexed by their first segment type with the precedence **literal > param with pattern > simple param > wildcard** (registration order preserved inside each bucket):
+
+| Benchmark (median µs/op) | 1.4.0 | 1.5.0 | Δ |
+|---|--:|--:|--:|
+| Param match, last of 10 routes | 7.33 | 5.03 | −31.4% |
+| Literal match, last of 100 routes | 14.09 | 3.34 | **−76.3%** |
+| Param match, last of 100 routes | 25.72 | 4.95 | **−80.8%** |
+| Unknown route (miss), 100 routes | 31.60 | 1.54 | **−95.1%** |
+
+With 100 registered routes, matching now costs the same as with 10 — deep links, back/forward and unknownRoute resolution all get faster as your app grows.
+
+### Extended Route Syntax
+
+```dart
+sintPages: [
+  SintPage(name: '/user/:id(\\d+)', page: () => UserDetail()),  // pattern param: digits only
+  SintPage(name: '/docs/:path*', page: () => DocsViewer()),     // wildcard: captures /docs/a/b/c
+  SintPage(name: '/user/:id?', page: () => Profile()),          // optional param
+]
+```
+
+Plus three correctness fixes for slugs: `+` in a path param stays a plus (no longer decoded as a space), `%2F` decodes correctly per segment, dotted params like `/file.:ext` escape the separator, and duplicate route registrations log a warning (first-still-wins).
+
+### pathParams / queryParams API
+
+```dart
+// Navigate with structured parameters — correct encoding included
+Sint.toNamed('/user/:id',
+  pathParams: {'id': '42'},
+  queryParams: {'tab': 'posts'},
+);
+// → /user/42?tab=posts
+
+// Read them separately
+String? id  = Sint.pathParams['id'];      // path parameters only
+String? tab = Sint.queryParams['tab'];    // query parameters only
+// Sint.parameters keeps the legacy merged view unchanged
+```
+
+### Web: Browser History Sync & State Restoration
+
+- **Back/forward buttons**: `setNewRoutePath` now diffs the requested URL against the active stack — navigating back to a URL already in the stack pops the entries above it instead of pushing a duplicate.
+- **Public URL strategy**: call `SintUrlStrategy.setPath()` (or `setHash()`) in `main()` before `runApp()` — no more late, silently-failing configuration inside the delegate.
+- **State restoration**: route state is now passed through `restoreRouteInformation`, and `SintPage.copyWith` no longer loses `restorationId` or `preventDuplicateHandlingMode`.
+- **Middleware**: both pipelines honor `priority` with a stable sort, and redirect cycles now fail fast with a clear `Redirect loop detected` error instead of a stack overflow.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list of changes.
+
+---
+
+## What's New in 1.4.0
+
+**Focus: Hot-path performance — 5 internal optimizations, zero API changes, measured before/after.**
+
+| Benchmark (median µs/op) | 1.3.1 | 1.4.0 | Δ |
+|---|--:|--:|--:|
+| Reactive `.obs` notification (1 listener) | 0.0193 | 0.0101 | **−47.7%** |
+| Fan-out (100 listeners) | 0.6452 | 0.2110 | **−67.3%** |
+| Assignment without listeners | 0.0149 | 0.0065 | **−56.4%** |
+| `Sint.find` (tagged) | 0.5555 | 0.3835 | **−31.0%** |
+| `SintController.update()` | 0.0158 | 0.0070 | **−55.7%** |
+
+- **No per-notification listener copy** — the notifier iterates directly with a mutation version counter instead of allocating a defensive list copy on every `value = x`.
+- **Direct `markNeedsBuild` in Obx** — no more one-microtask-per-notification; Flutter batches rebuilds into the frame naturally.
+- **Lazy `_updatersGroupIds`** — every Rx and controller used to allocate an eager `HashMap`; now created on first use (and `dispose()` clears groups, fixing a memory leak).
+- **Typed `Notifier.read`** — enables static dispatch/inlining in AOT and dart2js (Flutter Web).
+- **Single-lookup `Sint.find`** — from 4–5 map lookups per call down to one, across `find`, `put`, `delete` and friends.
+
+Benchmarks now run on a reusable statistical harness (warmup + 7 rounds, median and p95) in `test/benchmarks/` — regressions are measurable from here on.
+
+---
+
+## What's New in 1.3.1
+
+**Focus: Stability — 7 high-severity hotfixes, each with regression tests.**
+
+- `Rx<double?>` subtraction operator was adding instead of subtracting — silent data corruption fixed.
+- `debounce`/`interval` worker timers are now cancelled in `onClose()` — no more callbacks firing on disposed controllers.
+- `SintQueue` no longer freezes when a job throws an `Error` (not just `Exception`), and `cancelAllJobs()` completes pending futures instead of leaving them hanging.
+- `popUntilOriginalRoute` inverted condition fixed; `offAllNamed`/`offNamedUntil` now complete navigation futures; `removeLastHistory` infinite recursion fixed; optional route params (`/user/:id?` + URL `/user`) no longer crash.
 
 ---
 
@@ -303,7 +395,7 @@ Add SINT to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  sint: ^1.3.0
+  sint: ^1.5.0
 ```
 
 Import it:
@@ -316,22 +408,33 @@ import 'package:sint/sint.dart';
 
 ## High-Fidelity Performance (Benchmarks)
 
-SINT is built for speed. Every pillar is audited against the Open Neom Standard.
+SINT is built for speed — and since 1.4.0 every number is measured on a reusable statistical harness (2k-op warmup, 7 rounds, median and p95) in `test/benchmarks/`, so regressions are caught, not guessed.
+
+**State & Injection (SINT 1.4.0, median µs/op):**
 
 | Pillar | Metric | Result | Context |
 |--------|--------|--------|---------|
-| S (State) | Reactive `.obs` update | **0.09 us/op** | 50,000 updates |
-| S (State) | Simple `update()` | **0.11 us/op** | 50,000 updates |
-| S (State) | Rx with listener | **6.23 us/op** | 30,000 updates stress test |
-| I (Injection) | Registry Lookup | **1.34 us/find** | Depth 10 dependency resolution |
-| N (Navigation) | Middleware Latency | **23 ms** | 5-layer middleware chain |
-| T (Translation) | Dynamic Interpolation | **2.65 us/op** | 10,000 trParams lookups |
+| S (State) | Reactive `.obs` notification | **0.010 us/op** | 1 listener, 7 rounds × 20k ops |
+| S (State) | Simple `update()` | **0.007 us/op** | 1 listener |
+| S (State) | Fan-out, 100 listeners | **0.211 us/op** | scales linearly, no per-notification allocation |
+| I (Injection) | Registry lookup `Sint.find` | **0.38 us/find** | single-lookup, tagged instance |
+| T (Translation) | `trParams` interpolation | **1.61 us/op** | 10,000 interpolations |
+
+**Navigation route matching (SINT 1.5.0, median µs/op):**
+
+| Metric | 10 routes | 100 routes |
+|--------|----------:|-----------:|
+| Literal match (worst case: last route) | 3.66 us/op | **3.34 us/op** |
+| Param match (worst case: last route) | 5.03 us/op | **4.95 us/op** |
+| Unknown route (miss → unknownRoute) | 1.59 us/op | **1.54 us/op** |
+
+Matching cost is now independent of route-table size — O(k) via the segment index, not O(routes).
 
 **Why SINT is faster:**
 
-- **Pillar S:** Avoids Stream overhead by using direct `ListNotifier` propagation. 15-30x faster than BLoC.
-- **Pillar I:** O(1) hash lookups in the global registry with lifecycle management.
-- **Pillar N:** Context-less navigation removes heavy widget tree lookups during routing.
+- **Pillar S:** Direct `ListNotifier` propagation without Stream overhead; zero allocations on the notification hot path; Obx rebuilds without per-notification microtasks. 15-30x faster than BLoC.
+- **Pillar I:** Single-lookup hash resolution in the global registry with lifecycle management.
+- **Pillar N:** Segment-indexed route matching plus context-less navigation — no widget tree lookups during routing.
 
 ---
 
@@ -394,7 +497,7 @@ final controller = Sint.find<AuthController>();
 
 ### Navigation (N)
 
-Route management without context — optimized for web deep links and mobile alike:
+Route management without context — O(k) route matching, optimized for web deep links and mobile alike:
 
 ```dart
 SintMaterialApp(
@@ -404,12 +507,18 @@ SintMaterialApp(
   sintPages: [
     SintPage(name: '/', page: () => Home()),
     SintPage(name: '/book/:bookId', page: () => BookDetail()),
+    SintPage(name: '/user/:id(\\d+)', page: () => UserDetail()), // pattern param
+    SintPage(name: '/docs/:path*', page: () => DocsViewer()),    // wildcard
     SintPage(name: '/search', page: () => Search()),
   ],
 )
 
 // Navigation
 Sint.toNamed('/book/abc123?ref=home');
+Sint.toNamed('/user/:id',
+  pathParams: {'id': '42'},
+  queryParams: {'tab': 'posts'},
+);                                                   // → /user/42?tab=posts
 Sint.back();                                         // Web-safe
 Sint.toInitial();                                    // Hard reset to home
 Sint.toInitial(keep: {AuthController});              // Keep specific controllers
@@ -420,9 +529,15 @@ String? id   = Sint.pathParam('bookId');              // 'abc123'
 String? ref  = Sint.queryParam('ref');                // 'home'
 String  sort = Sint.queryParamOrDefault('sort', 'a'); // 'a' (default)
 
+// Path and query parameters, separated
+String? uid  = Sint.pathParams['id'];                 // path params only
+String? tab  = Sint.queryParams['tab'];               // query params only
+
 // Snackbar with global style
 Sint.snackbar('Title', 'Message');
 ```
+
+Route syntax precedence: **literal > param with pattern > simple param > wildcard** (registration order preserved within each kind).
 
 [Full documentation](documentation/en_US/navigation_management.md)
 
@@ -465,6 +580,9 @@ SINT is designed with a **web-first, mobile-safe** philosophy. Every feature wor
 | `Sint.queryParam()` | Extracted from URL query string `?key=value` | Extracted from route arguments |
 | `translateEndpoints` | Localizes browser URL bar + canonicalizes incoming URLs | No overhead — flag is ignored |
 | Vanity / slug URLs | `unknownRoute` fires correctly for `/slug` paths; original URL preserved | Same behavior via deep links |
+| Browser back/forward | Synced with internal stack — revisiting a URL pops to it instead of duplicating | Standard stack behavior |
+| URL strategy | `SintUrlStrategy.setPath()` / `setHash()` in `main()` before `runApp()` | Ignored (no browser URL) |
+| State restoration | Route state passed through `restoreRouteInformation` | Same |
 | `Sint.showBackButton` | `false` (browser has native arrows) | `true` |
 | Default transition | `Transition.fade` (GPU-light for web canvas) | Platform default (Cupertino/Material) |
 | Scroll behavior | Drag enabled for touch, mouse, and trackpad | Platform default |

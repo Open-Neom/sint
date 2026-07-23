@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/widgets.dart';
 import 'package:sint/state_manager/src/domain/notify_data.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
@@ -13,8 +11,10 @@ class ObxReactiveElement extends StatelessElement {
   List<Disposer>? disposers = <Disposer>[];
 
   void getUpdate() {
-    if (disposers != null) {
-      scheduleMicrotask(markNeedsBuild);
+    // markNeedsBuild is idempotent and Flutter batches dirty elements
+    // into the next frame naturally — no per-notification microtask needed.
+    if (disposers != null && mounted) {
+      markNeedsBuild();
     }
   }
 

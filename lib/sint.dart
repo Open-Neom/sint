@@ -1,4 +1,4 @@
-/// # SINT Framework 1.0.0
+/// # SINT Framework 1.5.0
 /// Extra-light and powerful multi-platform framework.
 /// It combines high performance state management, intelligent dependency
 /// injection, route management in a practical way and quick translations.

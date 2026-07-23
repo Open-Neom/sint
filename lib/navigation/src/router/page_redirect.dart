@@ -19,7 +19,17 @@ class PageRedirect {
   // redirect all pages that needes redirecting
   SintPageRoute<T> getPageToRoute<T>(
       SintPage rou, SintPage? unk, BuildContext context) {
-    while (needRecheck(context)) {}
+    var redirectDepth = 0;
+    while (needRecheck(context)) {
+      // Redirect-cycle guard (1.5.0): chained redirects beyond this
+      // depth indicate a middleware loop — fail loudly instead of
+      // looping forever.
+      if (++redirectDepth > 5) {
+        throw 'Redirect loop detected: "${settings?.name}" exceeded the '
+            'maximum redirect depth (5). Check your middlewares for '
+            'cyclic redirects.';
+      }
+    }
     final r = (isUnknown ? (unk ?? rou) : rou);
 
     return SintPageRoute<T>(

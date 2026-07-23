@@ -730,7 +730,7 @@ extension RxnDoubleExt on Rx<double?> {
   /// Subtraction operator.
   Rx<double?>? operator -(num other) {
     if (value != null) {
-      value = value! + other;
+      value = value! - other;
       return this;
     }
     return null;

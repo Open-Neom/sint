@@ -10,7 +10,7 @@ import 'domain/interfaces/sint_interface.dart';
 ///the parentheses and the magic will occur.
 class _SintImpl extends SintInterface {}
 
-/// The official SINT 1.0.0 API
+/// The official SINT 1.5.0 API
 final Sint = _SintImpl();
 
 /// DEPRECATED: Legacy alias for seamless migration of the 38 repos.

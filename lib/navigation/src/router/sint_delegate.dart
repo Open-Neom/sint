@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
 import 'package:sint/navigation/src/router/page_settings.dart';
+import 'package:sint/navigation/src/router/middleware_runner.dart';
 import 'package:sint/navigation/src/router/route_parser.dart';
 import 'package:sint/navigation/src/router/url_strategy/url_strategy.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
@@ -115,9 +116,10 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
             body: Center(child: Text('Route not found')),
           ),
         ) {
-    if (!showHashOnUrl && kIsWeb) {
+    if (!showHashOnUrl && kIsWeb && !SintUrlStrategy.isSet) {
       try {
         setUrlStrategy();
+        SintUrlStrategy.markConfigured();
       } catch (_) {
         // URL strategy already set or engine already initialized — safe to ignore.
       }
@@ -127,8 +129,22 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     Sint.log('GetDelegate is created !');
   }
 
-  Future<RouteDecoder?> runMiddleware(RouteDecoder config) async {
-    final middlewares = config.currentTreeBranch.last.middlewares;
+  Future<RouteDecoder?> runMiddleware(RouteDecoder config) {
+    return _runMiddleware(config, 0);
+  }
+
+  Future<RouteDecoder?> _runMiddleware(RouteDecoder config, int depth) async {
+    // Redirect-cycle guard (1.5.0): chained redirects beyond this depth
+    // indicate a middleware loop — fail loudly instead of overflowing
+    // the stack.
+    if (depth > 5) {
+      throw 'Redirect loop detected: "${config.pageSettings?.name}" '
+          'exceeded the maximum middleware redirect depth (5). '
+          'Check your middlewares for cyclic redirects.';
+    }
+    // Both middleware pipelines honor `priority` with a stable sort (1.5.0).
+    final middlewares = MiddlewareRunner.sortByPriority(
+        config.currentTreeBranch.last.middlewares);
     if (middlewares.isEmpty) {
       return config;
     }
@@ -155,7 +171,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     // If the target is not the same as the source, we need
     // to run the middlewares for the new route.
     if (iterator != config) {
-      return await runMiddleware(iterator);
+      return await _runMiddleware(iterator, depth + 1);
     }
     return iterator;
   }
@@ -187,6 +203,16 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   Map<String, String> get parameters {
     return currentConfiguration?.pageSettings?.params ?? {};
+  }
+
+  /// Path (segment) parameters of the current route only (1.5.0).
+  Map<String, String> get pathParams {
+    return currentConfiguration?.pageSettings?.pathParams ?? {};
+  }
+
+  /// Query parameters of the current route only (1.5.0).
+  Map<String, String> get queryParams {
+    return currentConfiguration?.pageSettings?.query ?? {};
   }
 
   PageSettings? get pageSettings {
@@ -398,7 +424,14 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     dynamic id,
     bool preventDuplicates = true,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   }) async {
+    if ((pathParams != null && pathParams.isNotEmpty) ||
+        (queryParams != null && queryParams.isNotEmpty)) {
+      page = resolveRoutePath(page,
+          pathParams: pathParams, queryParams: queryParams);
+    }
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route != null) {
@@ -542,13 +575,20 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     dynamic arguments,
     String? id,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   }) async {
+    if ((pathParams != null && pathParams.isNotEmpty) ||
+        (queryParams != null && queryParams.isNotEmpty)) {
+      newRouteName = resolveRoutePath(newRouteName,
+          pathParams: pathParams, queryParams: queryParams);
+    }
     final args = _buildPageSettings(newRouteName, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
 
     while (_activePages.length > 1) {
-      _activePages.removeLast();
+      _popWithResult();
     }
 
     return _replaceNamed(route);
@@ -569,7 +609,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final newPredicate = predicate ?? (route) => false;
 
     while (_activePages.length > 1 && !newPredicate(_activePages.last.route!)) {
-      _activePages.removeLast();
+      _popWithResult();
     }
 
     return _push(route);
@@ -581,7 +621,14 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     dynamic arguments,
     String? id,
     Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
   }) async {
+    if ((pathParams != null && pathParams.isNotEmpty) ||
+        (queryParams != null && queryParams.isNotEmpty)) {
+      page = resolveRoutePath(page,
+          pathParams: pathParams, queryParams: queryParams);
+    }
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
@@ -785,7 +832,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
           _activePages.add(res);
           break;
         case PreventDuplicateHandlingMode.popUntilOriginalRoute:
-          while (_activePages.last == onStackPage) {
+          while (_activePages.last != onStackPage) {
             _popWithResult();
           }
           break;
@@ -812,9 +859,30 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
           configuration.pageSettings?.name ?? notFoundRoute.name;
       _pushNotFoundWithOriginalUrl(requestedUrl);
       return;
-    } else {
-      _push(configuration);
     }
+
+    // Browser back/forward sync (1.5.0): if the requested URL already
+    // exists in the stack, pop the entries above it — completing their
+    // completers through the normal pop path — instead of pushing a
+    // duplicate that desyncs the browser history from the internal stack.
+    final targetName = configuration.pageSettings?.name;
+    if (targetName != null) {
+      final existingIndex = _activePages.indexWhere(
+          (element) => element.pageSettings?.name == targetName);
+      if (existingIndex >= 0) {
+        if (existingIndex == _activePages.length - 1) {
+          // Already at the requested route — nothing to do.
+          return;
+        }
+        while (_activePages.length - 1 > existingIndex) {
+          _popWithResult();
+        }
+        notifyListeners();
+        return;
+      }
+    }
+
+    _push(configuration);
   }
 
   /// Push the [notFoundRoute] page while keeping [requestedUrl] as the

@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:sint/core/src/domain/errors/obx_error.dart';
 import 'package:sint/state_manager/src/domain/notify_data.dart';
-// import 'list_notifier.dart';
+import 'package:sint/state_manager/src/engine/list_notifier.dart';
 
 /// The dependency tracking singleton (The "Synapse" of SINT).
 class Notifier {
@@ -17,7 +17,7 @@ class Notifier {
     _notifyData?.disposers.add(listener);
   }
 
-  void read(dynamic updaters) {
+  void read(ListNotifier updaters) {
     final listener = _notifyData?.updater;
     if (listener != null && !updaters.containsListener(listener)) {
       updaters.addListener(listener);

@@ -131,12 +131,12 @@ extension InjectionExtension on SintInterface {
     final key = _getKey(S, name);
 
     _InstanceBuilderFactory<S>? dep;
-    if (_singl.containsKey(key)) {
-      final newDep = _singl[key];
-      if (newDep == null || !newDep.isDirty) {
+    final existing = _singl[key];
+    if (existing != null) {
+      if (!existing.isDirty) {
         return;
       } else {
-        dep = newDep as _InstanceBuilderFactory<S>;
+        dep = existing as _InstanceBuilderFactory<S>;
       }
     }
     _singl[key] = _InstanceBuilderFactory<S>(
@@ -161,20 +161,19 @@ extension InjectionExtension on SintInterface {
   /// work properly.
   S? _initDependencies<S>({String? name}) {
     final key = _getKey(S, name);
-    final isInit = _singl[key]!.isInit;
-    S? i;
-    if (!isInit) {
-      final isSingleton = _singl[key]?.isSingleton ?? false;
-      if (isSingleton) {
-        _singl[key]!.isInit = true;
-      }
-      i = _startController<S>(tag: name);
+    final dep = _singl[key]!;
+    if (dep.isInit) {
+      return null;
+    }
+    final isSingleton = dep.isSingleton ?? false;
+    if (isSingleton) {
+      dep.isInit = true;
+    }
+    final i = _startController<S>(tag: name, factory: dep);
 
-      if (isSingleton) {
-        if (Sint.smartManagement != SmartManagement.onlyBuilder) {
-          RouterReportManager.instance
-              .reportDependencyLinkedToRoute(_getKey(S, name));
-        }
+    if (isSingleton) {
+      if (Sint.smartManagement != SmartManagement.onlyBuilder) {
+        RouterReportManager.instance.reportDependencyLinkedToRoute(key);
       }
     }
     return i;
@@ -195,36 +194,36 @@ extension InjectionExtension on SintInterface {
   _InstanceBuilderFactory? _getDependency<S>({String? tag, String? key}) {
     final newKey = key ?? _getKey(S, tag);
 
-    if (!_singl.containsKey(newKey)) {
+    final dep = _singl[newKey];
+    if (dep == null) {
       Sint.log('Instance "$newKey" is not registered.', isError: true);
       return null;
-    } else {
-      return _singl[newKey];
     }
+    return dep;
   }
 
   void markAsDirty<S>({String? tag, String? key}) {
     final newKey = key ?? _getKey(S, tag);
-    if (_singl.containsKey(newKey)) {
-      final dep = _singl[newKey];
-      if (dep != null && !dep.permanent) {
-        dep.isDirty = true;
-      }
+    final dep = _singl[newKey];
+    if (dep != null && !dep.permanent) {
+      dep.isDirty = true;
     }
   }
 
   /// Initializes the controller
-  S _startController<S>({String? tag}) {
-    final key = _getKey(S, tag);
-    final i = _singl[key]!.getDependency() as S;
+  S _startController<S>(
+      {String? tag, required _InstanceBuilderFactory factory}) {
+    final i = factory.getDependency() as S;
     if (i is SintLifeCycleMixin) {
       i.onStart();
-      if (tag == null) {
-        Sint.log('Instance "$S" has been initialized');
-      } else {
-        Sint.log('Instance "$S" with tag "$tag" has been initialized');
+      if (Sint.isLogEnable) {
+        if (tag == null) {
+          Sint.log('Instance "$S" has been initialized');
+        } else {
+          Sint.log('Instance "$S" with tag "$tag" has been initialized');
+        }
       }
-      if (!_singl[key]!.isSingleton!) {
+      if (!factory.isSingleton!) {
         RouterReportManager.instance.appendRouteByCreate(i);
       }
     }
@@ -234,8 +233,9 @@ extension InjectionExtension on SintInterface {
   S putOrFind<S>(InstanceBuilderCallback<S> dep, {String? tag}) {
     final key = _getKey(S, tag);
 
-    if (_singl.containsKey(key)) {
-      return _singl[key]!.getDependency() as S;
+    final factory = _singl[key];
+    if (factory != null) {
+      return factory.getDependency() as S;
     } else {
       return put(dep(), tag: tag);
     }
@@ -248,25 +248,17 @@ extension InjectionExtension on SintInterface {
   /// it will initialize it's lifecycle.
   S find<S>({String? tag}) {
     final key = _getKey(S, tag);
-    if (isRegistered<S>(tag: tag)) {
-      final dep = _singl[key];
-      if (dep == null) {
-        if (tag == null) {
-          throw 'Class "$S" is not registered';
-        } else {
-          throw 'Class "$S" with tag "$tag" is not registered';
-        }
-      }
-
-      /// although dirty solution, the lifecycle starts inside
-      /// `initDependencies`, so we have to return the instance from there
-      /// to make it compatible with `Sint.create()`.
-      final i = _initDependencies<S>(name: tag);
-      return i ?? dep.getDependency() as S;
-    } else {
+    final dep = _singl[key];
+    if (dep == null) {
       // ignore: lines_longer_than_80_chars
       throw '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"';
     }
+
+    /// although dirty solution, the lifecycle starts inside
+    /// `initDependencies`, so we have to return the instance from there
+    /// to make it compatible with `Sint.create()`.
+    final i = _initDependencies<S>(name: tag);
+    return i ?? dep.getDependency() as S;
   }
 
   /// The findOrNull method will return the instance if it is registered;
@@ -328,14 +320,12 @@ extension InjectionExtension on SintInterface {
   bool delete<S>({String? tag, String? key, bool force = false}) {
     final newKey = key ?? _getKey(S, tag);
 
-    if (!_singl.containsKey(newKey)) {
+    final dep = _singl[newKey];
+
+    if (dep == null) {
       Sint.log('Instance "$newKey" already removed.', isError: true);
       return false;
     }
-
-    final dep = _singl[newKey];
-
-    if (dep == null) return false;
 
     final _InstanceBuilderFactory builder;
     if (dep.isDirty) {

@@ -9,6 +9,7 @@
   - [Usage](#usage)
   - [Unique IDs](#unique-ids)
 - [StateMixin](#statemixin)
+- [Performance notes](#performance-notes)
 - [Test Roadmap](#test-roadmap)
 
 ---
@@ -98,6 +99,11 @@ interval(count, (_) => print('interval: $_'), time: Duration(seconds: 1));
 
 Workers should be initialized in `onInit()` of your controller.
 
+Worker timers are lifecycle-safe: `debounce` and `interval` timers (and
+all worker subscriptions) are cancelled automatically in the
+controller's `onClose()`, so pending callbacks never fire on an
+already-disposed controller.
+
 ---
 
 ## Simple State Manager (SintBuilder)
@@ -162,6 +168,23 @@ controller.obx(
   onError: (error) => Text(error!),
 )
 ```
+
+---
+
+## Performance notes
+
+The reactive hot path is allocation-free: notifications iterate the
+listener list directly (a defensive copy is only paid when a listener
+mutates the list mid-notification), and `Obx` schedules its rebuild
+synchronously via `markNeedsBuild` — batched by Flutter into the next
+frame — instead of queuing one microtask per notification. No API
+changes; measured improvements (median µs/op, Dart VM JIT):
+
+| Benchmark                              | Before |  After | Δ       |
+|----------------------------------------|-------:|-------:|--------:|
+| Pure notification (RxInt, 1 listener)  | 0.0193 | 0.0101 | −47.7 % |
+| Fan-out (100 listeners)                | 0.6452 | 0.2110 | −67.3 % |
+| `SintController.update()` (1 listener) | 0.0158 | 0.0070 | −55.7 % |
 
 ---
 

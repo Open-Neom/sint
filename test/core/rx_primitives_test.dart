@@ -184,6 +184,37 @@ void main() {
     });
   });
 
+  group('RxnDouble (nullable)', () {
+    test('acepta null inicial', () {
+      expect(RxnDouble().value, isNull);
+    });
+
+    test('operador - resta (regresión 1.3.1: sumaba en vez de restar)', () {
+      final d = RxnDouble(1.5);
+      d - 0.5;
+      expect(d.value, 1.0);
+    });
+
+    test('operador - retorna el mismo Rx', () {
+      final d = RxnDouble(2.0);
+      final result = d - 0.5;
+      expect(result, same(d));
+      expect(d.value, 1.5);
+    });
+
+    test('- es no-op y devuelve null si value es null', () {
+      final d = RxnDouble();
+      expect(d - 0.5, isNull);
+      expect(d.value, isNull);
+    });
+
+    test('+ sigue sumando cuando hay valor', () {
+      final d = RxnDouble(1.5);
+      d + 0.5;
+      expect(d.value, 2.0);
+    });
+  });
+
   group('RxString', () {
     test('valor inicial', () {
       expect(RxString('hello').value, 'hello');

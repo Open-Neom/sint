@@ -10,10 +10,19 @@ class ListNotifier extends Listenable {
 
   List<SintStateUpdate>? _updaters = <SintStateUpdate>[];
 
+  /// Mutation counter used by [_notifyUpdate] to detect reentrant
+  /// add/remove during iteration without paying a defensive copy
+  /// on every notification.
+  int _version = 0;
+
   @override
   Disposer addListener(SintStateUpdate listener) {
+    _version++;
     _updaters!.add(listener);
-    return () => _updaters!.remove(listener);
+    return () {
+      _version++;
+      _updaters!.remove(listener);
+    };
   }
 
   bool containsListener(SintStateUpdate listener) {
@@ -22,6 +31,7 @@ class ListNotifier extends Listenable {
 
   @override
   void removeListener(VoidCallback listener) {
+    _version++;
     _updaters!.remove(listener);
   }
 
@@ -41,11 +51,22 @@ class ListNotifier extends Listenable {
   }
 
   void _notifyUpdate() {
-    if (_updaters == null) return;
-    // Create a fixed list to prevent "Concurrent modification" during iteration.
-    final list = _updaters!.toList();
-    for (var element in list) {
-      element();
+    final list = _updaters;
+    if (list == null || list.isEmpty) return;
+    // Fast path: iterate directly by index, no per-notification copy.
+    // If a listener mutates the list reentrantly (version change),
+    // fall back to a defensive copy for the remaining listeners.
+    final version = _version;
+    final length = list.length;
+    for (var i = 0; i < length; i++) {
+      if (_version != version) {
+        final rest = list.sublist(i);
+        for (final element in rest) {
+          element();
+        }
+        return;
+      }
+      list[i]();
     }
   }
 
@@ -58,13 +79,24 @@ class ListNotifier extends Listenable {
   @mustCallSuper
   void dispose() {
     _updaters = null;
+    final groups = _updatersGroupIds;
+    if (groups != null) {
+      for (final group in groups.values) {
+        group.dispose();
+      }
+      groups.clear();
+      _updatersGroupIds = null;
+    }
   }
 
-  final HashMap<Object?, ListNotifier> _updatersGroupIds = HashMap<Object?, ListNotifier>();
+  /// Lazily allocated on first [addListenerId] usage; most Rx/controllers
+  /// never use id-groups, so the HashMap is no longer created eagerly.
+  HashMap<Object?, ListNotifier>? _updatersGroupIds;
 
   void _notifyGroupUpdate(Object id) {
-    if (_updatersGroupIds.containsKey(id)) {
-      _updatersGroupIds[id]!._notifyUpdate();
+    final group = _updatersGroupIds?[id];
+    if (group != null) {
+      group._notifyUpdate();
     }
   }
 
@@ -74,14 +106,13 @@ class ListNotifier extends Listenable {
   }
 
   void removeListenerId(Object id, VoidCallback listener) {
-    if (_updatersGroupIds.containsKey(id)) {
-      _updatersGroupIds[id]!.removeListener(listener);
-    }
+    _updatersGroupIds?[id]?.removeListener(listener);
   }
 
   Disposer addListenerId(Object? key, SintStateUpdate listener) {
-    _updatersGroupIds[key] ??= ListNotifier();
-    return _updatersGroupIds[key]!.addListener(listener);
+    final groups = _updatersGroupIds ??= HashMap<Object?, ListNotifier>();
+    groups[key] ??= ListNotifier();
+    return groups[key]!.addListener(listener);
   }
 
 }

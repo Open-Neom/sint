@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/navigation/src/domain/extensions/first_where_extension.dart';
@@ -13,6 +14,74 @@ class RouteParser {
   });
 
   final List<SintPage> routes;
+
+  // ── Segment route index (1.5.0) ─────────────────────────────────────
+  // Routes are bucketed by the type of their FIRST segment:
+  //   literal > param with pattern > simple param > wildcard.
+  // Matching only evaluates the regex of the buckets that can match the
+  // requested path (precedence order above), instead of scanning the whole
+  // flat list for every cumulative path: O(k + candidates) vs O(k × routes).
+  bool _indexDirty = true;
+  int _indexedRouteCount = -1;
+  final Map<String, List<SintPage>> _literalIndex = {};
+  final List<SintPage> _patternParamRoutes = [];
+  final List<SintPage> _simpleParamRoutes = [];
+  final List<SintPage> _wildcardRoutes = [];
+
+  static const String _rootKey = '';
+
+  /// Rank of a route based on its first segment type.
+  /// Lower rank = higher precedence.
+  static int _routeRank(SintPage route) {
+    final segments =
+        route.name.split('/').where((element) => element.isNotEmpty);
+    if (segments.isEmpty) return 0; // root '/' is literal
+    final first = segments.first;
+    // A param anywhere in the first segment (':id', 'file.:ext') makes
+    // the route non-literal — the regex builder treats any ':' as a
+    // param marker, so the bucket logic must agree.
+    if (!first.contains(':')) return 0; // pure literal
+    if (first.startsWith(':') && first.endsWith('*')) return 3; // wildcard
+    if (first.startsWith(':') && first.contains('(')) {
+      return 1; // param with pattern
+    }
+    return 2; // simple / optional / dotted param
+  }
+
+  void _rebuildIndex() {
+    _literalIndex.clear();
+    _patternParamRoutes.clear();
+    _simpleParamRoutes.clear();
+    _wildcardRoutes.clear();
+    for (final route in routes) {
+      switch (_routeRank(route)) {
+        case 0:
+          final segments =
+              route.name.split('/').where((element) => element.isNotEmpty);
+          final key = segments.isEmpty ? _rootKey : segments.first;
+          _literalIndex.putIfAbsent(key, () => []).add(route);
+          break;
+        case 1:
+          _patternParamRoutes.add(route);
+          break;
+        case 2:
+          _simpleParamRoutes.add(route);
+          break;
+        default:
+          _wildcardRoutes.add(route);
+      }
+    }
+    _indexDirty = false;
+    _indexedRouteCount = routes.length;
+  }
+
+  void _ensureIndex() {
+    // The length guard also catches external mutations that bypass
+    // addRoute/removeRoute (e.g. `routes.clear()` from the delegate).
+    if (_indexDirty || _indexedRouteCount != routes.length) {
+      _rebuildIndex();
+    }
+  }
 
   RouteDecoder matchRoute(String name, {PageSettings? arguments}) {
     final uri = Uri.parse(name);
@@ -63,6 +132,10 @@ class RouteParser {
       if (parsedParams.isNotEmpty) {
         params.addAll(parsedParams);
       }
+      // Path params are also exposed SEPARATELY from query params (1.5.0);
+      // `params` keeps the legacy merged behavior (query + path).
+      arguments?.pathParams.clear();
+      arguments?.pathParams.addAll(parsedParams);
       //copy parameters to all pages.
       final mappedTreeBranch = treeBranch
           .map(
@@ -107,17 +180,37 @@ class RouteParser {
 
   void removeRoute<T>(SintPage<T> route) {
     routes.remove(route);
+    _indexDirty = true;
     for (var page in _flattenPage(route)) {
       removeRoute(page);
     }
   }
 
   void addRoute<T>(SintPage<T> route) {
+    _warnIfDuplicate(route);
     routes.add(route);
+    _indexDirty = true;
 
     // Add Page children.
     for (var page in _flattenPage(route)) {
       addRoute(page);
+    }
+  }
+
+  /// Warns (without throwing, for backwards compatibility) when two
+  /// registered routes compile to the same pattern — historically a
+  /// silent first-wins situation.
+  void _warnIfDuplicate(SintPage route) {
+    final pattern = route.path.regex.pattern;
+    for (final existing in routes) {
+      if (existing.path.regex.pattern == pattern) {
+        Sint.log(
+          // ignore: lines_longer_than_80_chars
+          'Duplicate route "${route.name}" matches the same pattern as "${existing.name}" — the first registered route wins.',
+          isError: true,
+        );
+        return;
+      }
     }
   }
 
@@ -200,12 +293,34 @@ class RouteParser {
   }
 
   SintPage? _findRoute(String name) {
-    final value = routes.firstWhereOrNull(
+    _ensureIndex();
 
-      (route) => route.path.regex.hasMatch(name),
-    );
+    // Candidate buckets in precedence order:
+    // literal > param with pattern > simple param > wildcard.
+    // Within a bucket, registration order is preserved (first wins).
+    final segments = name.split('/').where((element) => element.isNotEmpty);
+    final literalKey = segments.isEmpty ? _rootKey : segments.first;
 
-    return value;
+    final literalCandidates = _literalIndex[literalKey];
+    if (literalCandidates != null) {
+      final value = literalCandidates.firstWhereOrNull(
+        (route) => route.path.regex.hasMatch(name),
+      );
+      if (value != null) return value;
+    }
+
+    for (final candidates in [
+      _patternParamRoutes,
+      _simpleParamRoutes,
+      _wildcardRoutes,
+    ]) {
+      final value = candidates.firstWhereOrNull(
+        (route) => route.path.regex.hasMatch(name),
+      );
+      if (value != null) return value;
+    }
+
+    return null;
   }
 
   Map<String, String> _parseParams(String path, PathDecoded routePath) {
@@ -221,7 +336,14 @@ class RouteParser {
       return params;
     }
     for (var i = 0; i < routePath.keys.length; i++) {
-      var param = Uri.decodeQueryComponent(paramsMatch[i + 1]!);
+      final group = paramsMatch[i + 1];
+      // Optional params (e.g. ':id?') may be absent from the URL — their
+      // match group is null. Skip them instead of null-asserting.
+      if (group == null) continue;
+      // Path segments are decoded with decodeComponent (NOT
+      // decodeQueryComponent): '+' is a literal plus in a path segment,
+      // and '%2F' decodes to '/' after the segment split.
+      var param = Uri.decodeComponent(group);
       params[routePath.keys[i]!] = param;
     }
     return params;

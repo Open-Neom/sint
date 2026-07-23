@@ -16,9 +16,15 @@ class SnackBarQueue {
 
   Future<void> addJob(SnackbarController job) async {
     _snackbarList.add(job);
-    final data = await _queue.add(job.showOverlay);
-    _snackbarList.remove(job);
-    return data;
+    try {
+      final data = await _queue.add(job.showOverlay);
+      _snackbarList.remove(job);
+      return data;
+    } on StateError {
+      // The job was cancelled via cancelAllJobs() before it ran.
+      // Cancellation is a normal control flow, not an error to surface.
+      _snackbarList.remove(job);
+    }
   }
 
   Future<void> cancelAllJobs() async {

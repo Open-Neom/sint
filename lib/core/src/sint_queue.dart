@@ -12,6 +12,9 @@ class SintQueue {
   }
 
   void cancelAllJobs() {
+    for (final item in _queue) {
+      item.completer.completeError(StateError('Job cancelled'));
+    }
     _queue.clear();
   }
 
@@ -21,10 +24,13 @@ class SintQueue {
       var item = _queue.removeAt(0);
       try {
         item.completer.complete(await item.job());
-      } on Exception catch (e) {
+      } catch (e) {
+        // Catch everything (Exception AND Error, e.g. TypeError) so the
+        // queue never freezes and the completer always completes.
         item.completer.completeError(e);
+      } finally {
+        _active = false;
       }
-      _active = false;
       _check();
     }
   }

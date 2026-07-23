@@ -37,6 +37,11 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
 
   final List<StreamSubscription> _workers = [];
 
+  /// Active timers created by [debounce] and [interval] workers.
+  /// Tracked so they can be cancelled in [onClose] — otherwise a pending
+  /// timer would fire its callback on an already-disposed controller.
+  final List<Timer> _timers = [];
+
   /// Calls [callback] every time [rx] changes.
   /// Auto-cancels on controller disposal.
   ///
@@ -76,8 +81,15 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
   }) {
     Timer? timer;
     _workers.add(rx.listen((val) {
-      timer?.cancel();
-      timer = Timer(duration, () => callback(val));
+      if (timer != null) {
+        _timers.remove(timer);
+        timer!.cancel();
+      }
+      timer = Timer(duration, () {
+        _timers.remove(timer);
+        callback(val);
+      });
+      _timers.add(timer!);
     }));
   }
 
@@ -98,7 +110,12 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
       if (canCall) {
         canCall = false;
         callback(val);
-        Timer(duration, () => canCall = true);
+        late Timer timer;
+        timer = Timer(duration, () {
+          _timers.remove(timer);
+          canCall = true;
+        });
+        _timers.add(timer);
       }
     }));
   }
@@ -130,6 +147,10 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
 
   @override
   void onClose() {
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    _timers.clear();
     for (final sub in _workers) {
       sub.cancel();
     }

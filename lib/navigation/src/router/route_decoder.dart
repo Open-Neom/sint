@@ -41,6 +41,12 @@ class RouteDecoder {
 
   Map<String, String> get parameters => pageSettings?.params ?? {};
 
+  /// Path (segment) parameters only, e.g. `:id` in `/user/:id` (1.5.0).
+  Map<String, String> get pathParams => pageSettings?.pathParams ?? {};
+
+  /// Query parameters only (1.5.0).
+  Map<String, String> get queryParams => pageSettings?.query ?? {};
+
   dynamic get args {
     return pageSettings?.arguments;
   }

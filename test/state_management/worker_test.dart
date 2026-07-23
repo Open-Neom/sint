@@ -105,6 +105,56 @@ void main() {
     });
   });
 
+  group('Timer cleanup on controller close (regression 1.3.1)', () {
+    test('pending debounce timer is cancelled on dispose', () {
+      fakeAsync((async) {
+        final c = _TestController();
+        c.debounce<int>(
+          c.count,
+          c.debounceEvents.add,
+          duration: const Duration(milliseconds: 200),
+        );
+        async.flushMicrotasks();
+        c.debounceEvents.clear();
+
+        c.count.value = 1;
+        // Dispose INSIDE the debounce window — before the timer fires.
+        async.elapse(const Duration(milliseconds: 50));
+        c.onDelete();
+        async.elapse(const Duration(milliseconds: 500));
+
+        expect(c.debounceEvents, isEmpty,
+            reason: 'debounce callback must never fire on a disposed '
+                'controller');
+      });
+    });
+
+    test('pending interval cooldown timer is cancelled on dispose', () {
+      fakeAsync((async) {
+        final c = _TestController();
+        c.interval<int>(
+          c.count,
+          c.intervalEvents.add,
+          duration: const Duration(seconds: 1),
+        );
+        async.flushMicrotasks();
+        c.intervalEvents.clear();
+
+        c.count.value = 1; // fires immediately, starts cooldown timer
+        async.flushMicrotasks();
+        expect(c.intervalEvents, [1]);
+
+        c.onDelete();
+        async.elapse(const Duration(seconds: 2));
+        c.count.value = 2; // listeners are cancelled — nothing may fire
+        async.elapse(const Duration(seconds: 2));
+
+        expect(c.intervalEvents, [1],
+            reason: 'interval must not fire after the controller is disposed');
+      });
+    });
+  });
+
   group('Auto-cleanup on controller close', () {
     test('all workers are cancelled and stop receiving events', () async {
       final c = _TestController();

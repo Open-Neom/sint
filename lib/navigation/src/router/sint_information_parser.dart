@@ -60,7 +60,9 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
 
     return RouteInformation(
       uri: Uri.tryParse(name),
-      state: null,
+      // Pass the route state (its arguments) so state restoration can
+      // recover it, instead of dropping it with a hardcoded null (1.5.0).
+      state: configuration.pageSettings?.arguments,
     );
   }
 }

@@ -16,6 +16,7 @@ import 'package:sint/navigation/src/domain/models/config_data.dart';
 import 'package:sint/navigation/src/router/sint_page.dart';
 import 'package:sint/navigation/src/router/sint_page_route.dart';
 import 'package:sint/navigation/src/router/route_decoder.dart';
+import 'package:sint/navigation/src/router/page_settings.dart';
 import 'package:sint/navigation/src/router/sint_navigator.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
@@ -110,9 +111,18 @@ extension NavigationExtension on SintInterface {
         dynamic id,
         bool preventDuplicates = true,
         Map<String, String>? parameters,
+        Map<String, String>? pathParams,
+        Map<String, String>? queryParams,
       }) {
 
-    if (parameters != null) {
+    if (pathParams != null || queryParams != null) {
+      // Route-template URL building (1.5.0): substitute `:param` segments
+      // and append the query string with correct per-segment encoding.
+      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
+        if (parameters != null) ...parameters,
+        if (queryParams != null) ...queryParams,
+      });
+    } else if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
       page = uri.toString();
     }
@@ -147,9 +157,16 @@ extension NavigationExtension on SintInterface {
         dynamic arguments,
         String? id,
         Map<String, String>? parameters,
+        Map<String, String>? pathParams,
+        Map<String, String>? queryParams,
       }) {
 
-    if (parameters != null) {
+    if (pathParams != null || queryParams != null) {
+      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
+        if (parameters != null) ...parameters,
+        if (queryParams != null) ...queryParams,
+      });
+    } else if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
       page = uri.toString();
     }
@@ -281,8 +298,17 @@ extension NavigationExtension on SintInterface {
         dynamic arguments,
         String? id,
         Map<String, String>? parameters,
+        Map<String, String>? pathParams,
+        Map<String, String>? queryParams,
       }) {
-    if (parameters != null) {
+    if (pathParams != null || queryParams != null) {
+      newRouteName = resolveRoutePath(newRouteName,
+          pathParams: pathParams,
+          queryParams: {
+            if (parameters != null) ...parameters,
+            if (queryParams != null) ...queryParams,
+          });
+    } else if (parameters != null) {
       final uri = Uri(path: newRouteName, queryParameters: parameters);
       newRouteName = uri.toString();
     }
@@ -943,6 +969,27 @@ extension NavigationExtension on SintInterface {
     }
 
     return rootController.rootDelegate.parameters;
+  }
+
+  /// Path (segment) parameters of the current route only, e.g. `:id` in
+  /// `/user/:id` (1.5.0). Query parameters are NOT included.
+  /// Usage: `String? id = Sint.pathParams['id'];`
+  Map<String, String> get pathParams {
+    if (_shouldUseMock) {
+      return {
+        for (final e in SintTestMode.parameters.entries)
+          if (e.value != null) e.key: e.value!,
+      };
+    }
+    return rootController.rootDelegate.pathParams;
+  }
+
+  /// Query parameters of the current route only (1.5.0).
+  /// Path parameters are NOT included.
+  /// Usage: `String? tab = Sint.queryParams['tab'];`
+  Map<String, String> get queryParams {
+    if (_shouldUseMock) return const {};
+    return rootController.rootDelegate.queryParams;
   }
 
   /// Primary route parameter from URL path. Returns null if none.

@@ -1,11 +1,148 @@
 # Changelog - sint
 
-## [1.1.0] - 2026-07-09
+## [1.5.0] - 2026-07-23
+
+Navigation overhaul (Pillar N). All changes are additive and backwards
+compatible: existing route tables, `Sint.toNamed('/path')`, `/:param`
+routes, `SintPage` and middleware keep working identically.
+
+### Feature 1 — Segment route index (O(k) matching)
+
+`RouteParser` no longer scans the whole flat route list with a regex per
+route for every cumulative path (O(segments × routes)). Routes are now
+bucketed by their first segment type with the precedence
+**literal > param with pattern > simple param > wildcard** (registration
+order is preserved inside each bucket), and only candidate buckets are
+regex-evaluated. The index rebuilds lazily and is invalidated on
+add/remove (including external `routes` mutations via a length guard).
+The dead experimental trie (`RouteTree`/`RouteMatcher`) stays untouched
+and unused. Baseline in `test/benchmarks/BASELINE_1.4.0.md`.
+
+Route matching (median µs/op, Dart VM JIT, 7 rounds × 1k ops):
+
+| Benchmark                  | 1.4.0   | 1.5.0  | Δ        |
+|----------------------------|--------:|-------:|---------:|
+| literal match, last of 10  |  4.4390 | 3.6590 | −17.6 %  |
+| param match, last of 10    |  7.3280 | 5.0290 | −31.4 %  |
+| miss (unknown), 10         |  4.5190 | 1.5910 | −64.8 %  |
+| literal match, last of 100 | 14.0920 | 3.3370 | −76.3 %  |
+| param match, last of 100   | 25.7190 | 4.9490 | −80.8 %  |
+| miss (unknown), 100        | 31.5970 | 1.5430 | −95.1 %  |
+
+### Feature 2 — Extended route syntax
+
+- **Pattern params**: `/user/:id(\d+)` only matches segments satisfying
+  the custom constraint.
+- **Wildcards**: `/docs/:path*` captures one or more remaining segments,
+  `/` separators included.
+- **Escaped separator (bug A4)**: the `.` in dotted params (`/file.:ext`)
+  is now regex-escaped — it no longer matches any character.
+- **Per-segment decoding (bug A2)**: path params are decoded with
+  `Uri.decodeComponent` instead of `Uri.decodeQueryComponent` — a literal
+  `+` stays a plus and `%2F` decodes to `/` after the segment split.
+- **Duplicate route detection**: registering two routes that compile to
+  the same pattern logs a warning via `Sint.log` (first-still-wins, no
+  exception, backwards compatible).
+
+### Feature 3 — pathParams / queryParams API
+
+- `Sint.toNamed`, `Sint.offNamed` and `Sint.offAllNamed` accept optional
+  `pathParams` and `queryParams`:
+  `Sint.toNamed('/user/:id', pathParams: {'id': '42'}, queryParams: {'tab': 'posts'})`
+  navigates to `/user/42?tab=posts` with correct per-segment encoding.
+- `PageSettings.pathParams` / `PageSettings.queryParams` (plus
+  `RouteDecoder`, `SintDelegate` and `Sint.pathParams` /
+  `Sint.queryParams`) expose path and query parameters SEPARATELY.
+  `Sint.parameters` keeps the legacy merged view unchanged.
+
+### Web fixes
+
+- **W1 — Browser back/forward**: `SintDelegate.setNewRoutePath` now diffs
+  against the active stack: if the requested URL is already present it
+  pops the entries above it (completing their completers through the
+  normal pop path) instead of pushing a duplicate.
+- **W2 — Public `SintUrlStrategy`**: `SintUrlStrategy.setPath()` /
+  `SintUrlStrategy.setHash()` can be called in `main()` before `runApp()`;
+  the delegate respects a pre-configured strategy.
+- **W3 — State restoration**: `restoreRouteInformation` passes the route
+  state instead of a hardcoded `null`, and `SintPage.copyWith` no longer
+  loses `restorationId` (self-reference fixed).
+- **`SintPage.copyWith` now propagates `preventDuplicateHandlingMode`**
+  (latent since 1.3.1) — this activates the fixed
+  `popUntilOriginalRoute` branch, now covered by an end-to-end test.
+
+### Middleware fixes
+
+- **M1**: `SintDelegate.runMiddleware` now honors `priority` like
+  `MiddlewareRunner` — both pipelines share the same STABLE sort
+  (declaration order preserved among equal priorities).
+- **M4**: redirect cycles now hit a depth guard (5) with a clear
+  `Redirect loop detected` error instead of looping/overflowing, in both
+  the delegate pipeline and `PageRedirect`.
+
+### Verification
+
+`flutter test` 272/272 pass (240 from 1.4.0 + 32 new navigation tests);
+`dart analyze` 0 errors, no new issues.
+
+**Deferred to a future release**: Type-keyed injection registry
+(`Map<Type, Map<String?, _InstanceBuilderFactory>>`) — the string keys of
+`_getKey` are an internal protocol shared with `RouterReportManager` and
+`registeredKeys` consumers in navigation; migrating them is a larger
+cross-cutting change that was not worth destabilizing this release.
+
+
+## [1.4.0] - 2026-07-23
+
+Performance release — 5 P0 hot-path optimizations with before/after benchmarks
+(`test/benchmarks/p0_benchmark_test.dart`, reusable harness in
+`test/benchmarks/bench_harness.dart`, 1.3.1 baseline in
+`test/benchmarks/BASELINE_1.3.1.md`). Internal changes only; zero public API changes.
+
+- **O1 — No per-notification listener copy**: `ListNotifier._notifyUpdate()` no longer allocates `_updaters!.toList()` on every notification. It now iterates the listener list directly by index, guarded by a mutation version counter; a defensive copy is only paid for the remaining listeners when a reentrant add/remove is detected mid-iteration (`lib/state_manager/src/engine/list_notifier.dart`).
+- **O2 — Direct `markNeedsBuild` in Obx**: `ObxReactiveElement.getUpdate()` no longer schedules a microtask per notification (N redundant microtasks per frame). `markNeedsBuild()` is idempotent and Flutter batches dirty elements into the next frame naturally (`lib/state_manager/src/ui/obx_reacive_element.dart`).
+- **O3 — Lazy `_updatersGroupIds`**: every `ListNotifier` (each Rx + each controller) used to allocate an eager `HashMap` even when id-groups were never used. The map is now created with `??=` on first `addListenerId()`. Additionally, `dispose()` now disposes and clears the group notifiers, fixing a memory leak found in the audit (`lib/state_manager/src/engine/list_notifier.dart`).
+- **O4 — Typed `Notifier.read`**: `void read(dynamic updaters)` → `void read(ListNotifier updaters)`, enabling static dispatch/inlining in AOT and dart2js (`lib/state_manager/src/engine/notifier.dart`).
+- **O5 — Single-lookup `Sint.find` & friends**: `find`, `_initDependencies`, `_startController`, `_insert`, `_getDependency`, `markAsDirty`, `putOrFind` and `delete` each performed 2–5 map lookups of the same key; all now resolve the factory in a single lookup. Eager log string interpolation in `_startController` is now gated behind `Sint.isLogEnable` (`lib/injection/src/domain/extensions/injection_extension.dart`).
+
+Before/after (median µs/op, Dart VM JIT, 7 rounds × 20k ops after 2k warmup):
+
+| Benchmark                                | 1.3.1  | 1.4.0  | Δ       |
+|------------------------------------------|-------:|-------:|--------:|
+| Pure notification (RxInt, 1 listener)    | 0.0193 | 0.0101 | −47.7 % |
+| Fan-out (0 listeners)                    | 0.0132 | 0.0077 | −41.7 % |
+| Fan-out (1 listener)                     | 0.0188 | 0.0095 | −49.5 % |
+| Fan-out (10 listeners)                   | 0.0682 | 0.0262 | −61.6 % |
+| Fan-out (100 listeners)                  | 0.6452 | 0.2110 | −67.3 % |
+| No listeners (empty path)                | 0.0149 | 0.0065 | −56.4 % |
+| `Sint.find` (tagged)                     | 0.5555 | 0.3835 | −31.0 % |
+| `SintController.update()` (1 listener)   | 0.0158 | 0.0070 | −55.7 % |
+
+Verified: `flutter test` 238/238 pass (234 existing + 4 new benchmark tests);
+`dart analyze` 0 errors, no new issues.
+
+
+## [1.3.1] - 2026-07-22
+
+Hotfix release — 7 high-severity fixes from the 1.3.0 audit.
+
+- **RxnDouble subtraction**: `RxnDoubleExt.operator -` was adding instead of subtracting (`value = value! + other` → `value = value! - other`).
+- **Worker timers on dispose**: `debounce` and `interval` timers are now tracked per controller and cancelled in `onClose()`, so pending callbacks never fire on an already-disposed controller.
+- **SintQueue resilience**: A job throwing an `Error` (e.g. `TypeError`, not just `Exception`) no longer freezes the queue forever — the completer always completes with the error and `_active` is always released. `cancelAllJobs()` now completes pending futures with `StateError('Job cancelled')` instead of leaving them hanging.
+- **popUntilOriginalRoute**: Fixed inverted condition (`==` → `!=`) that popped the original route itself instead of popping until it became current.
+- **offAllNamed / offNamedUntil**: Removed pages now complete their route completers through the standard pop path, instead of leaving the original navigation futures hanging forever.
+- **removeLastHistory**: Fixed unconditional self-recursion (stack overflow); it now delegates to the platform implementation (no-op where browser history does not exist).
+- **Optional route params**: Routes like `/user/:id?` no longer crash with a null-assert when the optional param is absent (URL `/user`). The path separator is now part of the optional regex group and absent match groups are skipped during parameter parsing.
+
+
+## Maintenance Notes — 2026-07-09 (unversioned)
+
+Historical entries that were recorded under a duplicated/incorrect version
+heading; kept here for traceability.
+
 - Optimize transitions and layout configurations in sint_root.dart.
+- Stability and compatibility updates.
 
-
-## Unreleased - System updates
-- Actualizaciones de estabilidad y compatibilidad.
 
 ## [1.3.0] - 2026-03-11
 

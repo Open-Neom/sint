@@ -1,7 +1,6 @@
 
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/lifecycle.dart';
-import 'package:sint/state_manager/sint_state_manager.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
 import 'package:sint/injection/src/domain/models/instance_info.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';

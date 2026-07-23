@@ -8,7 +8,6 @@ import 'package:sint/navigation/src/router/sint_page_route.dart';
 import 'package:sint/navigation/src/ui/transitions/circular_reveal_transition.dart';
 import 'package:sint/navigation/src/ui/transitions/fade_in_transition.dart';
 import 'package:sint/navigation/src/ui/transitions/left_to_right_fade_transition.dart';
-import 'package:sint/navigation/src/ui/transitions/no_transition.dart';
 import 'package:sint/navigation/src/ui/transitions/right_to_left_fade_transition.dart';
 import 'package:sint/navigation/src/ui/transitions/size_transitions.dart';
 import 'package:sint/navigation/src/ui/transitions/slide_down_transition.dart';

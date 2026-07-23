@@ -8,7 +8,6 @@ import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/navigation/src/domain/enums/prevent_duplicate_handling_mode.dart';
 import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
-import 'package:sint/navigation/src/router/page_redirect.dart';
 import 'package:sint/navigation/src/domain/models/path_decoded.dart';
 import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/index.dart';

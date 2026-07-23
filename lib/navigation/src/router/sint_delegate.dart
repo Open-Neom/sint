@@ -12,10 +12,6 @@ import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart
 import 'package:sint/navigation/src/domain/extensions/first_where_extension.dart';
 import 'package:sint/navigation/src/router/route_decoder.dart';
 import 'package:sint/navigation/src/router/sint_page.dart';
-import 'package:sint/navigation/src/router/sint_page_route.dart';
-import 'package:sint/navigation/src/router/router_report_manager.dart';
-import 'package:sint/navigation/src/router/sint_test_mode.dart';
-import 'package:sint/navigation/src/domain/models/config_data.dart';
 import 'package:sint/navigation/src/domain/enums/pop_mode.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/enums/prevent_duplicate_handling_mode.dart';

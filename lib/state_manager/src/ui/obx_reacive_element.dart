@@ -6,7 +6,7 @@ import 'package:sint/state_manager/src/engine/notifier.dart';
 
 class ObxReactiveElement extends StatelessElement {
 
-  ObxReactiveElement(StatelessWidget super.widget);
+  ObxReactiveElement(super.widget);
 
   List<Disposer>? disposers = <Disposer>[];
 

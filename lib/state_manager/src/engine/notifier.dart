@@ -26,13 +26,17 @@ class Notifier {
   }
 
   T append<T>(NotifyData data, T Function() builder) {
+    final oldData = _notifyData;
     _notifyData = data;
-    final result = builder();
-    if (data.disposers.isEmpty && data.throwException) {
-      throw const ObxError();
+    try {
+      final result = builder();
+      if (data.disposers.isEmpty && data.throwException) {
+        throw ObxError();
+      }
+      return result;
+    } finally {
+      _notifyData = oldData;
     }
-    _notifyData = null;
-    return result;
   }
 
 }

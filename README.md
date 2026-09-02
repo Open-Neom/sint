@@ -30,6 +30,8 @@
 ---
 
 - [About SINT](#about-sint)
+- [What's New in 1.6.1](#whats-new-in-161)
+- [What's New in 1.6.0](#whats-new-in-160)
 - [What's New in 1.5.0](#whats-new-in-150)
 - [What's New in 1.4.0](#whats-new-in-140)
 - [What's New in 1.3.1](#whats-new-in-131)
@@ -67,6 +69,50 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 - **PERFORMANCE:** No Streams or ChangeNotifier overhead. Minimal RAM consumption.
 - **PRODUCTIVITY:** Simple syntax. One import: `import 'package:sint/sint.dart';`
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
+
+---
+
+## What's New in 1.6.1
+
+**Focus: O(1) Route-Dispose DI Optimization, Collection Assignment Hardening, and Engine Hygiene.**
+
+- **O(1) Route-Dispose DI Optimization (Pillar I):** Stored reified generic type in `_InstanceBuilderFactory` to allow direct O(1) removal in `Sint.delete(key: ...)` when invoked by `RouterReportManager` without generic parameters, completely eradicating the $O(N \times M)$ scan upon route disposal.
+- **Conditional `assign` & `assignAll` (Pillar S):** `RxList.assign` and `RxList.assignAll` now verify existing length and items before notifying, avoiding UI rebuild cascades when incoming collections are identical.
+- **Collection Hardening:** Fixed `ListExtension.assign`/`assignAll` on standard lists to clear prior to insertion, and added conditional refresh to `RxSet`.
+- **Engine Hygiene:** Added `sint_builder.dart` and `obx_reactive_element.dart` with correct naming conventions while keeping backwards-compatible legacy re-exports.
+
+| Benchmark (median µs/op) | 1.6.0 | 1.6.1 | Δ vs 1.6.0 |
+|---|--:|--:|--:|
+| **Dependency Lookup `Sint.find<T>(tag)`** (20k finds) | 0.0683 | **0.0583** | **−14.6% faster** |
+| **Deep Lookup `Sint.find`** (Depth: 10) | 0.1890 | **0.1556** | **−17.7% faster** |
+| **Reactive High-Load Audit** (30k ops) | 5.6879 | **4.8578** | **−14.6% latency** |
+| **Fan-Out** (100 listeners) | 0.9177 | **0.9020** | **−1.7% latency** |
+| **Route Disposal Cleanup** (`delete(key)`) | *O(N×M) scan* | **O(1) direct** | **Instant cleanup** |
+
+---
+
+## What's New in 1.6.0
+
+**Focus: Type-Keyed Injection (O5a) & Reactive Engine Overhaul — O(1) type-identity dependency lookup, conditional refresh on collections, Obx stale subscription cleanup, and synapse state hardening.**
+
+### Type-Keyed Injection Registry (O5a)
+
+Dependency injection now uses a two-tiered Type-indexed registry (`Map<Type, Map<String?, _InstanceBuilderFactory>>`), eliminating string concatenation allocations on `Sint.find<T>()` and eradicating minification name collisions in web release builds (`dart2js` / WASM).
+
+| Benchmark (median µs/op) | 1.5.0 | 1.6.0 | Δ |
+|---|--:|--:|--:|
+| **Dependency Lookup `Sint.find<T>(tag)`** (20k finds) | 0.6777 | **0.0683** | **−89.9% (~10× speedup)** |
+| **Deep Lookup `Sint.find`** (Depth: 10) | 0.9162 | **0.1890** | **−79.4% (~5× speedup)** |
+| **`SintController.update()`** (p95 latency) | 0.3356 | **0.0636** | **−81.0% (~5.3× consistency)** |
+| **Reactive High-Load Audit** (30k ops) | 5.7302 | **5.6879** | **Optimized throughput** |
+
+### Collection Conditional Refresh (Pillar S)
+
+`RxList` and `RxMap` now perform dirty checks before firing reactive notifications. Operations like `[]=`, `remove`, `removeWhere`, `retainWhere`, `clear`, and `length=` only notify observers when elements or size truly change, avoiding redundant widget rebuilds.
+
+### Obx Rebuild Hygiene & Synapse Hardening
+
+`ObxReactiveElement.build()` now disposes subscriptions from the previous frame before tracking active observables, eliminating phantom rebuilds when UI branches change. `Notifier.append` is protected with `try ... finally` to ensure synapse state integrity during builder exceptions.
 
 ---
 

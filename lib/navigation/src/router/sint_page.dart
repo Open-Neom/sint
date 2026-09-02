@@ -13,7 +13,7 @@ import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/index.dart';
 
 class SintPage<T> extends Page<T> {
-  final GetPageBuilder page;
+  final SintPageBuilder page;
   final bool? popGesture;
   final Map<String, String>? parameters;
   final String? title;

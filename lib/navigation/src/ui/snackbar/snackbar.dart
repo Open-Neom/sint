@@ -57,7 +57,7 @@ class SintSnackBar extends StatefulWidget {
   /// Check (this example)[https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/material/shadows.dart]
   final List<BoxShadow>? boxShadows;
 
-  /// Give to GetSnackbar a gradient background.
+  /// Give to SintSnackBar a gradient background.
   /// It Makes [backgroundColor] be ignored.
   final Gradient? backgroundGradient;
 
@@ -343,7 +343,7 @@ class SintSnackBarState extends State<SintSnackBar>
             ((widget.message != null && widget.message!.isNotEmpty) ||
                 widget.messageText != null),
         '''
-You need to either use message[String], or messageText[Widget] or define a userInputForm[Form] in GetSnackbar''');
+You need to either use message[String], or messageText[Widget] or define a userInputForm[Form] in SintSnackBar''');
 
     _isTitlePresent = (widget.title != null || widget.titleText != null);
     _messageTopMargin = _isTitlePresent ? 6.0 : widget.padding.top;

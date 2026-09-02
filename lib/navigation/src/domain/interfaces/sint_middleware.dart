@@ -18,10 +18,10 @@ abstract class SintMiddleware {
   /// This Middewares will be called in this order.
   /// ```dart
   /// final middlewares = [
-  ///   GetMiddleware(priority: 2),
-  ///   GetMiddleware(priority: 5),
-  ///   GetMiddleware(priority: 4),
-  ///   GetMiddleware(priority: -8),
+  ///   SintMiddleware(priority: 2),
+  ///   SintMiddleware(priority: 5),
+  ///   SintMiddleware(priority: 4),
+  ///   SintMiddleware(priority: -8),
   /// ];
   /// ```
   ///  -8 => 2 => 4 => 5
@@ -34,9 +34,9 @@ abstract class SintMiddleware {
   /// give it null and there will be no redirecting.
   /// {@tool snippet}
   /// ```dart
-  /// GetPage redirect(String route) {
-  ///   final authService = Get.find<AuthService>();
-  ///   return authService.authed.value ? null : RouteSettings(name: '/login');
+  /// RouteSettings? redirect(String? route) {
+  ///   final authService = Sint.find<AuthService>();
+  ///   return authService.authed.value ? null : const RouteSettings(name: '/login');
   /// }
   /// ```
   /// {@end-tool}
@@ -53,9 +53,9 @@ abstract class SintMiddleware {
   /// and no new router are pushed.
   /// {@tool snippet}
   /// ```dart
-  /// GetNavConfig? redirect(GetNavConfig route) {
-  ///   final authService = Get.find<AuthService>();
-  ///   return authService.authed.value ? null : RouteSettings(name: '/login');
+  /// RouteDecoder? redirect(RouteDecoder route) {
+  ///   final authService = Sint.find<AuthService>();
+  ///   return authService.authed.value ? null : const RouteSettings(name: '/login');
   /// }
   /// ```
   /// {@end-tool}
@@ -65,9 +65,9 @@ abstract class SintMiddleware {
   /// you can use it to change something about the page or give it new page
   /// {@tool snippet}
   /// ```dart
-  /// GetPage onPageCalled(GetPage page) {
-  ///   final authService = Get.find<AuthService>();
-  ///   return page.copyWith(title: 'Welcome ${authService.UserName}');
+  /// SintPage onPageCalled(SintPage page) {
+  ///   final authService = Sint.find<AuthService>();
+  ///   return page.copyWith(title: 'Welcome ${authService.userName}');
   /// }
   /// ```
   /// {@end-tool}
@@ -77,8 +77,8 @@ abstract class SintMiddleware {
   /// Here you can change [BindingsInterface] for this page
   /// {@tool snippet}
   /// ```dart
-  /// List<Bindings> onBindingsStart(List<Bindings> bindings) {
-  ///   final authService = Get.find<AuthService>();
+  /// List<BindingsInterface> onBindingsStart(List<BindingsInterface> bindings) {
+  ///   final authService = Sint.find<AuthService>();
   ///   if (authService.isAdmin) {
   ///     bindings.add(AdminBinding());
   ///   }
@@ -92,7 +92,7 @@ abstract class SintMiddleware {
   Widget Function()? onPageBuildStart(Widget Function()? page) => page;
 
   /// This function will be called right after the
-  /// GetPage.page function is called and will give you the result
+  /// SintPage.page function is called and will give you the result
   /// of the function. and take the widget that will be showed.
   Widget onPageBuilt(Widget page) => page;
 

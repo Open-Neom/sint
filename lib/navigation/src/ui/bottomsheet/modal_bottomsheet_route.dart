@@ -93,7 +93,7 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
       child: Padding(
         padding:
             EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: _GetModalBottomSheet<T>(
+        child: _SintModalBottomSheet<T>(
           route: this,
           backgroundColor: backgroundColor ??
               sheetTheme.modalBackgroundColor ??
@@ -112,8 +112,8 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   }
 }
 
-class _GetModalBottomSheet<T> extends StatefulWidget {
-  const _GetModalBottomSheet({
+class _SintModalBottomSheet<T> extends StatefulWidget {
+  const _SintModalBottomSheet({
     super.key,
     this.route,
     this.backgroundColor,
@@ -134,10 +134,10 @@ class _GetModalBottomSheet<T> extends StatefulWidget {
   final bool enableDrag;
 
   @override
-  _GetModalBottomSheetState<T> createState() => _GetModalBottomSheetState<T>();
+  _SintModalBottomSheetState<T> createState() => _SintModalBottomSheetState<T>();
 }
 
-class _GetModalBottomSheetState<T> extends State<_GetModalBottomSheet<T>> {
+class _SintModalBottomSheetState<T> extends State<_SintModalBottomSheet<T>> {
   String _getRouteLabel(MaterialLocalizations localizations) {
     if ((Theme.of(context).platform == TargetPlatform.android) ||
         (Theme.of(context).platform == TargetPlatform.fuchsia)) {

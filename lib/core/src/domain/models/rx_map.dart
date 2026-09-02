@@ -34,14 +34,18 @@ class RxMap<K, V> extends SintListenable<Map<K, V>>
 
   @override
   void operator []=(K key, V value) {
-    this.value[key] = value;
-    refresh();
+    if (!this.value.containsKey(key) || this.value[key] != value) {
+      this.value[key] = value;
+      refresh();
+    }
   }
 
   @override
   void clear() {
-    value.clear();
-    refresh();
+    if (value.isNotEmpty) {
+      value.clear();
+      refresh();
+    }
   }
 
   @override
@@ -49,9 +53,12 @@ class RxMap<K, V> extends SintListenable<Map<K, V>>
 
   @override
   V? remove(Object? key) {
-    final val = value.remove(key);
-    refresh();
-    return val;
+    if (value.containsKey(key)) {
+      final val = value.remove(key);
+      refresh();
+      return val;
+    }
+    return null;
   }
 
 }

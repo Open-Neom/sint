@@ -1,5 +1,5 @@
-class ObxError {
-  const ObxError();
+class ObxError extends Error {
+  ObxError();
   @override
   String toString() {
     return """

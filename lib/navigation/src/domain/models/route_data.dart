@@ -6,14 +6,17 @@ import 'package:sint/navigation/src/utils/navigation_utilities.dart';
 
 /// This is basically a util for rules about 'what a route is'
 class RouteData {
-  final bool isGetPageRoute;
+  final bool isSintPageRoute;
   final bool isBottomSheet;
   final bool isDialog;
   final String? name;
 
+  @Deprecated('Use isSintPageRoute instead. Part of the legacy GetX route inspection.')
+  bool get isGetPageRoute => isSintPageRoute;
+
   const RouteData({
     required this.name,
-    required this.isGetPageRoute,
+    required this.isSintPageRoute,
     required this.isBottomSheet,
     required this.isDialog,
   });
@@ -21,7 +24,7 @@ class RouteData {
   factory RouteData.ofRoute(Route? route) {
     return RouteData(
       name: extractRouteName(route),
-      isGetPageRoute: route is SintPageRoute,
+      isSintPageRoute: route is SintPageRoute,
       isDialog: route is SintDialogRoute,
       isBottomSheet: route is SintModalBottomSheetRoute,
     );

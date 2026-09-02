@@ -1,5 +1,67 @@
 # Changelog - sint
 
+## [1.6.1] - 2026-09-02
+
+### Optimization — O(1) Route-Dispose Dependency Injection (Pillar I)
+- Stored reified `Type registeredType` in `_InstanceBuilderFactory<S>` to resolve `targetType` in `delete<S>()`.
+- Enables direct O(1) removal from `_typeSingl` even when invoked via `RouterReportManager.instance.reportRouteDispose()` without generic type parameters (`S == dynamic`).
+- Eradicates the O(N×M) brute-force fallback loop over the entire dependency injection tree upon route exit.
+
+### Reactive Fixes & Collection Hardening (Pillar S)
+- **`RxList.assign` & `RxList.assignAll`**: Now conditionally verify existing elements and length before refreshing, preventing unconditional UI rebuild cascades when the incoming collection is identical.
+- **`ListExtension.assign` & `assignAll`**: Fixed standard `List<E>` behavior to properly clear the collection before adding new items instead of erroneously appending.
+- **`RxSet` Conditional Refresh**: Hardened `clear()`, `removeAll()`, `retainAll()`, and `retainWhere()` to only invoke `refresh()` when the set contents actually change.
+
+### Maintenance & Hygiene
+- **Renamed Engine Builder**: Added `lib/state_manager/src/engine/sint_builder.dart`. `get_builder.dart` is preserved and re-exports it with a deprecation notice for seamless backwards compatibility.
+- **Filename Typo Fix**: Added `lib/state_manager/src/ui/obx_reactive_element.dart` with correct spelling. `obx_reacive_element.dart` is preserved and re-exports it with a deprecation notice.
+
+### Benchmark Comparison (1.6.0 vs 1.6.1)
+Microbenchmarks (median µs/op, Dart VM JIT, 7 rounds × 1k/20k ops):
+
+| Benchmark | 1.6.0 | 1.6.1 | Δ vs 1.6.0 |
+|---|--:|--:|--:|
+| `Sint.find<T>(tag)` (20k lookups) | 0.0683 | **0.0583** | **−14.6% faster** |
+| Deep Lookup `Sint.find` (Depth: 10) | 0.1890 | **0.1556** | **−17.7% faster** |
+| Reactive High-Load Audit (30k ops) | 5.6879 | **4.8578** | **−14.6% throughput** |
+| Fan-Out (100 listeners) | 0.9177 | **0.9020** | **−1.7% latency** |
+| Route Dispose Cleanup (`delete(key)`) | *O(N×M) scan* | **O(1) direct** | **Eliminated scan overhead** |
+
+## [1.6.0] - 2026-08-31
+
+### Feature 1 — Type-Keyed Injection Registry (Pillar I — O5a)
+- Replaced string-concatenated instance registry (`"${S.toString()}$tag"`) with a two-tiered Type-indexed registry `Map<Type, Map<String?, _InstanceBuilderFactory>>`.
+- Delivers **O(1) type-identity lookup** for `Sint.find<T>()`, eliminating string allocations in hot dependency paths.
+- Completely eliminates risk of minification name collisions in web release builds (`dart2js` / WASM).
+- Full backwards compatibility with `RouterReportManager` route-lifecycle disposal.
+
+Dependency Lookup Benchmarks (median µs/op, Dart VM JIT, 7 rounds × 1k/20k ops):
+
+| Benchmark | 1.5.0 / 1.5.1 | 1.6.0 | Δ |
+|---|--:|--:|--:|
+| `Sint.find<T>(tag)` (20k lookups) | 0.6777 | **0.0683** | **−89.9% (~10× speedup)** |
+| Deep Lookup `Sint.find` (Depth: 10) | 0.9162 | **0.1890** | **−79.4% (~5× speedup)** |
+| `SintController.update()` (p95 latency) | 0.3356 | **0.0636** | **−81.0% (~5.3× consistency)** |
+| Reactive High-Load Audit (30k ops) | 5.7302 | **5.6879** | **Optimized throughput** |
+
+### Feature 2 — Reactive Performance & Collection Conditional Refresh (Pillar S)
+- **`RxList`**: `[]=`, `remove`, `removeWhere`, `retainWhere`, `clear`, and `length=` now only trigger `refresh()` when the list contents or length actually change.
+- **`RxMap`**: `[]=`, `remove`, and `clear` now verify existing keys and values before triggering notifications.
+- **`Obx` Stale Dependency Cleanup**: `ObxReactiveElement.build()` now disposes prior frame subscriptions before recording active observables, eliminating phantom rebuilds on conditional UI branches.
+
+### Feature 3 — Synapse Hardening & Error Handling
+- **`Notifier.append`**: Wrapped in `try ... finally` to guarantee global synapse state cleanup even when widget builders throw exceptions.
+- **`ObxError`**: Formalized as a subclass of Dart's `Error`.
+- **`SintListener`**: `didUpdateWidget` now respects dynamically changed callback references.
+
+## [1.5.1] - 2026-08-31
+
+### Refactor & Ecosystem Alignment
+- **Log Message Alignment**: Updated router logs from `GetDelegate is created !` and `GetInformationParser is created !` to `SintDelegate is created !` and `SintInformationParser is created !`.
+- **Navigation Typedefs & Builders**: Replaced internal `GetPageBuilder` with `SintPageBuilder` (`GetPageBuilder` retained as `@Deprecated` alias for backwards compatibility).
+- **Route Data & Observer**: Replaced `isGetPageRoute` with `isSintPageRoute` (`isGetPageRoute` preserved as deprecated getter).
+- **Internal Widget & Error Cleanup**: Renamed private `_GetModalBottomSheet` to `_SintModalBottomSheet`, updated exception and error messages in `SintSnackBar` and `SintTickerProviderStateMixin` to remove legacy Get references.
+
 ## [1.5.0] - 2026-07-23
 
 Navigation overhaul (Pillar N). All changes are additive and backwards

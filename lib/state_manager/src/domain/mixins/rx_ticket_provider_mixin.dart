@@ -67,7 +67,7 @@ mixin SintTickerProviderStateMixin on SintController implements TickerProvider {
             throw FlutterError.fromParts(<DiagnosticsNode>[
               ErrorSummary('$this was disposed with an active Ticker.'),
               ErrorDescription(
-                '$runtimeType created a Ticker via its GetTickerProviderStateMixin, but at the time '
+                '$runtimeType created a Ticker via its SintTickerProviderStateMixin, but at the time '
                 'dispose() was called on the mixin, that Ticker was still active. All Tickers must '
                 'be disposed before calling super.dispose().',
               ),

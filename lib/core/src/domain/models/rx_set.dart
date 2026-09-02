@@ -67,26 +67,37 @@ class RxSet<E> extends SintListenable<Set<E>>
 
   @override
   void clear() {
-    value.clear();
-    refresh();
+    if (value.isNotEmpty) {
+      value.clear();
+      refresh();
+    }
   }
 
   @override
   void removeAll(Iterable<Object?> elements) {
+    final prevLength = value.length;
     value.removeAll(elements);
-    refresh();
+    if (value.length != prevLength) {
+      refresh();
+    }
   }
 
   @override
   void retainAll(Iterable<Object?> elements) {
+    final prevLength = value.length;
     value.retainAll(elements);
-    refresh();
+    if (value.length != prevLength) {
+      refresh();
+    }
   }
 
   @override
   void retainWhere(bool Function(E) test) {
+    final prevLength = value.length;
     value.retainWhere(test);
-    refresh();
+    if (value.length != prevLength) {
+      refresh();
+    }
   }
 }
 

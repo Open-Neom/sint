@@ -122,7 +122,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     }
     addPages(pages);
     addPage(notFoundRoute);
-    Sint.log('GetDelegate is created !');
+    Sint.log('SintDelegate is created !');
   }
 
   Future<RouteDecoder?> runMiddleware(RouteDecoder config) {

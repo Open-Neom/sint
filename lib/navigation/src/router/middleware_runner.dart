@@ -53,7 +53,7 @@ class MiddlewareRunner {
     return bindings;
   }
 
-  GetPageBuilder? runOnPageBuildStart(GetPageBuilder? page) {
+  SintPageBuilder? runOnPageBuildStart(SintPageBuilder? page) {
     for (final middleware in _middlewares) {
       page = middleware.onPageBuildStart(page);
     }

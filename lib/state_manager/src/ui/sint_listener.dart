@@ -64,7 +64,7 @@ class _SintListenerState<T> extends State<SintListener<T>> {
   @override
   void didUpdateWidget(covariant SintListener<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.rx != widget.rx) {
+    if (oldWidget.rx != widget.rx || oldWidget.listener != widget.listener) {
       _sub?.cancel();
       _sub = widget.rx.listen(widget.listener);
     }

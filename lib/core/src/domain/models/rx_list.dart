@@ -43,8 +43,10 @@ class RxList<E> extends SintListenable<List<E>>
 
   @override
   void operator []=(int index, E val) {
-    value[index] = val;
-    refresh();
+    if (value[index] != val) {
+      value[index] = val;
+      refresh();
+    }
   }
 
   /// Special override to push() element(s) in a reactive way
@@ -76,20 +78,28 @@ class RxList<E> extends SintListenable<List<E>>
   @override
   bool remove(Object? element) {
     final removed = value.remove(element);
-    refresh();
+    if (removed) {
+      refresh();
+    }
     return removed;
   }
 
   @override
   void removeWhere(bool Function(E element) test) {
+    final prevLength = value.length;
     value.removeWhere(test);
-    refresh();
+    if (value.length != prevLength) {
+      refresh();
+    }
   }
 
   @override
   void retainWhere(bool Function(E element) test) {
+    final prevLength = value.length;
     value.retainWhere(test);
-    refresh();
+    if (value.length != prevLength) {
+      refresh();
+    }
   }
 
   @override
@@ -97,8 +107,18 @@ class RxList<E> extends SintListenable<List<E>>
 
   @override
   set length(int newLength) {
-    value.length = newLength;
-    refresh();
+    if (value.length != newLength) {
+      value.length = newLength;
+      refresh();
+    }
+  }
+
+  @override
+  void clear() {
+    if (value.isNotEmpty) {
+      value.clear();
+      refresh();
+    }
   }
 
   @override
@@ -125,6 +145,34 @@ class RxList<E> extends SintListenable<List<E>>
     value.sort(compare);
     refresh();
   }
+
+  /// Replaces all existing items with [item] in a reactive way,
+  /// triggering [refresh] only if the list actually changes.
+  void assign(E item) {
+    if (value.length == 1 && value.first == item) return;
+    value.clear();
+    value.add(item);
+    refresh();
+  }
+
+  /// Replaces all existing items with [items] in a reactive way,
+  /// triggering [refresh] only if the contents actually change.
+  void assignAll(Iterable<E> items) {
+    if (identical(value, items)) return;
+    if (items is List<E> && items.length == value.length) {
+      bool isSame = true;
+      for (int i = 0; i < value.length; i++) {
+        if (value[i] != items[i]) {
+          isSame = false;
+          break;
+        }
+      }
+      if (isSame) return;
+    }
+    value.clear();
+    value.addAll(items);
+    refresh();
+  }
 }
 
 extension ListExtension<E> on List<E> {
@@ -149,17 +197,21 @@ extension ListExtension<E> on List<E> {
 
   /// Replaces all existing items of this list with [item]
   void assign(E item) {
-    if (this is RxList) {
-      (this as RxList).value.clear();
+    if (this is RxList<E>) {
+      (this as RxList<E>).assign(item);
+    } else {
+      clear();
+      add(item);
     }
-    add(item);
   }
 
   /// Replaces all existing items of this list with [items]
   void assignAll(Iterable<E> items) {
-    if (this is RxList) {
-      (this as RxList).value.clear();
+    if (this is RxList<E>) {
+      (this as RxList<E>).assignAll(items);
+    } else {
+      clear();
+      addAll(items);
     }
-    addAll(items);
   }
 }

@@ -22,7 +22,7 @@ class SintNavigationObserver extends NavigatorObserver {
 
     if (currentRoute.isBottomSheet || currentRoute.isDialog) {
       Sint.log("CLOSE ${currentRoute.name}");
-    } else if (currentRoute.isGetPageRoute) {
+    } else if (currentRoute.isSintPageRoute) {
       Sint.log("CLOSE TO ROUTE ${currentRoute.name}");
     }
     if (previousRoute != null) {

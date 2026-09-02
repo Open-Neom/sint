@@ -63,8 +63,8 @@ class SnackbarController {
     await future;
   }
 
-  /// Adds GetSnackbar to a view queue.
-  /// Only one GetSnackbar will be displayed at a time, and this method returns
+  /// Adds SintSnackBar to a view queue.
+  /// Only one SintSnackBar will be displayed at a time, and this method returns
   /// a future to when the snackbar disappears.
   Future<void> show() {
     return SintRootState.controller.config.snackBarQueue.addJob(this);

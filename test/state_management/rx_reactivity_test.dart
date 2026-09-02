@@ -60,7 +60,9 @@ void main() {
 
     test('Rx equality compares the wrapped value', () {
       final a = 5.obs;
+      // ignore: unrelated_type_equality_checks
       expect(a == 5, isTrue);
+      // ignore: unrelated_type_equality_checks
       expect(a == 6, isFalse);
       final b = 5.obs;
       expect(a == b, isTrue);

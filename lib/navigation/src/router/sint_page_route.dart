@@ -48,7 +48,7 @@ class SintPageRoute<T> extends PageRoute<T>
   @override
   final Duration reverseTransitionDuration;
 
-  final GetPageBuilder? page;
+  final SintPageBuilder? page;
   final String? routeName;
   final CustomTransition? customTransition;
   final List<BindingsInterface> bindings;

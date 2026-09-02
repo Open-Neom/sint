@@ -17,7 +17,7 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
   SintInformationParser({
     required this.initialRoute,
   }) {
-    Sint.log('GetInformationParser is created !');
+    Sint.log('SintInformationParser is created !');
   }
   @override
   SynchronousFuture<RouteDecoder> parseRouteInformation(
@@ -43,7 +43,7 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
       location = Sint.pathTranslator!.canonicalizePath(location);
     }
 
-    Sint.log('GetInformationParser: route location: $location');
+    Sint.log('SintInformationParser: route location: $location');
 
     return SynchronousFuture(RouteDecoder.fromRoute(location));
   }

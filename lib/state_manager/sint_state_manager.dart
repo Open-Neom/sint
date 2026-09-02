@@ -11,6 +11,7 @@ export 'src/domain/typedefs/state_typedefs.dart';
 
 // Engine
 export 'src/engine/get_builder.dart';
+export 'src/engine/sint_builder.dart';
 export 'src/engine/list_notifier.dart';
 export 'src/engine/notifier.dart';
 export 'src/engine/sint_controller.dart';
@@ -20,5 +21,6 @@ export 'src/sint_listenable.dart';
 
 // UI
 export 'src/ui/obx_reacive_element.dart';
+export 'src/ui/obx_reactive_element.dart';
 export 'src/ui/obx_widget.dart';
 export 'src/ui/sint_listener.dart';

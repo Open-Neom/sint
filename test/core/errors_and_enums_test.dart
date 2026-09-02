@@ -47,21 +47,21 @@ void main() {
 
   group('ObxError', () {
     test('toString contiene la marca [SINT]', () {
-      const err = ObxError();
+      final err = ObxError();
+      expect(err, isA<Error>());
       expect(err.toString(), contains('[SINT]'));
     });
 
     test('toString menciona el patrón de uso correcto', () {
-      const err = ObxError();
+      final err = ObxError();
       final msg = err.toString();
       expect(msg, contains('Obx'));
       expect(msg, contains('observable'));
     });
 
-    test('es const-constructible', () {
-      const a = ObxError();
-      const b = ObxError();
-      expect(identical(a, b), isTrue);
+    test('es instancia de Error', () {
+      final a = ObxError();
+      expect(a, isA<Error>());
     });
   });
 

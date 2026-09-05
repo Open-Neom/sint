@@ -158,19 +158,25 @@ class RxList<E> extends SintListenable<List<E>>
   /// Replaces all existing items with [items] in a reactive way,
   /// triggering [refresh] only if the contents actually change.
   void assignAll(Iterable<E> items) {
-    if (identical(value, items)) return;
-    if (items is List<E> && items.length == value.length) {
+    final current = value;
+    if (identical(current, items)) return;
+    // Iterables and list views may read this very list lazily. Consume them
+    // before clearing the backing collection (also preserves it on failure).
+    // A List can be compared without allocating when its contents are equal.
+    final source = items is List<E> ? items : List<E>.of(items);
+    if (source.length == current.length) {
       bool isSame = true;
-      for (int i = 0; i < value.length; i++) {
-        if (value[i] != items[i]) {
+      for (int i = 0; i < current.length; i++) {
+        if (current[i] != source[i]) {
           isSame = false;
           break;
         }
       }
       if (isSame) return;
     }
-    value.clear();
-    value.addAll(items);
+    final replacement = items is List<E> ? List<E>.of(source) : source;
+    current.clear();
+    current.addAll(replacement);
     refresh();
   }
 }
@@ -210,8 +216,10 @@ extension ListExtension<E> on List<E> {
     if (this is RxList<E>) {
       (this as RxList<E>).assignAll(items);
     } else {
+      if (identical(this, items)) return;
+      final replacement = List<E>.of(items);
       clear();
-      addAll(items);
+      addAll(replacement);
     }
   }
 }

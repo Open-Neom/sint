@@ -30,6 +30,7 @@
 ---
 
 - [About SINT](#about-sint)
+- [What's New in 1.6.2](#whats-new-in-162)
 - [What's New in 1.6.1](#whats-new-in-161)
 - [What's New in 1.6.0](#whats-new-in-160)
 - [What's New in 1.5.0](#whats-new-in-150)
@@ -66,28 +67,39 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 
 **Key principles:**
 
-- **PERFORMANCE:** No Streams or ChangeNotifier overhead. Minimal RAM consumption.
+- **PERFORMANCE:** Direct synchronous notifications for widgets; lazy asynchronous streams for `listen` and workers. Measure both paths separately.
 - **PRODUCTIVITY:** Simple syntax. One import: `import 'package:sint/sint.dart';`
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
 
 ---
 
+## What's New in 1.6.2
+
+**Focus: correctness under listener mutation, overlapping route lifecycles, and reproducible measurement.**
+
+- Listener removal during dispatch no longer skips unrelated callbacks or throws. Additions wait for the next notification; each disposer owns exactly one registration.
+- Streams reconnect after the last subscriber cancels. Closing an Rx releases its upstream `bindStream` subscriptions. `SintListener` handles callback changes and distinct Rx objects with equal values.
+- Collection assignments snapshot lazy/self-referencing iterables before mutation and notify once, only when needed.
+- DI uses type identity throughout registration, lookup and disposal. Route ownership captures each registration generation, so an old route cannot close its replacement. Disposing M dependencies now performs O(M) registry work, excluding application lifecycle callbacks.
+- Nested routes register each descendant once; matching and URL generation share a tokenizer for optional/dotted parameters, patterns, wildcards and literal escaping. Path parameters are separate from query parameters.
+- Benchmarks validate their results, retain raw samples and report **batch means**, not individual-operation p95 latency. See [benchmark methodology](test/benchmarks/README.md).
+
+Compatibility notes:
+
+- Requires **Flutter >=3.32 / Dart >=3.8**, aligning the declared floor with APIs and development dependencies already used by the package.
+- `RouteParser` snapshots its constructor list. Change routes through `parser.routes`, `registeredRoutes`, or add/remove APIs; later edits to the original input list are not observed. Mutations through the exposed list invalidate the index even when its length stays the same.
+- Traditional DI string keys remain usable when unambiguous. `registeredKeys` returns opaque handles for collisions; use those handles or typed APIs. Ambiguous legacy `delete(key:)`, `reload(key:)` and `markAsDirty(key:)` calls throw `StateError` instead of modifying the wrong registration. Treat keys as opaque, not type-name prefixes.
+
 ## What's New in 1.6.1
 
-**Focus: O(1) Route-Dispose DI Optimization, Collection Assignment Hardening, and Engine Hygiene.**
+**Focus: Direct DI entry removal, collection assignment hardening, and engine hygiene.**
 
-- **O(1) Route-Dispose DI Optimization (Pillar I):** Stored reified generic type in `_InstanceBuilderFactory` to allow direct O(1) removal in `Sint.delete(key: ...)` when invoked by `RouterReportManager` without generic parameters, completely eradicating the $O(N \times M)$ scan upon route disposal.
+- **Direct DI entry removal (Pillar I):** Stored the reified generic type for direct registry removal. This did not eliminate the route manager's repeated list scans; total route cleanup remained quadratic until 1.6.2.
 - **Conditional `assign` & `assignAll` (Pillar S):** `RxList.assign` and `RxList.assignAll` now verify existing length and items before notifying, avoiding UI rebuild cascades when incoming collections are identical.
 - **Collection Hardening:** Fixed `ListExtension.assign`/`assignAll` on standard lists to clear prior to insertion, and added conditional refresh to `RxSet`.
 - **Engine Hygiene:** Added `sint_builder.dart` and `obx_reactive_element.dart` with correct naming conventions while keeping backwards-compatible legacy re-exports.
 
-| Benchmark (median µs/op) | 1.6.0 | 1.6.1 | Δ vs 1.6.0 |
-|---|--:|--:|--:|
-| **Dependency Lookup `Sint.find<T>(tag)`** (20k finds) | 0.0683 | **0.0583** | **−14.6% faster** |
-| **Deep Lookup `Sint.find`** (Depth: 10) | 0.1890 | **0.1556** | **−17.7% faster** |
-| **Reactive High-Load Audit** (30k ops) | 5.6879 | **4.8578** | **−14.6% latency** |
-| **Fan-Out** (100 listeners) | 0.9177 | **0.9020** | **−1.7% latency** |
-| **Route Disposal Cleanup** (`delete(key)`) | *O(N×M) scan* | **O(1) direct** | **Instant cleanup** |
+Historical timing tables are retained in the changelog as unverified historical reports, not current performance guarantees. The old "Depth: 10" test performed a flat tagged lookup, not recursive dependency resolution.
 
 ---
 
@@ -97,14 +109,9 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 
 ### Type-Keyed Injection Registry (O5a)
 
-Dependency injection now uses a two-tiered Type-indexed registry (`Map<Type, Map<String?, _InstanceBuilderFactory>>`), eliminating string concatenation allocations on `Sint.find<T>()` and eradicating minification name collisions in web release builds (`dart2js` / WASM).
+Dependency injection introduced a two-tiered Type-indexed registry (`Map<Type, Map<String?, _InstanceBuilderFactory>>`), avoiding type-name string concatenation on `Sint.find<T>()`. The remaining legacy string-key registration/disposal collisions were fixed in 1.6.2; a native benchmark does not establish web/Wasm performance.
 
-| Benchmark (median µs/op) | 1.5.0 | 1.6.0 | Δ |
-|---|--:|--:|--:|
-| **Dependency Lookup `Sint.find<T>(tag)`** (20k finds) | 0.6777 | **0.0683** | **−89.9% (~10× speedup)** |
-| **Deep Lookup `Sint.find`** (Depth: 10) | 0.9162 | **0.1890** | **−79.4% (~5× speedup)** |
-| **`SintController.update()`** (p95 latency) | 0.3356 | **0.0636** | **−81.0% (~5.3× consistency)** |
-| **Reactive High-Load Audit** (30k ops) | 5.7302 | **5.6879** | **Optimized throughput** |
+The original seven-sample harness measured batch averages. Its "p95" label did not represent individual-operation tail latency and should not be used as such.
 
 ### Collection Conditional Refresh (Pillar S)
 
@@ -131,7 +138,7 @@ Route matching no longer scans the full route table with one regex per route. Ro
 | Param match, last of 100 routes | 25.72 | 4.95 | **−80.8%** |
 | Unknown route (miss), 100 routes | 31.60 | 1.54 | **−95.1%** |
 
-With 100 registered routes, matching now costs the same as with 10 — deep links, back/forward and unknownRoute resolution all get faster as your app grows.
+The first-segment index reduces the candidates examined, but cost still depends on bucket size. A table of routes sharing `/api/...` can require scanning the whole bucket; matching is not independent of route count. The historical table above covers distinct-prefix workloads only.
 
 ### Extended Route Syntax
 
@@ -184,13 +191,13 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list of changes.
 | `Sint.find` (tagged) | 0.5555 | 0.3835 | **−31.0%** |
 | `SintController.update()` | 0.0158 | 0.0070 | **−55.7%** |
 
-- **No per-notification listener copy** — the notifier iterates directly with a mutation version counter instead of allocating a defensive list copy on every `value = x`.
+- **No per-notification listener copy** — direct iteration was introduced here; 1.6.2 replaces its unsafe mutation-counter logic with per-registration entries and deferred compaction.
 - **Direct `markNeedsBuild` in Obx** — no more one-microtask-per-notification; Flutter batches rebuilds into the frame naturally.
 - **Lazy `_updatersGroupIds`** — every Rx and controller used to allocate an eager `HashMap`; now created on first use (and `dispose()` clears groups, fixing a memory leak).
 - **Typed `Notifier.read`** — enables static dispatch/inlining in AOT and dart2js (Flutter Web).
 - **Single-lookup `Sint.find`** — from 4–5 map lookups per call down to one, across `find`, `put`, `delete` and friends.
 
-Benchmarks now run on a reusable statistical harness (warmup + 7 rounds, median and p95) in `test/benchmarks/` — regressions are measurable from here on.
+The original harness used warmup and seven rounds. Its historical numbers above are unverified across environments; 1.6.2 adds raw artifacts, workload validation and explicit batch-average labels.
 
 ---
 
@@ -441,7 +448,7 @@ Add SINT to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  sint: ^1.5.0
+  sint: ^1.6.2
 ```
 
 Import it:
@@ -454,33 +461,11 @@ import 'package:sint/sint.dart';
 
 ## High-Fidelity Performance (Benchmarks)
 
-SINT is built for speed — and since 1.4.0 every number is measured on a reusable statistical harness (2k-op warmup, 7 rounds, median and p95) in `test/benchmarks/`, so regressions are caught, not guessed.
+See [benchmark methodology](test/benchmarks/README.md) for the serial runner, raw JSON artifacts and comparison tool, and [the performance app](performance/README.md) for profile/release frame measurements.
 
-**State & Injection (SINT 1.4.0, median µs/op):**
+The suite distinguishes synchronous listener dispatch from asynchronous stream delivery; covers DI lookup and route disposal separately; and tests both distinct and shared route prefixes. Every workload asserts its observable outcome. Reported microbenchmark statistics describe means of timed batches, not frame times or per-operation tail latency.
 
-| Pillar | Metric | Result | Context |
-|--------|--------|--------|---------|
-| S (State) | Reactive `.obs` notification | **0.010 us/op** | 1 listener, 7 rounds × 20k ops |
-| S (State) | Simple `update()` | **0.007 us/op** | 1 listener |
-| S (State) | Fan-out, 100 listeners | **0.211 us/op** | scales linearly, no per-notification allocation |
-| I (Injection) | Registry lookup `Sint.find` | **0.38 us/find** | single-lookup, tagged instance |
-| T (Translation) | `trParams` interpolation | **1.61 us/op** | 10,000 interpolations |
-
-**Navigation route matching (SINT 1.5.0, median µs/op):**
-
-| Metric | 10 routes | 100 routes |
-|--------|----------:|-----------:|
-| Literal match (worst case: last route) | 3.66 us/op | **3.34 us/op** |
-| Param match (worst case: last route) | 5.03 us/op | **4.95 us/op** |
-| Unknown route (miss → unknownRoute) | 1.59 us/op | **1.54 us/op** |
-
-Matching cost is now independent of route-table size — O(k) via the segment index, not O(routes).
-
-**Why SINT is faster:**
-
-- **Pillar S:** Direct `ListNotifier` propagation without Stream overhead; zero allocations on the notification hot path; Obx rebuilds without per-notification microtasks. 15-30x faster than BLoC.
-- **Pillar I:** Single-lookup hash resolution in the global registry with lifecycle management.
-- **Pillar N:** Segment-indexed route matching plus context-less navigation — no widget tree lookups during routing.
+CI separates correctness/coverage from serial benchmarks. Timing regressions require comparable machine, SDK, harness and execution-mode metadata plus an explicit budget; shared-runner noise is not a reliable universal pass/fail threshold. No comparative BLoC speed claim is made without an equivalent, executable benchmark.
 
 ---
 

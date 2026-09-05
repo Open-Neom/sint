@@ -13,10 +13,9 @@ void main() {
       var fired = 0;
       rx.listen((_) => fired++);
       rx.value = 1;
-      // The listen() priming pumps the initial value once asynchronously,
-      // and the change pushes a second event.
+      // listen() delivers subsequent changes asynchronously; it does not prime.
       return Future<void>.delayed(Duration.zero).then((_) {
-        expect(fired, greaterThanOrEqualTo(1));
+        expect(fired, 1);
         expect(rx.value, 1);
       });
     });
@@ -43,8 +42,12 @@ void main() {
       rx.value = 'hello';
       rx.value = 'hello';
       await Future<void>.delayed(Duration.zero);
-      expect(fired, baseline,
-          reason: 'Same value writes are deduped');
+      expect(fired, baseline, reason: 'Same value writes are deduped');
+      // ignore: invalid_use_of_protected_member
+      rx.refresh();
+      await Future<void>.delayed(Duration.zero);
+      expect(fired, baseline + 1,
+          reason: 'Explicit refresh must publish the unchanged value');
     });
 
     test('trigger() with a different value pushes through stream', () async {

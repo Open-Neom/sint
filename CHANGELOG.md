@@ -1,5 +1,33 @@
 # Changelog - sint
 
+## [1.6.2] - Unreleased
+
+### Correctness and lifecycle
+- Mutation-safe synchronous listener dispatch with per-registration disposers, immediate removal, deferred additions and exception-safe nested notification bookkeeping. No listener-list copy per notification.
+- Restore the async stream bridge after the last subscriber cancels; close Rx streams idempotently and cancel all upstream `bindStream` subscriptions when the Rx closes.
+- `SintListener` uses the latest callback and compares sources by identity, not wrapped-value equality.
+- Snapshot lazy/self-referencing iterables before `assignAll` mutation; unchanged lists stay silent and changed Rx maps publish once.
+- Make the type-keyed DI registry authoritative; reject ambiguous legacy string keys instead of resolving the wrong type/tag. Capture route ownership by registration generation to protect replacements and revived fenix instances.
+- Initialize lazy registrations through `putOrFind`, and harden replacement, reload and lifecycle reentrancy.
+- Preserve exact types through the complete `toInitial(keep:)` route/widget teardown without making them permanent. Align `Bind.replace/lazyReplace`, close local bindings, and prevent `onReady` after `onClose`.
+- Dispose M route-owned dependencies with O(M) registry work, excluding user lifecycle callbacks; continue cleanup if one callback throws, then propagate its error.
+- Register nested route descendants once, remove the correct qualified branch, and share route-template tokenization between matching and URL generation. Handle optional/dotted parameters, custom captures, escaping and separate query/path data.
+- Invalidate the route index for all mutations through the exposed route list, including same-length replacements and reorderings.
+
+### Compatibility notes
+- Correct the supported SDK floor to Flutter >=3.32.0 / Dart >=3.8.0. The former 3.22/3.4 declaration conflicted with APIs and development dependencies already in use.
+- `RouteParser` now snapshots its initial input list. Mutate `parser.routes`, `registeredRoutes`, or use add/remove methods afterward; mutating the original list alias is no longer observed.
+- `registeredKeys` retains unambiguous traditional strings and returns opaque handles for collisions. Ambiguous legacy `delete(key:)`, `reload(key:)` and `markAsDirty(key:)` calls throw `StateError`. Prefer typed APIs or handles returned by `registeredKeys`; do not parse type-name prefixes.
+
+### Measurement and tests
+- Add adversarial regression tests and actual widget rebuild/cleanup counts; replace the duplicated "targeted rebuild" timing demo.
+- Add validated workload outcomes, time-based warmup/calibration, ordered raw batch samples, dispersion and machine/SDK/harness metadata. Batch-average statistics are explicitly not individual-operation p95 latency.
+- Cover shared-prefix navigation, real lazy DI chains, complete lifecycle, changed/unchanged collections, synchronous dispatch and asynchronous delivery separately.
+- Separate correctness/coverage jobs from serial performance artifact generation. Provide explicit-budget comparison and a macOS profile/release frame-measurement app.
+
+### Corrections to historical performance claims
+The tables below are preserved as historical reports, **not validated current performance guarantees**. The old "Depth: 10" test performed a hot flat tagged lookup; its seven-sample "p95" summarized batch means, not per-operation tail latency. The 1.6.1 direct map deletion still left quadratic route-list cleanup. First-segment indexing does not make matching independent of route count for shared-prefix tables. The former BLoC speed multiplier had no equivalent runnable comparison and has been removed from the README. Native JIT measurements also do not establish release, browser or Wasm performance.
+
 ## [1.6.1] - 2026-09-02
 
 ### Optimization — O(1) Route-Dispose Dependency Injection (Pillar I)

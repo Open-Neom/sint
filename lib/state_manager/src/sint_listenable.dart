@@ -8,28 +8,47 @@ class SintListenable<T> extends ListNotifier implements RxInterface<T> {
   SintListenable(T val) : _value = val;
 
   StreamController<T>? _controller;
+  VoidCallback? _removeStreamListener;
 
   StreamController<T> get subject {
     if (_controller == null) {
-      _controller =
-      StreamController<T>.broadcast(onCancel: addListener(_streamListener));
-      _controller?.add(_value);
-
-      ///TODO: report to controller dispose
+      _controller = StreamController<T>.broadcast(
+        onListen: () {
+          if (!isDisposed) {
+            _removeStreamListener ??= addListener(_streamListener);
+          }
+        },
+        onCancel: _detachStreamListener,
+      );
+      if (isDisposed) _controller!.close();
     }
     return _controller!;
   }
 
   void _streamListener() {
-    _controller?.add(_value);
+    final controller = _controller;
+    if (controller != null && !controller.isClosed) {
+      controller.add(_value);
+    }
+  }
+
+  void _detachStreamListener() {
+    _removeStreamListener?.call();
+    _removeStreamListener = null;
   }
 
   @override
   @mustCallSuper
   void close() {
-    removeListener(_streamListener);
-    _controller?.close();
     dispose();
+  }
+
+  @override
+  void dispose() {
+    if (isDisposed) return;
+    _detachStreamListener();
+    _controller?.close();
+    super.dispose();
   }
 
   Stream<T> get stream {
@@ -63,11 +82,11 @@ class SintListenable<T> extends ListNotifier implements RxInterface<T> {
 
   @override
   StreamSubscription<T> listen(
-      void Function(T)? onData, {
-        Function? onError,
-        void Function()? onDone,
-        bool? cancelOnError,
-      }) =>
+    void Function(T)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) =>
       stream.listen(
         onData,
         onError: onError,

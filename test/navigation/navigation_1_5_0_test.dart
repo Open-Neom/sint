@@ -7,6 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
 
+class _OpaqueRouteArgument {
+  const _OpaqueRouteArgument();
+}
+
 SintPage _page(String name,
         {List<SintMiddleware>? middlewares,
         PreventDuplicateHandlingMode? mode}) =>
@@ -242,17 +246,64 @@ void main() {
           PreventDuplicateHandlingMode.popUntilOriginalRoute);
     });
 
-    test('restoreRouteInformation passes route state', () {
+    test('restoreRouteInformation preserves JSON-safe route state', () {
       final parser = SintInformationParser(initialRoute: '/');
-      final settings = PageSettings(Uri.parse('/a'), 'my-state');
+      final state = <String, Object?>{
+        'name': 'my-state',
+        'count': 2,
+        'enabled': true,
+        'items': <Object?>['one', null, 3.5],
+      };
+      final settings = PageSettings(Uri.parse('/a'), state);
       final decoder = RouteDecoder([_page('/a')], settings);
       final info = parser.restoreRouteInformation(decoder);
-      expect(info.state, 'my-state');
+      expect(info.state, same(state));
+    });
+
+    test('restoreRouteInformation drops opaque Dart route arguments', () {
+      final parser = SintInformationParser(initialRoute: '/');
+      const opaqueArgument = _OpaqueRouteArgument();
+      final settings = PageSettings(Uri.parse('/a'), opaqueArgument);
+      final decoder = RouteDecoder([_page('/a')], settings);
+
+      final info = parser.restoreRouteInformation(decoder);
+
+      expect(info.state, isNull);
+      expect(decoder.pageSettings?.arguments, same(opaqueArgument));
+    });
+
+    test('restoreRouteInformation drops containers with unsafe values', () {
+      final parser = SintInformationParser(initialRoute: '/');
+      const opaqueArgument = _OpaqueRouteArgument();
+      final settings = PageSettings(
+        Uri.parse('/a'),
+        <Object?>[
+          'safe',
+          <String, Object?>{'release': opaqueArgument},
+        ],
+      );
+      final decoder = RouteDecoder([_page('/a')], settings);
+
+      final info = parser.restoreRouteInformation(decoder);
+
+      expect(info.state, isNull);
+    });
+
+    test('route state sanitizer rejects cycles and invalid JSON numbers', () {
+      final cyclicState = <Object?>[];
+      cyclicState.add(cyclicState);
+
+      expect(sanitizeRouteInformationState(cyclicState), isNull);
+      expect(sanitizeRouteInformationState(double.nan), isNull);
+      expect(sanitizeRouteInformationState(double.infinity), isNull);
+      expect(
+          sanitizeRouteInformationState(<Object, Object?>{1: 'value'}), isNull);
     });
   });
 
   group('W3 + 1.3.1 activation — popUntilOriginalRoute end-to-end', () {
-    testWidgets('duplicate push with popUntilOriginalRoute pops back to original',
+    testWidgets(
+        'duplicate push with popUntilOriginalRoute pops back to original',
         (tester) async {
       await tester.pumpWidget(SintMaterialApp(
         initialRoute: '/',

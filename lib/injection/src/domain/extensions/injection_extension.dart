@@ -1,16 +1,17 @@
-
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/lifecycle.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
 import 'package:sint/injection/src/domain/models/instance_info.dart';
+import 'package:sint/injection/src/domain/models/route_dependency.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 
 extension InjectionExtension on SintInterface {
   T call<T>() => find<T>();
 
-  /// Holds references to every registered Instance when using
-  /// `Sint.put()`
+  /// Active factories indexed by opaque handles for legacy string-key callers.
   static final Map<String, _InstanceBuilderFactory> _singl = {};
+  static final Map<String, Set<_InstanceBuilderFactory>> _legacySingl = {};
+  static int _nextHandle = 0;
 
   /// Type-keyed injection registry (O5a - SINT 1.6.0)
   /// Provides O(1) type-identity lookups, eliminating string concatenation
@@ -18,7 +19,78 @@ extension InjectionExtension on SintInterface {
   static final Map<Type, Map<String?, _InstanceBuilderFactory>> _typeSingl = {};
 
   /// Exposes the registered dependency keys for internal use (e.g. selective cleanup).
-  static Iterable<String> get registeredKeys => _singl.keys;
+  static Iterable<String> get registeredKeys => _singl.values.map((factory) =>
+      _legacySingl[factory.legacyKey]!.length == 1
+          ? factory.legacyKey
+          : factory.handle);
+
+  /// Resolves the actual registered type, including disambiguated handles.
+  static Type? registeredTypeForKey(String key) =>
+      _factoryForKey(key)?.registeredType;
+
+  /// Keeps an instance across a navigation reset without making it permanent.
+  /// Existing route and Binder disposal callbacks no longer own this instance.
+  static void detachInstanceFromOwners(String key) {
+    final factory = _factoryForKey(key);
+    if (factory != null) {
+      factory.generation = Object();
+      factory.isDirty = false;
+    }
+  }
+
+  /// Captures the current generation for the widget that owns its lifetime.
+  RouteDependency? captureInstanceLifecycle<S>({String? tag}) {
+    final factory = _typeSingl[S]?[tag];
+    return factory == null
+        ? null
+        : _routeDependency(factory, factory.generation);
+  }
+
+  /// Captures the currently registered generation for legacy route reporters.
+  static RouteDependency? routeDependencyForKey(String key) {
+    final factory = _factoryForKey(key);
+    return factory == null
+        ? null
+        : _routeDependency(factory, factory.generation);
+  }
+
+  static RouteDependency _routeDependency(
+          _InstanceBuilderFactory factory, Object? generation) =>
+      RouteDependency(
+        markAsDirty: () {
+          if (identical(factory.generation, generation) && !factory.permanent) {
+            factory.isDirty = true;
+          }
+        },
+        delete: () =>
+            identical(factory.generation, generation) &&
+            _deleteFactory(factory),
+      );
+
+  static _InstanceBuilderFactory? _factoryForKey(String key) {
+    // A Dart type name cannot begin with '@', so handles cannot be confused
+    // with the historical type.toString() + tag format.
+    if (key.startsWith('@sint/')) return _singl[key];
+    final matches = _legacySingl[key];
+    if (matches == null || matches.isEmpty) return null;
+    if (matches.length > 1) {
+      throw StateError('Ambiguous dependency key "$key". Use a type and tag '
+          'or a handle from InjectionExtension.registeredKeys.');
+    }
+    return matches.single;
+  }
+
+  static void _unregister(_InstanceBuilderFactory factory) {
+    final tags = _typeSingl[factory.registeredType];
+    if (identical(tags?[factory.tag], factory)) {
+      tags!.remove(factory.tag);
+      if (tags.isEmpty) _typeSingl.remove(factory.registeredType);
+    }
+    _singl.remove(factory.handle);
+    final legacy = _legacySingl[factory.legacyKey];
+    legacy?.remove(factory);
+    if (legacy?.isEmpty ?? false) _legacySingl.remove(factory.legacyKey);
+  }
 
   ///
   S put<S>(
@@ -134,13 +206,13 @@ extension InjectionExtension on SintInterface {
   }) {
     final key = _getKey(S, name);
 
-    _InstanceBuilderFactory<S>? dep;
-    final existing = _typeSingl[S]?[name] ?? _singl[key];
+    final existing = _typeSingl[S]?[name];
     if (existing != null) {
       if (!existing.isDirty) {
         return;
       } else {
-        dep = existing as _InstanceBuilderFactory<S>;
+        // Its route still owns the old generation until route disposal.
+        _unregister(existing);
       }
     }
     final factory = _InstanceBuilderFactory<S>(
@@ -150,10 +222,12 @@ extension InjectionExtension on SintInterface {
       isInit: false,
       fenix: fenix,
       tag: name,
-      lateRemove: dep,
+      handle: '@sint/${_nextHandle++}',
+      legacyKey: key,
     );
     _typeSingl.putIfAbsent(S, () => {})[name] = factory;
-    _singl[key] = factory;
+    _singl[factory.handle] = factory;
+    _legacySingl.putIfAbsent(key, () => {}).add(factory);
   }
 
   /// Initializes the dependencies for a Class Instance [S] (or tag),
@@ -165,24 +239,34 @@ extension InjectionExtension on SintInterface {
   /// (not for Singletons access).
   /// Returns the instance if not initialized, required for Sint.create() to
   /// work properly.
-  S? _initDependencies<S>({String? name}) {
-    final dep = _typeSingl[S]?[name] ?? _singl[_getKey(S, name)]!;
+  S? _initDependencies<S>(
+      {String? name, required _InstanceBuilderFactory dep}) {
     if (dep.isInit) {
       return null;
     }
     final isSingleton = dep.isSingleton ?? false;
+    final generation = Object();
     if (isSingleton) {
       dep.isInit = true;
+      dep.generation = generation;
     }
-    final i = _startController<S>(tag: name, factory: dep);
-
-    if (isSingleton) {
-      if (Sint.smartManagement != SmartManagement.onlyBuilder) {
-        final key = _getKey(S, name);
-        RouterReportManager.instance.reportDependencyLinkedToRoute(key);
+    try {
+      final i = _startController<S>(tag: name, factory: dep);
+      if (isSingleton && identical(dep.generation, generation)) {
+        if (Sint.smartManagement != SmartManagement.onlyBuilder) {
+          RouterReportManager.instance.reportDependencyLinkedToRoute(
+            _routeDependency(dep, generation),
+          );
+        }
       }
+      return i;
+    } catch (_) {
+      if (identical(dep.generation, generation)) {
+        dep.isInit = false;
+        dep.generation = null;
+      }
+      rethrow;
     }
-    return i;
   }
 
   InstanceInfo getInstanceInfo<S>({String? tag}) {
@@ -200,9 +284,9 @@ extension InjectionExtension on SintInterface {
   _InstanceBuilderFactory? _getDependency<S>({String? tag, String? key}) {
     _InstanceBuilderFactory? dep;
     if (key != null) {
-      dep = _singl[key];
+      dep = _factoryForKey(key);
     } else {
-      dep = _typeSingl[S]?[tag] ?? _singl[_getKey(S, tag)];
+      dep = _typeSingl[S]?[tag];
     }
     if (dep == null) {
       final logKey = key ?? _getKey(S, tag);
@@ -213,9 +297,7 @@ extension InjectionExtension on SintInterface {
   }
 
   void markAsDirty<S>({String? tag, String? key}) {
-    final dep = key != null
-        ? _singl[key]
-        : (_typeSingl[S]?[tag] ?? _singl[_getKey(S, tag)]);
+    final dep = key != null ? _factoryForKey(key) : _typeSingl[S]?[tag];
     if (dep != null && !dep.permanent) {
       dep.isDirty = true;
     }
@@ -242,9 +324,9 @@ extension InjectionExtension on SintInterface {
   }
 
   S putOrFind<S>(InstanceBuilderCallback<S> dep, {String? tag}) {
-    final factory = _typeSingl[S]?[tag] ?? _singl[_getKey(S, tag)];
+    final factory = _typeSingl[S]?[tag];
     if (factory != null) {
-      return factory.getDependency() as S;
+      return find<S>(tag: tag);
     } else {
       return put(dep(), tag: tag);
     }
@@ -256,7 +338,7 @@ extension InjectionExtension on SintInterface {
   /// If the registered type <[S]> (or [tag]) is a Controller,
   /// it will initialize it's lifecycle.
   S find<S>({String? tag}) {
-    final dep = _typeSingl[S]?[tag] ?? _singl[_getKey(S, tag)];
+    final dep = _typeSingl[S]?[tag];
     if (dep == null) {
       // ignore: lines_longer_than_80_chars
       throw '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"';
@@ -265,7 +347,7 @@ extension InjectionExtension on SintInterface {
     /// although dirty solution, the lifecycle starts inside
     /// `initDependencies`, so we have to return the instance from there
     /// to make it compatible with `Sint.create()`.
-    final i = _initDependencies<S>(name: tag);
+    final i = _initDependencies<S>(name: tag, dep: dep);
     return (i ?? dep.getDependency()) as S;
   }
 
@@ -284,8 +366,11 @@ extension InjectionExtension on SintInterface {
   void replace<P>(P child, {String? tag}) {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    put(child, tag: tag, permanent: permanent);
+    final factory = _typeSingl[P]?[tag];
+    if (factory != null) {
+      _deleteFactory(factory, force: permanent, keepFactory: false);
+    }
+    put<P>(child, tag: tag, permanent: permanent);
   }
 
   /// Replaces a parent instance with a new Instance<P> lazily from the
@@ -299,8 +384,11 @@ extension InjectionExtension on SintInterface {
       {String? tag, bool? fenix}) {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+    final factory = _typeSingl[P]?[tag];
+    if (factory != null) {
+      _deleteFactory(factory, force: permanent, keepFactory: false);
+    }
+    lazyPut<P>(builder, tag: tag, fenix: fenix ?? permanent);
   }
 
   /// Generates the key based on [type] (and optionally a [name])
@@ -326,70 +414,46 @@ extension InjectionExtension on SintInterface {
   ///   the Instance. **don't use** it unless you know what you are doing.
   /// - [force] Will delete an Instance even if marked as `permanent`.
   bool delete<S>({String? tag, String? key, bool force = false}) {
-    final newKey = key ?? _getKey(S, tag);
-
-    final dep = _singl[newKey];
-
+    final dep = key == null ? (_typeSingl[S]?[tag]) : _factoryForKey(key);
     if (dep == null) {
-      Sint.log('Instance "$newKey" already removed.', isError: true);
       return false;
     }
-
-    final _InstanceBuilderFactory builder;
-    if (dep.isDirty) {
-      builder = dep.lateRemove ?? dep;
-    } else {
-      builder = dep;
+    if (key != null &&
+        ((S != dynamic && dep.registeredType != S) ||
+            (tag != null && dep.tag != tag))) {
+      throw ArgumentError(
+          'Dependency key does not match the supplied type/tag');
     }
+    return _deleteFactory(dep, force: force);
+  }
 
-    if (builder.permanent && !force) {
+  static bool _deleteFactory(_InstanceBuilderFactory factory,
+      {bool force = false, bool keepFactory = true}) {
+    if (factory.permanent && !force) {
       Sint.log(
-        // ignore: lines_longer_than_80_chars
-        '"$newKey" has been marked as permanent, SmartManagement is not authorized to delete it.',
+        '"${factory.legacyKey}" has been marked as permanent, '
+        'SmartManagement is not authorized to delete it.',
         isError: true,
       );
       return false;
     }
-    final i = builder.dependency;
-
+    final i = factory.dependency;
+    final active =
+        identical(_typeSingl[factory.registeredType]?[factory.tag], factory);
+    // Invalidate ownership before user callbacks. onClose may register or
+    // resolve another instance of this same type, including a fenix revival.
+    factory.dependency = null;
+    factory.isInit = false;
+    factory.isDirty = false;
+    factory.generation = null;
+    if (!keepFactory || !factory.fenix || !active) _unregister(factory);
     if (i is SintLifeCycleMixin) {
       i.onDelete();
-      Sint.log('"$newKey" onDelete() called');
-    }
-
-    if (builder.fenix) {
-      builder.dependency = null;
-      builder.isInit = false;
-      return true;
-    } else {
-      if (dep.lateRemove != null) {
-        dep.lateRemove = null;
-        Sint.log('"$newKey" deleted from memory');
-        return false;
-      } else {
-        _singl.remove(newKey);
-        final targetType = (S != dynamic) ? S : dep.registeredType;
-        final targetTag = tag ?? dep.tag;
-        if (_typeSingl.containsKey(targetType)) {
-          _typeSingl[targetType]?.remove(targetTag);
-          if (_typeSingl[targetType]?.isEmpty ?? false) {
-            _typeSingl.remove(targetType);
-          }
-        } else {
-          _typeSingl.forEach((type, tagMap) {
-            tagMap.removeWhere((t, f) =>
-                identical(f, dep) || _getKey(type, t) == newKey);
-          });
-          _typeSingl.removeWhere((_, tagMap) => tagMap.isEmpty);
-        }
-        if (_singl.containsKey(newKey)) {
-          Sint.log('Error removing object "$newKey"', isError: true);
-        } else {
-          Sint.log('"$newKey" deleted from memory');
-        }
-        return true;
+      if (Sint.isLogEnable) {
+        Sint.log('"${factory.legacyKey}" onDelete() called');
       }
     }
+    return true;
   }
 
   /// Delete all registered Class Instances and, closes any open
@@ -397,22 +461,16 @@ extension InjectionExtension on SintInterface {
   ///
   /// - [force] Will delete the Instances even if marked as `permanent`.
   void deleteAll({bool force = false}) {
-    final keys = _singl.keys.toList();
-    for (final key in keys) {
-      delete(key: key, force: force);
+    final factories = _singl.values.toList();
+    for (final factory in factories) {
+      _deleteFactory(factory, force: force);
     }
   }
 
   void reloadAll({bool force = false}) {
-    _singl.forEach((key, value) {
-      if (value.permanent && !force) {
-        Sint.log('Instance "$key" is permanent. Skipping reload');
-      } else {
-        value.dependency = null;
-        value.isInit = false;
-        Sint.log('Instance "$key" was reloaded.');
-      }
-    });
+    for (final factory in _singl.values.toList()) {
+      _reloadFactory(factory, force: force);
+    }
   }
 
   void reload<S>({
@@ -420,43 +478,47 @@ extension InjectionExtension on SintInterface {
     String? key,
     bool force = false,
   }) {
-    final newKey = key ?? _getKey(S, tag);
-
-    final builder = _getDependency<S>(tag: tag, key: newKey);
+    final builder = _getDependency<S>(tag: tag, key: key);
     if (builder == null) return;
+    if (key != null &&
+        ((S != dynamic && builder.registeredType != S) ||
+            (tag != null && builder.tag != tag))) {
+      throw ArgumentError(
+          'Dependency key does not match the supplied type/tag');
+    }
+    _reloadFactory(builder, force: force);
+  }
 
+  void _reloadFactory(_InstanceBuilderFactory builder, {bool force = false}) {
     if (builder.permanent && !force) {
       Sint.log(
-        '''Instance "$newKey" is permanent. Use [force = true] to force the restart.''',
+        'Instance "${builder.legacyKey}" is permanent. '
+        'Use [force = true] to force the restart.',
         isError: true,
       );
       return;
     }
 
     final i = builder.dependency;
-
-    if (i is SintLifeCycleMixin) {
-      i.onDelete();
-      Sint.log('"$newKey" onDelete() called');
-    }
-
     builder.dependency = null;
     builder.isInit = false;
-    Sint.log('Instance "$newKey" was restarted.');
+    builder.isDirty = false;
+    builder.generation = null;
+    if (i is SintLifeCycleMixin) {
+      i.onDelete();
+    }
   }
 
   /// Check if a Class Instance<[S]> (or [tag]) is registered in memory.
   /// - [tag] is optional, if you used a [tag] to register the Instance.
   bool isRegistered<S>({String? tag}) =>
-      _typeSingl[S]?.containsKey(tag) ?? _singl.containsKey(_getKey(S, tag));
+      _typeSingl[S]?.containsKey(tag) ?? false;
 
   /// Checks if a lazy factory callback `Sint.lazyPut()` that returns an
   /// Instance<[S]> is registered in memory.
   /// - [tag] is optional, if you used a [tag] to register the lazy Instance.
   bool isPrepared<S>({String? tag}) {
-    final newKey = _getKey(S, tag);
-
-    final builder = _getDependency<S>(tag: tag, key: newKey);
+    final builder = _getDependency<S>(tag: tag);
     if (builder == null) {
       return false;
     }
@@ -478,9 +540,9 @@ extension InjectionExtension on SintInterface {
     if (clearRouteBindings) RouterReportManager.instance.clearRouteKeys();
     _typeSingl.clear();
     InjectionExtension._singl.clear();
+    _legacySingl.clear();
     return true;
   }
-
 }
 
 /// Internal class to register instances with `Sint.put<S>()`.
@@ -509,7 +571,11 @@ class _InstanceBuilderFactory<S> {
 
   bool isInit = false;
 
-  _InstanceBuilderFactory<S>? lateRemove;
+  /// Distinguishes successive initializations of a retained fenix factory.
+  Object? generation;
+
+  final String handle;
+  final String legacyKey;
 
   bool isDirty = false;
 
@@ -522,7 +588,8 @@ class _InstanceBuilderFactory<S> {
     required this.isInit,
     required this.fenix,
     required this.tag,
-    required this.lateRemove,
+    required this.handle,
+    required this.legacyKey,
   });
 
   void _showInitLog() {

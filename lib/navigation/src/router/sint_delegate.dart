@@ -19,7 +19,9 @@ import 'package:sint/navigation/src/router/sint_navigator.dart';
 import 'package:sint/navigation/src/domain/mixins/sint_navigation_mixin.dart';
 
 class SintDelegate extends RouterDelegate<RouteDecoder>
-    with ChangeNotifier, SintNavigationMixin,
+    with
+        ChangeNotifier,
+        SintNavigationMixin,
         PopNavigatorRouterDelegateMixin<RouteDecoder> {
   factory SintDelegate.createDelegate({
     SintPage<dynamic>? notFoundRoute,
@@ -105,7 +107,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     String? initialRoute,
     required List<SintPage> pages,
   })  : navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
-        initialRoute = initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
+        initialRoute =
+            initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
         notFoundRoute = notFoundRoute ??= SintPage(
           name: '/404',
           page: () => const Scaffold(
@@ -433,7 +436,10 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     if (route != null) {
       return _push<T>(route);
     } else {
-      goToUnknownPage();
+      // Programmatic navigation must preserve the rejected URL just like the
+      // Router API path does in setNewRoutePath(). Slug/404 resolvers depend
+      // on Sint.currentRoute to inspect what the caller actually requested.
+      _pushNotFoundWithOriginalUrl(page);
     }
     return null;
   }
@@ -863,8 +869,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     // duplicate that desyncs the browser history from the internal stack.
     final targetName = configuration.pageSettings?.name;
     if (targetName != null) {
-      final existingIndex = _activePages.indexWhere(
-          (element) => element.pageSettings?.name == targetName);
+      final existingIndex = _activePages
+          .indexWhere((element) => element.pageSettings?.name == targetName);
       if (existingIndex >= 0) {
         if (existingIndex == _activePages.length - 1) {
           // Already at the requested route — nothing to do.

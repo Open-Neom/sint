@@ -1,74 +1,98 @@
-// SINT v1.4.0 - P0 Hot-Path Benchmarks (release 1.4.0)
-// Methodology: warmup + 7 rounds, median/p95 via bench_harness.dart.
-// These are pure-Dart microbenchmarks (no WidgetTester pumps), fast enough
-// to run inside the normal test suite.
-// ignore_for_file: avoid_print
+@Tags(['benchmark'])
+library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
-
 import 'bench_harness.dart';
 
 class P0BenchController extends SintController {}
 
 void main() {
-  tearDown(() => Sint.reset());
-
-  group('P0 Hot-Path Benchmarks', () {
-    test('S1. Pure notification path (RxInt, 1 listener)', () async {
-      final results = <BenchResult>[];
-
-      // 3. No listeners: baseline of the empty path.
-      final rxAlone = 0.obs;
-      var sink = 0;
-      results.add(await runBench('S3. no-listeners (empty path)', () {
-        rxAlone.value = sink++;
-      }));
-
-      // 1. Pure notification: 1 RxInt with 1 empty listener.
-      final rx = 0.obs;
-      rx.addListener(() {});
-      var i = 0;
-      results.add(await runBench('S1. pure notification (1 listener)', () {
-        rx.value = i++;
-      }));
-
-      printBenchTable('P0 BENCH: RxInt notification hot path', results);
-    });
-
-    test('S2. Fan-out scaling (0, 1, 10, 100 listeners)', () async {
-      final results = <BenchResult>[];
-      for (final n in [0, 1, 10, 100]) {
+  tearDown(Sint.reset);
+  group('Synchronous state notification', () {
+    for (final listeners in [0, 1, 10, 100]) {
+      test('RxInt with $listeners listeners validates delivery', () async {
         final rx = 0.obs;
-        for (var l = 0; l < n; l++) {
-          rx.addListener(() {});
+        var updates = 0;
+        var delivered = 0;
+        for (var i = 0; i < listeners; i++) {
+          rx.addListener(() {
+            delivered++;
+          });
         }
-        var i = 0;
-        results.add(await runBench('S2. fan-out ($n listeners)', () {
-          rx.value = i++;
-        }));
-      }
-      printBenchTable('P0 BENCH: RxInt fan-out scaling', results);
-    });
-
-    test('I1. Sint.find with tag (20k finds)', () async {
-      Sint.put(P0BenchController(), tag: 'p0');
-      var sink = 0;
-      final result = await runBench('I1. Sint.find (tagged)', () {
-        final c = Sint.find<P0BenchController>(tag: 'p0');
-        sink += c.hashCode & 1;
+        final result = await runBench('state.rx.sync.listeners=$listeners', () {
+          rx.value = ++updates;
+        });
+        expect(updates, result.totalOperations);
+        expect(rx.value, updates);
+        expect(delivered, updates * listeners);
+        rx.close();
+        printBenchTable('RxInt synchronous callback delivery', [result]);
       });
-      printBenchTable('P0 BENCH: dependency lookup', [result]);
-      expect(sink, greaterThanOrEqualTo(0));
-    });
 
-    test('S4. SintController.update() with 1 listener', () async {
+      test('ValueNotifier with $listeners listeners validates delivery',
+          () async {
+        final notifier = ValueNotifier<int>(0);
+        var updates = 0;
+        var delivered = 0;
+        for (var i = 0; i < listeners; i++) {
+          notifier.addListener(() {
+            delivered++;
+          });
+        }
+        final result = await runBench(
+            'state.value_notifier.sync.listeners=$listeners', () {
+          notifier.value = ++updates;
+        });
+        expect(notifier.value, result.totalOperations);
+        expect(delivered, updates * listeners);
+        notifier.dispose();
+        printBenchTable(
+            'ValueNotifier synchronous callback delivery', [result]);
+      });
+    }
+
+    test('Controller.update validates callback count', () async {
       final controller = P0BenchController();
-      controller.addListener(() {});
-      final result = await runBench('S4. update() (1 listener)', () {
-        controller.update();
+      var delivered = 0;
+      controller.addListener(() {
+        delivered++;
       });
-      printBenchTable('P0 BENCH: SintController.update()', [result]);
+      final result = await runBench(
+          'state.controller.update.listeners=1', controller.update);
+      expect(delivered, result.totalOperations);
+      controller.dispose();
+      printBenchTable('Manual synchronous notification', [result]);
     });
+
+    test('Repeated equal Rx assignment delivers no notifications', () async {
+      final rx = 1.obs;
+      rx.value = 2;
+      var delivered = 0;
+      rx.addListener(() {
+        delivered++;
+      });
+      final result = await runBench('state.rx.equal_assignment', () {
+        rx.value = 2;
+      });
+      expect(rx.value, 2);
+      expect(delivered, 0);
+      rx.close();
+      printBenchTable('Rx equality short circuit', [result]);
+    });
+  });
+
+  test('Hot typed/tagged lookup validates instance identity', () async {
+    final expected = Sint.put(P0BenchController(), tag: 'p0');
+    var matches = 0;
+    final result =
+        await runBench('di.find.hot.tagged.controller.registry=1', () {
+      if (identical(Sint.find<P0BenchController>(tag: 'p0'), expected)) {
+        matches++;
+      }
+    });
+    expect(matches, result.totalOperations);
+    printBenchTable('Hot dependency lookup', [result]);
   });
 }

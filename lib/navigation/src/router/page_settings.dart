@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'route_template.dart';
+
 class PageSettings extends RouteSettings {
   PageSettings(
     this.uri, [
@@ -64,8 +66,9 @@ class PageSettings extends RouteSettings {
 /// - [queryParams] are merged into the query string, preserving any
 ///   query already present in [page].
 ///
-/// Unresolved `:param` segments are left as-is (the route will simply
-/// not match, preserving the classic unknownRoute flow).
+/// When [pathParams] is supplied, required parameters without a value are
+/// left as-is. Optional parameters without a value are omitted, together
+/// with their '/' or '.' separator.
 String resolveRoutePath(
   String page, {
   Map<String, String>? pathParams,
@@ -73,19 +76,8 @@ String resolveRoutePath(
 }) {
   var resolved = page;
 
-  if (pathParams != null && pathParams.isNotEmpty) {
-    // Textual path surgery: the query string (if any) is preserved
-    // verbatim and values are encoded per-segment.
-    final qIdx = resolved.indexOf('?');
-    final query = qIdx >= 0 ? resolved.substring(qIdx) : '';
-    final pathOnly = qIdx >= 0 ? resolved.substring(0, qIdx) : resolved;
-    final segments = pathOnly.split('/');
-    for (var i = 0; i < segments.length; i++) {
-      if (segments[i].startsWith(':')) {
-        segments[i] = _substituteSegment(segments[i], pathParams);
-      }
-    }
-    resolved = segments.join('/') + query;
+  if (pathParams != null) {
+    resolved = RouteTemplate.parse(page).resolve(pathParams);
   }
 
   if (queryParams != null && queryParams.isNotEmpty) {
@@ -97,17 +89,4 @@ String resolveRoutePath(
   }
 
   return resolved;
-}
-
-String _substituteSegment(String segment, Map<String, String> pathParams) {
-  var name = segment.substring(1);
-  // Strip a custom pattern (':id(\d+)') before marker checks.
-  final parenIdx = name.indexOf('(');
-  if (parenIdx >= 0) name = name.substring(0, parenIdx);
-  // Strip wildcard ('*') / optional ('?') markers.
-  if (name.endsWith('*') || name.endsWith('?')) {
-    name = name.substring(0, name.length - 1);
-  }
-  final value = pathParams[name];
-  return value == null ? segment : Uri.encodeComponent(value);
 }

@@ -1,144 +1,179 @@
-// SINT v1.0.0 - Infrastructure Performance Summary
-// High-Fidelity Audit for Open Neom
-// ignore_for_file: avoid_print
-
 import 'dart:async';
-import 'package:flutter/material.dart';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
 
+class _Counter extends SintController {}
+
 void main() {
-  // Reset SINT state between tests for high-fidelity isolation
-  tearDown(() => Sint.reset());
+  tearDown(Sint.reset);
 
-  group('Open Neom: 5-Pillar Performance Audit', () {
-
-    test('1. Pillar S: Reactive Benchmark vs Native Tools', () async {
-      print('\n${'='*50}\nPILLAR S: HIGH-LOAD REACTIVE AUDIT\n${'='*50}');
-      const int iterations = 30000;
-      final rxTimer = Stopwatch()..start();
-      final rxCompleter = Completer<int>();
-      final rx = 0.obs;
-
-      rx.listen((v) {
-        if (v == iterations) {
-          rxTimer.stop();
-          rxCompleter.complete(rxTimer.elapsedMicroseconds);
-        }
-      });
-
-      for (var i = 1; i <= iterations; i++) {
-        rx.value = i;
-      }
-      final sintRxTime = await rxCompleter.future;
-
-      print('SINT Rx Total Time: ${sintRxTime}us');
-      print('Avg Speed: ${(sintRxTime / iterations).toStringAsFixed(4)}us/op');
-    });
-
-    testWidgets('2. Pillar T: Translation with Dynamic Parameters', (tester) async {
-      print('\n[PILLAR T] Benchmarking trParams Interpolation');
-
-      await tester.pumpWidget(SintMaterialApp(
-        translations: BenchmarkTranslations(),
-        locale: const Locale('en', 'US'),
-        home: const Scaffold(),
-      ));
-
-      // [FIX] Settle initialization timers from SintRoot before benchmarking
-      await tester.pumpAndSettle();
-
-      final timer = Stopwatch()..start();
-      const iterations = 10000;
-      for (var i = 0; i < iterations; i++) {
-        final _ = 'welcome_user'.trParams({'name': 'Serzen', 'id': '$i'});
-      }
-      timer.stop();
-
-      print('Iterations: $iterations dynamic lookups');
-      print('Avg Speed:  ${(timer.elapsedMicroseconds / iterations).toStringAsFixed(4)}us/op');
-
-      // [FIX] Clear any remaining timers before disposing the test
-      await tester.pumpAndSettle();
-    });
-
-    test('3. Pillar I: Deep Dependency Resolution', () async {
-      print('\n[PILLAR I] Registering and Finding Nested Controllers');
-      // Setup dependency chain
-      for(int i=0; i<10; i++) {
-        Sint.put(BenchmarkController(), tag: 'depth_$i');
-      }
-
-      final timer = Stopwatch()..start();
-      const iterations = 5000;
-      for (var i = 0; i < iterations; i++) {
-        Sint.find<BenchmarkController>(tag: 'depth_9');
-      }
-      timer.stop();
-
-      print('Lookup iterations: $iterations (Depth: 10)');
-      print('Avg Latency:       ${(timer.elapsedMicroseconds / iterations).toStringAsFixed(4)}us/find');
-    });
-
-    testWidgets('4. Pillar N: Multiple Middleware Chain Execution', (tester) async {
-      print('\n[PILLAR N] Measuring 5 Middleware Interception Layers');
-
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          SintPage(name: '/', page: () => const SizedBox()),
-          SintPage(
-            name: '/protected',
-            page: () => const SizedBox(),
-            transition: Transition.noTransition,
-            middlewares: List.generate(5, (_) => BenchmarkAuthMiddleware()),
-          ),
-        ],
-      ));
-      await tester.pumpAndSettle();
-
-      final timer = Stopwatch()..start();
-      Sint.toNamed('/protected');
-
-      // [FIX] Use timed pump to ensure the middleware chain and routing state settle
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 10));
-
-      timer.stop();
-
-      print('Total Middleware Chain Latency (5 layers): ${timer.elapsedMicroseconds}us');
-      expect(Sint.currentRoute, '/protected');
-    });
-
-    test('5. Core: Stream-to-Rx Synchronization Latency', () async {
-      print('\n[CORE] Stream-to-Rx Binding Latency');
-      final controller = StreamController<int>();
-      final rx = 0.obs;
-      rx.bindStream(controller.stream);
-
-      final timer = Stopwatch()..start();
-      controller.add(100);
-
-      // Yielding to microtask queue for high-fidelity sync
-      await Future.delayed(Duration.zero);
-      timer.stop();
-
-      print('Stream-to-Rx Sync Latency: ${timer.elapsedMicroseconds}us');
-      await controller.close();
-      print('\n${'='*50}\n');
-    });
+  test('disposed controllers cannot allocate new listener groups', () {
+    final controller = _Counter();
+    controller.dispose();
+    expect(() => controller.addListenerId('late', () {}), throwsStateError);
   });
-}
 
-// --- INFRASTRUCTURE MOCKS ---
-class BenchmarkController extends SintController {}
-class BenchmarkAuthMiddleware extends SintMiddleware {
-  @override
-  Future<RouteDecoder?> redirectDelegate(RouteDecoder decoder) async => decoder;
-}
-class BenchmarkTranslations extends Translations {
-  @override
-  Map<String, Map<String, String>> get keys => {
-    'en_US': {'welcome_user': 'Welcome, @name! Your ID is @id.'},
-  };
+  testWidgets('SintBuilder rebuilds only the requested ID', (tester) async {
+    final controller = Sint.put(_Counter());
+    var leftBuilds = 0;
+    var rightBuilds = 0;
+    await tester.pumpWidget(Column(children: [
+      SintBuilder<_Counter>(
+          id: 'left',
+          autoRemove: false,
+          builder: (_) {
+            leftBuilds++;
+            return const SizedBox();
+          }),
+      SintBuilder<_Counter>(
+          id: 'right',
+          autoRemove: false,
+          builder: (_) {
+            rightBuilds++;
+            return const SizedBox();
+          }),
+    ]));
+    expect([leftBuilds, rightBuilds], [1, 1]);
+    controller.update(['left']);
+    await tester.pump();
+    expect([leftBuilds, rightBuilds], [2, 1]);
+    controller.update(['right'], false);
+    controller.update(['missing']);
+    await tester.pump();
+    expect([leftBuilds, rightBuilds], [2, 1]);
+    controller.update(['right']);
+    await tester.pump();
+    expect([leftBuilds, rightBuilds], [2, 2]);
+    await tester.pumpWidget(const SizedBox());
+    controller.update(['left', 'right']);
+    await tester.pump();
+    expect([leftBuilds, rightBuilds], [2, 2]);
+  });
+
+  testWidgets('Obx detaches inactive branches and cleans up on unmount',
+      (tester) async {
+    final selectLeft = true.obs;
+    final left = 1.obs;
+    final right = 10.obs;
+    var builds = 0;
+    var rendered = 0;
+    await tester.pumpWidget(Obx(() {
+      builds++;
+      rendered = selectLeft.value ? left.value : right.value;
+      return const SizedBox();
+    }));
+    expect([builds, rendered], [1, 1]);
+    expect([
+      selectLeft.listenersLength,
+      left.listenersLength,
+      right.listenersLength
+    ], [
+      1,
+      1,
+      0
+    ]);
+    selectLeft.value = false;
+    await tester.pump();
+    expect([builds, rendered], [2, 10]);
+    expect([left.listenersLength, right.listenersLength], [0, 1]);
+    left.value++;
+    await tester.pump();
+    expect(builds, 2);
+    right.value++;
+    await tester.pump();
+    expect([builds, rendered], [3, 11]);
+    await tester.pumpWidget(const SizedBox());
+    expect([
+      selectLeft.listenersLength,
+      left.listenersLength,
+      right.listenersLength
+    ], [
+      0,
+      0,
+      0
+    ]);
+    selectLeft.close();
+    left.close();
+    right.close();
+  });
+
+  testWidgets('Obx batches a burst into one frame and deduplicates reads',
+      (tester) async {
+    final value = 0.obs;
+    var builds = 0;
+    var rendered = 0;
+    await tester.pumpWidget(Obx(() {
+      builds++;
+      rendered = value.value + value.value;
+      return const SizedBox();
+    }));
+    expect(value.listenersLength, 1);
+    for (var i = 1; i <= 100; i++) {
+      value.value = i;
+    }
+    expect(builds, 1);
+    await tester.pump();
+    expect([builds, rendered, value.listenersLength], [2, 200, 1]);
+    value.value = 100;
+    await tester.pump();
+    expect(builds, 2);
+    await tester.pumpWidget(const SizedBox());
+    expect(value.listenersLength, 0);
+    value.close();
+  });
+
+  test('closing an Rx cancels every upstream binding outside Obx', () async {
+    final first = StreamController<int>();
+    final second = StreamController<int>();
+    final value = 0.obs;
+    value.bindStream(first.stream);
+    value.bindStream(second.stream);
+    first.add(7);
+    await Future<void>.delayed(Duration.zero);
+    expect(value.value, 7);
+    expect(first.hasListener && second.hasListener, isTrue);
+    value.close();
+    value.close();
+    expect(first.hasListener || second.hasListener, isFalse);
+    expect(() => value.bindStream(const Stream<int>.empty()), throwsStateError);
+    await first.close();
+    await second.close();
+  });
+
+  test('upstream onCancel cannot revive an Rx being disposed', () async {
+    final value = 0.obs;
+    final second = StreamController<int>();
+    var cancelled = false;
+    final first = StreamController<int>(onCancel: () {
+      cancelled = true;
+      expect(value.isDisposed, isTrue);
+      expect(() => value.bindStream(second.stream), throwsStateError);
+    });
+    value.bindStream(first.stream);
+    value.close();
+    expect(cancelled, isTrue);
+    expect(second.hasListener, isFalse);
+    await first.close();
+    unawaited(second.close());
+  });
+
+  testWidgets('Obx releases bindings without closing a reusable Rx',
+      (tester) async {
+    final upstream = StreamController<int>();
+    final value = 0.obs;
+    await tester.pumpWidget(Obx(() {
+      value.bindStream(upstream.stream);
+      return const SizedBox();
+    }));
+    expect(upstream.hasListener, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    expect(upstream.hasListener, isFalse);
+    expect(value.isDisposed, isFalse);
+    value.close();
+    unawaited(upstream.close());
+    await tester.pump();
+    expect(upstream.isClosed, isTrue);
+  });
 }

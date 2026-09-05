@@ -39,8 +39,7 @@ void main() {
       expect(decoder.route!.parameters?['id'], '42');
     });
 
-    test("'/user/:id?' matches '/user/' (trailing slash) without crashing",
-        () {
+    test("'/user/:id?' matches '/user/' (trailing slash) without crashing", () {
       final parser = RouteParser(routes: [
         SintPage(name: '/', page: () => Container()),
         SintPage(name: '/user/:id?', page: () => Container()),
@@ -71,6 +70,29 @@ void main() {
       // implementation called itself unconditionally and overflowed
       // the stack.
       expect(() => removeLastHistory('/some-url'), returnsNormally);
+    });
+  });
+
+  group('Unknown routes', () {
+    testWidgets('programmatic navigation preserves the rejected URL',
+        (tester) async {
+      await tester.pumpWidget(SintMaterialApp(
+        initialRoute: '/',
+        unknownRoute: SintPage(
+          name: '/not-found',
+          page: () => Scaffold(body: Text(Sint.currentRoute)),
+        ),
+        sintPages: [
+          SintPage(name: '/', page: () => const Scaffold(body: Text('home'))),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      Sint.toNamed('/reading/legacy-owner/legacy-book');
+      await tester.pumpAndSettle();
+
+      expect(Sint.currentRoute, '/reading/legacy-owner/legacy-book');
+      expect(find.text('/reading/legacy-owner/legacy-book'), findsOneWidget);
     });
   });
 

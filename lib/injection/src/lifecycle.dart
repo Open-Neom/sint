@@ -16,7 +16,9 @@ mixin SintLifeCycleMixin {
   @protected
   @mustCallSuper
   void onInit() {
-    SintEngine.instance.addPostFrameCallback((_) => onReady());
+    SintEngine.instance.addPostFrameCallback((_) {
+      if (!_isClosed) onReady();
+    });
   }
 
   /// Called 1 frame after onInit(). It is the perfect place to enter
@@ -64,5 +66,4 @@ mixin SintLifeCycleMixin {
     _isClosed = true;
     onClose();
   }
-
 }

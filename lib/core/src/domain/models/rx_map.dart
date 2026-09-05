@@ -60,7 +60,6 @@ class RxMap<K, V> extends SintListenable<Map<K, V>>
     }
     return null;
   }
-
 }
 
 extension MapExtension<K, V> on Map<K, V> {
@@ -99,8 +98,6 @@ extension MapExtension<K, V> on Map<K, V> {
       final map = (this as RxMap);
       if (map.value == val) return;
       map.value = val;
-      // ignore: invalid_use_of_protected_member
-      map.refresh();
     } else {
       if (this == val) return;
       clear();

@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -60,9 +62,62 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
 
     return RouteInformation(
       uri: Uri.tryParse(name),
-      // Pass the route state (its arguments) so state restoration can
-      // recover it, instead of dropping it with a hardcoded null (1.5.0).
-      state: configuration.pageSettings?.arguments,
+      // The browser serializes RouteInformation.state. Keep plain JSON state,
+      // but never ask it to encode arbitrary navigation-domain objects.
+      state: sanitizeRouteInformationState(
+        configuration.pageSettings?.arguments,
+      ),
     );
   }
+}
+
+/// Returns [state] unchanged when its complete object graph is JSON-safe.
+///
+/// Navigation arguments remain available through [PageSettings] in memory.
+/// This only prevents opaque Dart objects (for example domain models), cyclic
+/// containers, maps with non-string keys, and non-finite numbers from reaching
+/// browser history serialization.
+@visibleForTesting
+Object? sanitizeRouteInformationState(Object? state) {
+  return _isJsonSafeRouteInformationState(
+    state,
+    HashSet<Object>.identity(),
+  )
+      ? state
+      : null;
+}
+
+bool _isJsonSafeRouteInformationState(
+  Object? value,
+  Set<Object> activeContainers,
+) {
+  if (value == null || value is String || value is bool || value is int) {
+    return true;
+  }
+
+  if (value is double) {
+    return value.isFinite;
+  }
+
+  if (value is List) {
+    if (!activeContainers.add(value)) return false;
+    final isSafe = value.every(
+      (element) => _isJsonSafeRouteInformationState(element, activeContainers),
+    );
+    activeContainers.remove(value);
+    return isSafe;
+  }
+
+  if (value is Map) {
+    if (!activeContainers.add(value)) return false;
+    final isSafe = value.entries.every(
+      (entry) =>
+          entry.key is String &&
+          _isJsonSafeRouteInformationState(entry.value, activeContainers),
+    );
+    activeContainers.remove(value);
+    return isSafe;
+  }
+
+  return false;
 }

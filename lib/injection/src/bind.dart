@@ -112,18 +112,12 @@ abstract class Bind<T> extends StatelessWidget {
   static bool isPrepared<S>({String? tag}) => Sint.isPrepared<S>(tag: tag);
 
   static void replace<P>(P child, {String? tag}) {
-    final info = Sint.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Sint.put(child, tag: tag, permanent: permanent);
+    Sint.replace<P>(child, tag: tag);
   }
 
   static void lazyReplace<P>(InstanceBuilderCallback<P> builder,
       {String? tag, bool? fenix}) {
-    final info = Sint.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Sint.lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+    Sint.lazyReplace<P>(builder, tag: tag, fenix: fenix);
   }
 
   factory Bind.builder({
@@ -253,6 +247,7 @@ class _FactoryBind<T> extends Bind<T> {
   @override
   Widget build(BuildContext context) {
     return Binder<T>(
+      init: init,
       create: create,
       global: global,
       autoRemove: autoRemove,
@@ -268,6 +263,4 @@ class _FactoryBind<T> extends Bind<T> {
     );
   }
 }
-
-
 

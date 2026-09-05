@@ -20,8 +20,7 @@ class Notifier {
   void read(ListNotifier updaters) {
     final listener = _notifyData?.updater;
     if (listener != null && !updaters.containsListener(listener)) {
-      updaters.addListener(listener);
-      add(() => updaters.removeListener(listener));
+      add(updaters.addListener(listener));
     }
   }
 
@@ -38,5 +37,4 @@ class Notifier {
       _notifyData = oldData;
     }
   }
-
 }

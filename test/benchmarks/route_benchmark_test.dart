@@ -1,47 +1,69 @@
-// SINT v1.5.0 - Route Matching Benchmarks (navigation overhaul)
-// Methodology: warmup + 7 rounds, median/p95 via bench_harness.dart.
-// Isolated RouteParser.matchRoute — no WidgetTester pumps.
-// ignore_for_file: avoid_print
+@Tags(['benchmark'])
+library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
-
 import 'bench_harness.dart';
 
-RouteParser _buildParser(int n) {
-  final routes = <SintPage>[
-    SintPage(name: '/', page: () => const SizedBox()),
-  ];
-  for (var i = 0; i < n; i++) {
-    routes.add(SintPage(name: '/route$i', page: () => const SizedBox()));
-    routes.add(SintPage(name: '/user$i/:id', page: () => const SizedBox()));
-  }
-  return RouteParser(routes: routes);
-}
+RouteParser buildParser(int count, {required bool sharedPrefix}) => RouteParser(
+      routes: [
+        SintPage(name: '/', page: () => const SizedBox()),
+        for (var i = 0; i < count; i++)
+          SintPage(
+              name: sharedPrefix ? '/api/item$i/:id' : '/item$i/:id',
+              page: () => const SizedBox()),
+      ],
+    );
 
 void main() {
-  group('Pillar N: Route Matching Benchmarks', () {
-    for (final n in [10, 100]) {
-      test('route matching with $n registered route pairs', () async {
-        final parser = _buildParser(n);
-        final results = <BenchResult>[];
-
-        // Worst case for a flat scan: the target is the LAST registered.
-        results.add(await runBench('literal match, last of $n', () {
-          parser.matchRoute('/route${n - 1}');
-        }, iterations: 1000));
-
-        results.add(await runBench('param match, last of $n', () {
-          parser.matchRoute('/user${n - 1}/42?tab=x');
-        }, iterations: 1000));
-
-        results.add(await runBench('miss (unknown), $n', () {
-          parser.matchRoute('/missing/deep/path');
-        }, iterations: 1000));
-
-        printBenchTable('PILLAR N: ROUTE MATCHING ($n route pairs)', results);
-      });
+  for (final count in [10, 100, 1000]) {
+    for (final shared in [false, true]) {
+      final shape = shared ? 'shared' : 'unique';
+      for (final miss in [false, true]) {
+        test('Route $shape prefix, $count entries, miss=$miss', () async {
+          final parser = buildParser(count, sharedPrefix: shared);
+          final stem = shared ? '/api' : '';
+          final path =
+              miss ? '$stem/item_missing/42' : '$stem/item${count - 1}/42';
+          final settings = PageSettings(Uri.parse('$path?tab=summary'));
+          final preflight =
+              parser.matchRoute('$path?tab=summary', arguments: settings);
+          expect(preflight.route?.name, miss ? isNull : path);
+          if (!miss) expect(settings.pathParams['id'], '42');
+          var valid = 0;
+          final result =
+              await runBench('route.hot.$shape.entries=$count.miss=$miss', () {
+            final decoded =
+                parser.matchRoute('$path?tab=summary', arguments: settings);
+            if (miss
+                ? decoded.route == null
+                : decoded.route?.name == path &&
+                    settings.pathParams['id'] == '42' &&
+                    settings.params['tab'] == 'summary') {
+              valid++;
+            }
+          }, iterations: 100);
+          expect(valid, result.totalOperations);
+          printBenchTable(
+              'Parser match including URI/parameter decoding (${count + 1} actual routes)',
+              [result]);
+        });
+      }
     }
+  }
+
+  test('Index construction plus first lookup is reported separately', () async {
+    var valid = 0;
+    final result =
+        await runBench('route.cold.construct_and_first_match.entries=100', () {
+      final parser = buildParser(100, sharedPrefix: true);
+      if (parser.matchRoute('/api/item99/42').route?.name == '/api/item99/42') {
+        valid++;
+      }
+    }, iterations: 10, warmup: 10);
+    expect(valid, result.totalOperations);
+    printBenchTable(
+        'Route/page construction, index build and first lookup', [result]);
   });
 }

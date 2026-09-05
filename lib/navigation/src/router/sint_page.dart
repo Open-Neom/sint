@@ -11,6 +11,7 @@ import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/models/path_decoded.dart';
 import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/index.dart';
+import 'package:sint/navigation/src/router/route_template.dart';
 
 class SintPage<T> extends Page<T> {
   final SintPageBuilder page;
@@ -86,7 +87,7 @@ class SintPage<T> extends Page<T> {
     super.canPop,
     super.onPopInvoked = _defaultPopInvokedHandler,
     super.restorationId,
-  })  : path = _nameToRegex(name),
+  })  : path = RouteTemplate.compile(name),
         assert(name.startsWith('/'),
             'It is necessary to start route name [$name] with a slash: /$name'),
         super(
@@ -181,47 +182,6 @@ class SintPage<T> extends Page<T> {
     return page;
   }
 
-  static PathDecoded _nameToRegex(String path) {
-    var keys = <String?>[];
-
-    String recursiveReplace(Match pattern) {
-      var buffer = StringBuffer('(?:');
-
-      // The separator ('.' or '/') is included INSIDE the non-capturing
-      // group so that for optional params (`:id?`) the whole segment —
-      // separator included — becomes optional. Otherwise '/user/:id?'
-      // would never match '/user' and the null group would explode in
-      // RouteParser._parseParams via a null-assert.
-      // The separator is regex-escaped: a raw '.' would match ANY char.
-      if (pattern[1] != null) buffer.write(RegExp.escape(pattern[1]!));
-      if (pattern[5] != null) {
-        // Wildcard param ':name*' — captures one or more remaining
-        // segments, '/' separators included.
-        buffer.write('(.+))');
-      } else if (pattern[3] != null) {
-        // Pattern param ':id(\d+)' — the segment only matches when it
-        // satisfies the custom constraint.
-        final custom = pattern[3]!;
-        buffer.write('(${custom.substring(1, custom.length - 1)}))');
-      } else {
-        buffer.write('([\\w%+-._~!\$&\'()*,;=:@]+))');
-      }
-      if (pattern[4] != null) buffer.write('?');
-
-      keys.add(pattern[2]);
-      return "$buffer";
-    }
-
-    var stringPath = '$path/?'
-        .replaceAllMapped(
-            // ignore: valid_regexps — false positive on the nested
-            // pattern group; verified against Dart's RegExp engine.
-            RegExp(r'([/.])?:(\w+)(\([^)]*\))?(\?)?(\*)?'), recursiveReplace)
-        .replaceAll('//', '/');
-
-    return PathDecoded(RegExp('^$stringPath\$'), keys);
-  }
-
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -236,5 +196,4 @@ class SintPage<T> extends Page<T> {
   int get hashCode {
     return key.hashCode;
   }
-  
 }

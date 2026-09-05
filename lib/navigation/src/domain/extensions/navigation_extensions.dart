@@ -113,8 +113,8 @@ extension NavigationExtension on SintInterface {
       // Route-template URL building (1.5.0): substitute `:param` segments
       // and append the query string with correct per-segment encoding.
       page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        if (parameters != null) ...parameters,
-        if (queryParams != null) ...queryParams,
+        ...?parameters,
+        ...?queryParams,
       });
     } else if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
@@ -157,8 +157,8 @@ extension NavigationExtension on SintInterface {
 
     if (pathParams != null || queryParams != null) {
       page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        if (parameters != null) ...parameters,
-        if (queryParams != null) ...queryParams,
+        ...?parameters,
+        ...?queryParams,
       });
     } else if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
@@ -299,8 +299,8 @@ extension NavigationExtension on SintInterface {
       newRouteName = resolveRoutePath(newRouteName,
           pathParams: pathParams,
           queryParams: {
-            if (parameters != null) ...parameters,
-            if (queryParams != null) ...queryParams,
+            ...?parameters,
+            ...?queryParams,
           });
     } else if (parameters != null) {
       final uri = Uri(path: newRouteName, queryParameters: parameters);
@@ -711,9 +711,13 @@ extension NavigationExtension on SintInterface {
     if (keep != null && keep.isNotEmpty) {
       final keys = InjectionExtension.registeredKeys.toList();
       for (final key in keys) {
-        final shouldKeep = keep.any((type) => key.startsWith(type.toString()));
+        final shouldKeep = keep.contains(
+          InjectionExtension.registeredTypeForKey(key),
+        );
         if (!shouldKeep) {
           delete(key: key, force: false);
+        } else {
+          InjectionExtension.detachInstanceFromOwners(key);
         }
       }
     } else {

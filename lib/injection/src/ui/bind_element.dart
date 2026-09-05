@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:sint/injection/src/ui/binder.dart';
 import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
 import 'package:sint/state_manager/sint_state_manager.dart';
 import 'package:sint/injection/src/lifecycle.dart';
+import 'package:sint/injection/src/domain/models/route_dependency.dart';
 
 /// The BindElement is responsible for injecting dependencies into the widget
 /// tree so that they can be observed
@@ -20,6 +20,7 @@ class BindElement<T> extends InheritedElement {
   InitBuilder<T>? _controllerBuilder;
 
   T? _controller;
+  RouteDependency? _ownedDependency;
 
   T get controller {
     if (_controller == null) {
@@ -27,6 +28,9 @@ class BindElement<T> extends InheritedElement {
       _subscribeToController();
       if (_controller == null) {
         throw BindError(controller: T, tag: widget.tag);
+      }
+      if (widget.global && (_isCreator == true || widget.assignId)) {
+        _ownedDependency = Sint.captureInstanceLifecycle<T>(tag: widget.tag);
       }
       return _controller!;
     } else {
@@ -64,10 +68,16 @@ class BindElement<T> extends InheritedElement {
           Sint.put<T>(_controllerBuilder!(), tag: widget.tag);
         }
       }
+      if (_isCreator == true || widget.assignId) {
+        _ownedDependency = Sint.captureInstanceLifecycle<T>(tag: widget.tag);
+      }
     } else {
       if (widget.create != null) {
         _controllerBuilder = () => widget.create!.call(this);
         Sint.spawn<T>(_controllerBuilder!, tag: widget.tag, permanent: false);
+        if (!isRegistered) {
+          _ownedDependency = Sint.captureInstanceLifecycle<T>(tag: widget.tag);
+        }
       } else {
         _controllerBuilder = widget.init;
       }
@@ -127,8 +137,12 @@ class BindElement<T> extends InheritedElement {
   void _dispose() {
     widget.dispose?.call(this);
     if (_isCreator! || widget.assignId) {
-      if (widget.autoRemove && Sint.isRegistered<T>(tag: widget.tag)) {
-        Sint.delete<T>(tag: widget.tag);
+      if (widget.autoRemove) {
+        _ownedDependency?.delete();
+        final controller = _controller;
+        if (!widget.global && controller is SintLifeCycleMixin) {
+          controller.onDelete();
+        }
       }
     }
 
@@ -140,6 +154,7 @@ class BindElement<T> extends InheritedElement {
 
     _remove?.call();
     _controller = null;
+    _ownedDependency = null;
     _isCreator = null;
     _remove = null;
     _filter = null;
@@ -177,7 +192,6 @@ class BindElement<T> extends InheritedElement {
     }
     return super.build();
   }
-
 
   @override
   void notifyClients(Binder<T> oldWidget) {

@@ -1,28 +1,33 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:sint/core/sint_core.dart';
-import 'package:sint/injection/src/bind.dart';
-import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/navigation/src/domain/extensions/first_where_extension.dart';
-import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/models/path_decoded.dart';
 import 'package:sint/navigation/src/router/index.dart';
 import 'package:sint/navigation/src/router/route_decoder.dart';
 
 class RouteParser {
+  /// Takes a snapshot of the supplied flat route table. Subsequent changes
+  /// should use [routes], [addRoute], or [removeRoute]; changing the original
+  /// list does not change this parser's table.
   RouteParser({
-    required this.routes,
-  });
+    required List<SintPage> routes,
+  }) {
+    this.routes = _RouteList(routes, () => _indexDirty = true);
+  }
 
-  final List<SintPage> routes;
+  /// Mutable registered routes. Every mutation, including replacing or
+  /// reordering entries without changing the length, invalidates the index.
+  late final List<SintPage> routes;
 
   // ── Segment route index (1.5.0) ─────────────────────────────────────
   // Routes are bucketed by the type of their FIRST segment:
   //   literal > param with pattern > simple param > wildcard.
-  // Matching only evaluates the regex of the buckets that can match the
-  // requested path (precedence order above), instead of scanning the whole
-  // flat list for every cumulative path: O(k + candidates) vs O(k × routes).
+  // Matching evaluates only candidate buckets for each cumulative path.
+  // Shared first segments can still require O(k × routes) regex checks;
+  // distinct literal prefixes reduce the number of candidates examined.
   bool _indexDirty = true;
-  int _indexedRouteCount = -1;
   final Map<String, List<SintPage>> _literalIndex = {};
   final List<SintPage> _patternParamRoutes = [];
   final List<SintPage> _simpleParamRoutes = [];
@@ -72,19 +77,17 @@ class RouteParser {
       }
     }
     _indexDirty = false;
-    _indexedRouteCount = routes.length;
   }
 
   void _ensureIndex() {
-    // The length guard also catches external mutations that bypass
-    // addRoute/removeRoute (e.g. `routes.clear()` from the delegate).
-    if (_indexDirty || _indexedRouteCount != routes.length) {
+    if (_indexDirty) {
       _rebuildIndex();
     }
   }
 
   RouteDecoder matchRoute(String name, {PageSettings? arguments}) {
     final uri = Uri.parse(name);
+    arguments?.pathParams.clear();
     final split = uri.path.split('/').where((element) => element.isNotEmpty);
     var curPath = '/';
     final cumulativePaths = <String>[
@@ -128,13 +131,12 @@ class RouteParser {
     if (treeBranch.isNotEmpty) {
       //route is found, do further parsing to get nested query params
       final lastRoute = treeBranch.last;
-      final parsedParams = _parseParams(name, lastRoute.value.path);
+      final parsedParams = _parseParams(uri, lastRoute.value.path);
       if (parsedParams.isNotEmpty) {
         params.addAll(parsedParams);
       }
       // Path params are also exposed SEPARATELY from query params (1.5.0);
       // `params` keeps the legacy merged behavior (query + path).
-      arguments?.pathParams.clear();
       arguments?.pathParams.addAll(parsedParams);
       //copy parameters to all pages.
       final mappedTreeBranch = treeBranch
@@ -179,21 +181,22 @@ class RouteParser {
   }
 
   void removeRoute<T>(SintPage<T> route) {
-    routes.remove(route);
-    _indexDirty = true;
-    for (var page in _flattenPage(route)) {
-      removeRoute(page);
+    for (final page in [route, ..._flattenPage(route)]) {
+      // Children may share the same relative Page key under different
+      // parents. Their fully qualified name identifies the right branch.
+      final index = routes.indexWhere(
+        (candidate) => candidate.name == page.name && candidate.key == page.key,
+      );
+      if (index >= 0) routes.removeAt(index);
     }
   }
 
   void addRoute<T>(SintPage<T> route) {
-    _warnIfDuplicate(route);
-    routes.add(route);
-    _indexDirty = true;
-
-    // Add Page children.
-    for (var page in _flattenPage(route)) {
-      addRoute(page);
+    // Flatten already visits every descendant; recursively registering its
+    // output again would grow a depth-n branch to 2^(n-1) entries.
+    for (final page in [route, ..._flattenPage(route)]) {
+      _warnIfDuplicate(page);
+      routes.add(page);
     }
   }
 
@@ -220,76 +223,23 @@ class RouteParser {
       return result;
     }
 
-    final parentPath = route.name;
-    for (var page in route.children) {
-      // Add Parent middlewares to children
-      final parentMiddlewares = [
-        if (page.middlewares.isNotEmpty) ...page.middlewares,
-        if (route.middlewares.isNotEmpty) ...route.middlewares
-      ];
-
-      final parentBindings = [
-        if (page.binding != null) page.binding!,
-        if (page.bindings.isNotEmpty) ...page.bindings,
-        if (route.bindings.isNotEmpty) ...route.bindings
-      ];
-
-      final parentBinds = [
-        if (page.binds.isNotEmpty) ...page.binds,
-        if (route.binds.isNotEmpty) ...route.binds
-      ];
-
-      result.add(
-        _addChild(
-          page,
-          parentPath,
-          parentMiddlewares,
-          parentBindings,
-          parentBinds,
-        ),
+    for (final page in route.children) {
+      final child = page.copyWith(
+        name: page.inheritParentPath
+            ? (route.name + page.name).replaceAll('//', '/')
+            : page.name,
+        middlewares: [...page.middlewares, ...route.middlewares],
+        bindings: [
+          ...page.bindings,
+          ...route.bindings,
+          if (route.binding != null) route.binding!,
+        ],
+        binds: [...page.binds, ...route.binds],
       );
-
-      final children = _flattenPage(page);
-      for (var child in children) {
-        result.add(_addChild(
-          child,
-          parentPath,
-          [
-            ...parentMiddlewares,
-            if (child.middlewares.isNotEmpty) ...child.middlewares,
-          ],
-          [
-            ...parentBindings,
-            if (child.binding != null) child.binding!,
-            if (child.bindings.isNotEmpty) ...child.bindings,
-          ],
-          [
-            ...parentBinds,
-            if (child.binds.isNotEmpty) ...child.binds,
-          ],
-        ));
-      }
+      result.add(child);
+      result.addAll(_flattenPage(child));
     }
     return result;
-  }
-
-  /// Change the Path for a [SintPage]
-  SintPage _addChild(
-    SintPage origin,
-    String parentPath,
-    List<SintMiddleware> middlewares,
-    List<BindingsInterface> bindings,
-    List<Bind> binds,
-  ) {
-    return origin.copyWith(
-      middlewares: middlewares,
-      name: origin.inheritParentPath
-          ? (parentPath + origin.name).replaceAll(r'//', '/')
-          : origin.name,
-      bindings: bindings,
-      binds: binds,
-      // key:
-    );
   }
 
   SintPage? _findRoute(String name) {
@@ -323,19 +273,15 @@ class RouteParser {
     return null;
   }
 
-  Map<String, String> _parseParams(String path, PathDecoded routePath) {
+  Map<String, String> _parseParams(Uri uri, PathDecoded routePath) {
     final params = <String, String>{};
-    var idx = path.indexOf('?');
-    final uri = Uri.tryParse(path);
-    if (uri == null) return params;
-    if (idx > -1) {
-      params.addAll(uri.queryParameters);
-    }
     var paramsMatch = routePath.regex.firstMatch(uri.path);
     if (paramsMatch == null) {
       return params;
     }
     for (var i = 0; i < routePath.keys.length; i++) {
+      final key = routePath.keys[i];
+      if (key == null) continue; // A capture inside a custom parameter pattern.
       final group = paramsMatch[i + 1];
       // Optional params (e.g. ':id?') may be absent from the URL — their
       // match group is null. Skip them instead of null-asserting.
@@ -344,8 +290,73 @@ class RouteParser {
       // decodeQueryComponent): '+' is a literal plus in a path segment,
       // and '%2F' decodes to '/' after the segment split.
       var param = Uri.decodeComponent(group);
-      params[routePath.keys[i]!] = param;
+      params[key] = param;
     }
     return params;
+  }
+}
+
+/// Owns the table so invalidation never needs an O(routes) identity scan on
+/// the matching hot path. ListBase's replacement/reordering operations go
+/// through []=; growing operations are overridden for non-nullable entries.
+class _RouteList extends ListBase<SintPage> {
+  _RouteList(List<SintPage> routes, this._onChanged)
+      : _values = List<SintPage>.of(routes);
+
+  final List<SintPage> _values;
+  final void Function() _onChanged;
+
+  @override
+  int get length => _values.length;
+
+  @override
+  set length(int value) {
+    if (value == _values.length) return;
+    _values.length = value;
+    _onChanged();
+  }
+
+  @override
+  SintPage operator [](int index) => _values[index];
+
+  @override
+  void operator []=(int index, SintPage value) {
+    _values[index] = value;
+    _onChanged();
+  }
+
+  @override
+  void add(SintPage value) {
+    _values.add(value);
+    _onChanged();
+  }
+
+  @override
+  void addAll(Iterable<SintPage> iterable) {
+    // Snapshot self-iterables and complete fallible iteration before mutating.
+    final values = iterable.toList();
+    if (values.isEmpty) return;
+    _values.addAll(values);
+    _onChanged();
+  }
+
+  @override
+  void insert(int index, SintPage element) {
+    _values.insert(index, element);
+    _onChanged();
+  }
+
+  @override
+  void insertAll(int index, Iterable<SintPage> iterable) {
+    final values = iterable.toList();
+    _values.insertAll(index, values);
+    if (values.isNotEmpty) _onChanged();
+  }
+
+  @override
+  void replaceRange(int start, int end, Iterable<SintPage> replacements) {
+    final values = replacements.toList();
+    _values.replaceRange(start, end, values);
+    _onChanged();
   }
 }

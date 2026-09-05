@@ -1,12 +1,12 @@
 import 'dart:collection';
-
+import 'package:sint/injection/src/domain/models/route_dependency.dart';
 
 import '../../../sint.dart';
 
 class RouterReportManager<T> {
   /// Holds a reference to `Sint.reference` when the Instance was
   /// created to manage the memory.
-  final Map<T?, List<String>> _routesKey = {};
+  final Map<T?, Set<RouteDependency>> _routesKey = {};
 
   /// Stores the onClose() references of instances created with `Sint.create()`
   /// using the `Sint.reference`.
@@ -34,18 +34,22 @@ class RouterReportManager<T> {
 
   /// Links a Class instance [S] (or [tag]) to the current route.
   /// Requires usage of `SintMaterialApp`.
-  void reportDependencyLinkedToRoute(String dependencyKey) {
-    if (_current == null) return;
-    if (_routesKey.containsKey(_current)) {
-      _routesKey[_current!]!.add(dependencyKey);
-    } else {
-      _routesKey[_current] = <String>[dependencyKey];
+  /// Accepts generation-scoped references or unambiguous legacy string keys.
+  void reportDependencyLinkedToRoute(Object dependencyKey) {
+    if (dependencyKey is! String && dependencyKey is! RouteDependency) {
+      throw ArgumentError.value(dependencyKey, 'dependencyKey');
     }
+    if (_current == null) return;
+    final dependency = dependencyKey is String
+        ? InjectionExtension.routeDependencyForKey(dependencyKey)
+        : dependencyKey as RouteDependency;
+    if (dependency != null) (_routesKey[_current] ??= {}).add(dependency);
   }
 
   void clearRouteKeys() {
     _routesKey.clear();
     _routesByCreate.clear();
+    _current = null;
   }
 
   void appendRouteByCreate(SintLifeCycleMixin i) {
@@ -55,6 +59,7 @@ class RouterReportManager<T> {
   }
 
   void reportRouteDispose(T disposed) {
+    if (identical(_current, disposed)) _current = null;
     if (Sint.smartManagement != SmartManagement.onlyBuilder) {
       // Engine.instance.addPostFrameCallback((_) {
       // Future.microtask(() {
@@ -64,26 +69,10 @@ class RouterReportManager<T> {
   }
 
   void reportRouteWillDispose(T disposed) {
-    final keysToRemove = <String>[];
-
-    _routesKey[disposed]?.forEach(keysToRemove.add);
-
-    /// Removes `Sint.create()` instances registered in `routeName`.
-    if (_routesByCreate.containsKey(disposed)) {
-      for (final onClose in _routesByCreate[disposed]!) {
-        // assure the [DisposableInterface] instance holding a reference
-        // to onClose() wasn't disposed.
-        onClose();
-      }
-      _routesByCreate[disposed]!.clear();
-      _routesByCreate.remove(disposed);
-    }
-
-    for (final element in keysToRemove) {
-      Sint.markAsDirty(key: element);
-    }
-
-    keysToRemove.clear();
+    final keysToRemove =
+        _routesKey[disposed]?.toList() ?? const <RouteDependency>[];
+    final created = _routesByCreate.remove(disposed);
+    _releaseDependencies(keysToRemove, created, markOnly: true);
   }
 
   /// Clears from memory registered Instances associated with [routeName] when
@@ -91,30 +80,44 @@ class RouterReportManager<T> {
   /// [SmartManagement.keepFactory]
   /// Meant for internal usage of `SintPageRoute` and `SintDialogRoute`
   void _removeDependencyByRoute(T routeName) {
-    final keysToRemove = <String>[];
+    // Detach ownership before callbacks: reentrant registration belongs to a
+    // new bucket and must not be removed with the route being disposed.
+    final keysToRemove = _routesKey.remove(routeName);
 
-    _routesKey[routeName]?.forEach(keysToRemove.add);
+    final created = _routesByCreate.remove(routeName);
+    _releaseDependencies(keysToRemove, created);
+  }
 
-    /// Removes `Sint.create()` instances registered in `routeName`.
-    if (_routesByCreate.containsKey(routeName)) {
-      for (final onClose in _routesByCreate[routeName]!) {
-        // assure the [DisposableInterface] instance holding a reference
-        // to onClose() wasn't disposed.
-        onClose();
+  void _releaseDependencies(
+      Iterable<RouteDependency>? dependencies, Iterable<Function>? created,
+      {bool markOnly = false}) {
+    Object? firstError;
+    StackTrace? firstStack;
+    if (created != null) {
+      for (final onClose in created) {
+        try {
+          onClose();
+        } catch (error, stack) {
+          firstError ??= error;
+          firstStack ??= stack;
+        }
       }
-      _routesByCreate[routeName]!.clear();
-      _routesByCreate.remove(routeName);
     }
-
-    for (final element in keysToRemove) {
-      final value = Sint.delete(key: element);
-      if (value) {
-        _routesKey[routeName]?.remove(element);
+    if (dependencies != null) {
+      for (final dependency in dependencies) {
+        try {
+          if (markOnly) {
+            dependency.markAsDirty();
+          } else {
+            dependency.delete();
+          }
+        } catch (error, stack) {
+          firstError ??= error;
+          firstStack ??= stack;
+        }
       }
     }
-
-    _routesKey.remove(routeName);
-
-    keysToRemove.clear();
+    // Finish releasing unrelated resources, then preserve the original error.
+    if (firstError != null) Error.throwWithStackTrace(firstError, firstStack!);
   }
 }

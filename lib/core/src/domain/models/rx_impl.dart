@@ -7,6 +7,7 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 /// of those `Widgets` and Rx values.
 
 mixin RxObjectMixin<T> on SintListenable<T> {
+  Set<StreamSubscription<T>>? _boundStreams;
 
   /// Makes a direct update of [value] adding it to the Stream
   /// useful when you make use of Rx for custom Types to refresh your UI.
@@ -121,14 +122,31 @@ mixin RxObjectMixin<T> on SintListenable<T> {
 
   /// Binds an existing `Stream<T>` to this `Rx<T>` to keep the values in sync.
   /// You can bind multiple sources to update the value.
-  /// Closing the subscription will happen automatically when the observer
-  /// Widget (`SINT` or `Obx`) gets unmounted from the Widget tree.
+  /// Subscriptions close when this Rx is closed, or when the observing widget
+  /// which created the binding releases its dependencies.
   void bindStream(Stream<T> stream) {
-    // final listSubscriptions =
-    //     _subscriptions[subject] ??= <StreamSubscription>[];
+    if (isDisposed) throw StateError('Cannot bind a stream to a disposed Rx');
+    late StreamSubscription<T> sub;
+    sub = stream.listen((va) => value = va,
+        onDone: () => _boundStreams?.remove(sub));
+    (_boundStreams ??= <StreamSubscription<T>>{}).add(sub);
+    reportAdd(() {
+      if (_boundStreams?.remove(sub) ?? false) sub.cancel();
+    });
+  }
 
-    final sub = stream.listen((va) => value = va);
-    reportAdd(sub.cancel);
+  @override
+  void dispose() {
+    final subscriptions = _boundStreams;
+    _boundStreams = null;
+    // Publish disposal before invoking user-controlled upstream onCancel.
+    // Reentrant bindings must not revive a closed Rx or escape this cleanup.
+    super.dispose();
+    if (subscriptions != null) {
+      for (final subscription in subscriptions) {
+        subscription.cancel();
+      }
+    }
   }
 }
 
@@ -202,5 +220,3 @@ abstract class RxImpl<T> extends SintListenable<T> with RxObjectMixin<T> {
     }
   }
 }
-
-

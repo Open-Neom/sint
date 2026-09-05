@@ -11,3 +11,4 @@ _config.yml
 index.md
 docs/
 *.docx
+performance/

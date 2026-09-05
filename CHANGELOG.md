@@ -1,6 +1,6 @@
 # Changelog - sint
 
-## [1.6.2] - Unreleased
+## [1.6.2] - 2026-09-05
 
 ### Correctness and lifecycle
 - Mutation-safe synchronous listener dispatch with per-registration disposers, immediate removal, deferred additions and exception-safe nested notification bookkeeping. No listener-list copy per notification.

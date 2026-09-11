@@ -25,8 +25,8 @@ class RouteData {
     return RouteData(
       name: extractRouteName(route),
       isSintPageRoute: route is SintPageRoute,
-      isDialog: route is SintDialogRoute,
-      isBottomSheet: route is SintModalBottomSheetRoute,
+      isDialog: route is SintDialogRoute || route is RawDialogRoute || route is DialogRoute,
+      isBottomSheet: route is SintModalBottomSheetRoute || route is ModalBottomSheetRoute,
     );
   }
 }

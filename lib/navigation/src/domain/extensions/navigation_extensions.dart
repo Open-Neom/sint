@@ -824,6 +824,12 @@ extension NavigationExtension on SintInterface {
   /// check if bottomsheet is open
   bool? get isBottomSheetOpen => routing.isBottomSheet;
 
+  /// check if any overlay (dialog, bottomsheet, or popup route) is open
+  bool get isOverlaid => (isDialogOpen ?? false) || (isBottomSheetOpen ?? false) || (rawRoute is PopupRoute);
+
+  /// check if navigator can go back
+  bool get canBack => searchDelegate(null).canBack;
+
   /// check a raw current route
   Route<dynamic>? get rawRoute => routing.route;
 

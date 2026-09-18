@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
+import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
 import 'package:sint/translation/sint_translation.dart';
@@ -760,13 +762,37 @@ extension NavigationExtension on SintInterface {
 
   void appUpdate() => rootController.update();
 
+  /// Updates the theme using `ThemeData` from `package:flutter/material.dart`.
+  ///
+  /// **Migration notice:** this supported SDK Material API is planned for
+  /// deprecation once a stable standalone SINT replacement is available.
+  /// A `material_ui.ThemeData` cannot be passed here; see the
+  /// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   void changeTheme(ThemeData theme) {
     rootController.setTheme(theme);
   }
 
+  /// Updates the theme mode using `package:flutter/material.dart` types.
+  ///
+  /// **Migration notice:** this supported SDK Material API is planned for
+  /// deprecation once a stable standalone SINT replacement is available.
+  /// A `material_ui.ThemeMode` cannot be passed here; see the
+  /// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   void changeThemeMode(ThemeMode themeMode) {
     rootController.setThemeMode(themeMode);
   }
+
+  /// Updates the standalone Material theme in [SintApp].
+  void changeMaterialTheme(material.ThemeData value) =>
+      rootController.setMaterialTheme(value);
+
+  /// Selects light, dark or system mode for standalone Material.
+  void changeMaterialThemeMode(material.ThemeMode value) =>
+      rootController.setMaterialThemeMode(value);
+
+  /// Updates the standalone Cupertino theme in [SintApp].
+  void changeCupertinoTheme(cupertino.CupertinoThemeData value) =>
+      rootController.setCupertinoTheme(value);
 
   GlobalKey<NavigatorState>? addKey(GlobalKey<NavigatorState> newKey) {
     return rootController.addKey(newKey);
@@ -848,7 +874,12 @@ extension NavigationExtension on SintInterface {
     return overlay;
   }
 
-  /// give access to Theme.of(context)
+  /// Returns the SDK Material theme, or its fallback without a current context.
+  ///
+  /// **Migration notice:** this supported getter reads `Theme` from
+  /// `package:flutter/material.dart`, not the standalone Material theme.
+  /// Deprecation is planned after a stable standalone SINT replacement; see the
+  /// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   ThemeData get theme {
     var theme = ThemeData.fallback();
     if (context != null) {
@@ -856,6 +887,16 @@ extension NavigationExtension on SintInterface {
     }
     return theme;
   }
+
+  /// The standalone Material theme inherited by the current navigator.
+  material.ThemeData get materialTheme => context == null
+      ? material.ThemeData.fallback()
+      : material.Theme.of(context!);
+
+  /// The standalone Cupertino theme inherited by the current navigator.
+  cupertino.CupertinoThemeData get cupertinoTheme => context == null
+      ? const cupertino.CupertinoThemeData()
+      : cupertino.CupertinoTheme.of(context!);
 
   /// The current null safe [WidgetsBinding]
   WidgetsBinding get engine {
@@ -889,20 +930,26 @@ extension NavigationExtension on SintInterface {
   ///The system-reported text scale.
   double get textScaleFactor => window.textScaleFactor;
 
-  /// give access to TextTheme.of(context)
+  /// Returns the SDK Material [theme]'s text theme.
+  ///
+  /// Reads the legacy theme; see [theme] for the planned migration notice.
   TextTheme get textTheme => theme.textTheme;
 
   /// give access to Mediaquery.of(context)
   MediaQueryData get mediaQuery => MediaQuery.of(context!);
 
-  /// Check if dark mode theme is enable
+  /// Whether the SDK Material [theme] is dark.
+  ///
+  /// Reads the legacy theme; see [theme] for the planned migration notice.
   bool get isDarkMode => (theme.brightness == Brightness.dark);
 
   /// Check if dark mode theme is enable on platform on android Q+
   bool get isPlatformDarkMode =>
       (ui.PlatformDispatcher.instance.platformBrightness == Brightness.dark);
 
-  /// give access to Theme.of(context).iconTheme.color
+  /// Returns the SDK Material [theme]'s icon color.
+  ///
+  /// Reads the legacy theme; see [theme] for the planned migration notice.
   Color? get iconColor => theme.iconTheme.color;
 
   /// give access to FocusScope.of(context)
@@ -918,6 +965,12 @@ extension NavigationExtension on SintInterface {
 
   Map<String, SintDelegate> get keys => rootController.keys;
 
+  /// Returns the current SDK design-system host.
+  ///
+  /// Its configuration and theme setters expose legacy Material types.
+  /// Standalone support will require an explicit host migration; this getter
+  /// does not select a host based on device, platform or build mode. See the
+  /// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   SintRootState get rootController => SintRootState.controller;
 
   ConfigData get _getxController => SintRootState.controller.config;

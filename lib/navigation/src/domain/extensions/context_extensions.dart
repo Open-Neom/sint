@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
+import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 
 extension ContextExt on BuildContext {
+  /// The standalone Material theme for widgets below [SintApp].
+  material.ThemeData get materialTheme => material.Theme.of(this);
+
+  /// The standalone Cupertino theme for widgets below [SintApp].
+  cupertino.CupertinoThemeData get cupertinoTheme => cupertino.CupertinoTheme.of(this);
+
+  /// The standalone Material text styles.
+  material.TextTheme get materialTextTheme => materialTheme.textTheme;
+
   /// The same of [MediaQuery.sizeOf(context)]
   Size get mediaQuerySize => MediaQuery.sizeOf(this);
 
@@ -53,16 +64,28 @@ extension ContextExt on BuildContext {
         widthTransformer(dividedBy: dividedBy, reducedBy: reducedByW);
   }
 
-  /// similar to [MediaQuery.of(context).padding]
+  /// Returns this context's SDK Material theme via [Theme.of].
+  ///
+  /// **Migration notice:** this supported getter uses
+  /// `package:flutter/material.dart`, not standalone `material_ui` types.
+  /// Deprecation is planned after a stable standalone SINT replacement; see the
+  /// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   ThemeData get theme => Theme.of(this);
 
-  /// Check if dark mode theme is enable
+  /// Whether the SDK Material [theme] is dark.
+  ///
+  /// Reads the legacy theme; see [theme] for the planned migration notice.
   bool get isDarkMode => (theme.brightness == Brightness.dark);
 
-  /// give access to Theme.of(context).iconTheme.color
+  /// Returns the SDK Material [theme]'s icon color.
+  ///
+  /// Reads the legacy theme; see [theme] for the planned migration notice.
   Color? get iconColor => theme.iconTheme.color;
 
-  /// similar to [MediaQuery.of(context).padding]
+  /// Returns the SDK Material text theme via [Theme.of].
+  ///
+  /// This is a legacy `TextTheme`, not a standalone `material_ui.TextTheme`.
+  /// See [theme] for the planned migration notice.
   TextTheme get textTheme => Theme.of(this).textTheme;
 
   /// similar to [MediaQuery.paddingOf(context)]

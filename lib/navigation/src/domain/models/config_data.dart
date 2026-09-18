@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
+import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 import 'package:sint/core/src/domain/typedefs/core_typedefs.dart';
 import 'package:sint/core/src/domain/enums/smart_management.dart';
 import 'package:sint/injection/src/bind.dart';
@@ -9,6 +11,14 @@ import 'package:sint/navigation/src/router/index.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_queue.dart';
 import 'package:sint/translation/src/domain/interfaces/translations.dart';
 
+/// Configuration for SINT's current SDK design-system host.
+///
+/// **Migration notice:** the theme, theme mode and scaffold messenger fields
+/// use `package:flutter/material.dart` types. These supported visual contracts
+/// are planned for deprecation after a stable standalone SINT replacement.
+/// Standalone types cannot be assigned to them. This does not deprecate the
+/// state, injection, route or translation configuration; see the
+/// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class ConfigData {
   final ValueChanged<Routing?>? routingCallback;
   final Transition? defaultTransition;
@@ -46,6 +56,15 @@ class ConfigData {
   final ThemeData? theme;
   final ThemeData? darkTheme;
   final ThemeMode? themeMode;
+  final bool useStandaloneDesign;
+  final bool useCupertinoDesign;
+  final material.ThemeData? materialTheme;
+  final material.ThemeData? materialDarkTheme;
+  final material.ThemeData? materialHighContrastTheme;
+  final material.ThemeData? materialHighContrastDarkTheme;
+  final material.ThemeMode? materialThemeMode;
+  final cupertino.CupertinoThemeData? cupertinoTheme;
+  final GlobalKey<material.ScaffoldMessengerState>? materialScaffoldMessengerKey;
   final bool? defaultPopGesture;
   final bool defaultOpaqueRoute;
   final Duration defaultTransitionDuration;
@@ -89,6 +108,15 @@ class ConfigData {
     this.theme,
     this.darkTheme,
     this.themeMode,
+    this.useStandaloneDesign = false,
+    this.useCupertinoDesign = false,
+    this.materialTheme,
+    this.materialDarkTheme,
+    this.materialHighContrastTheme,
+    this.materialHighContrastDarkTheme,
+    this.materialThemeMode,
+    this.cupertinoTheme,
+    this.materialScaffoldMessengerKey,
     this.unikey,
     this.testMode = false,
     this.defaultOpaqueRoute = true,
@@ -136,6 +164,15 @@ class ConfigData {
     ThemeData? theme,
     ThemeData? darkTheme,
     ThemeMode? themeMode,
+    bool? useStandaloneDesign,
+    bool? useCupertinoDesign,
+    material.ThemeData? materialTheme,
+    material.ThemeData? materialDarkTheme,
+    material.ThemeData? materialHighContrastTheme,
+    material.ThemeData? materialHighContrastDarkTheme,
+    material.ThemeMode? materialThemeMode,
+    cupertino.CupertinoThemeData? cupertinoTheme,
+    GlobalKey<material.ScaffoldMessengerState>? materialScaffoldMessengerKey,
     bool? defaultPopGesture,
     bool? defaultOpaqueRoute,
     Duration? defaultTransitionDuration,
@@ -183,6 +220,18 @@ class ConfigData {
       theme: theme ?? this.theme,
       darkTheme: darkTheme ?? this.darkTheme,
       themeMode: themeMode ?? this.themeMode,
+      useStandaloneDesign: useStandaloneDesign ?? this.useStandaloneDesign,
+      useCupertinoDesign: useCupertinoDesign ?? this.useCupertinoDesign,
+      materialTheme: materialTheme ?? this.materialTheme,
+      materialDarkTheme: materialDarkTheme ?? this.materialDarkTheme,
+      materialHighContrastTheme:
+          materialHighContrastTheme ?? this.materialHighContrastTheme,
+      materialHighContrastDarkTheme:
+          materialHighContrastDarkTheme ?? this.materialHighContrastDarkTheme,
+      materialThemeMode: materialThemeMode ?? this.materialThemeMode,
+      cupertinoTheme: cupertinoTheme ?? this.cupertinoTheme,
+      materialScaffoldMessengerKey:
+          materialScaffoldMessengerKey ?? this.materialScaffoldMessengerKey,
       defaultPopGesture: defaultPopGesture ?? this.defaultPopGesture,
       defaultOpaqueRoute: defaultOpaqueRoute ?? this.defaultOpaqueRoute,
       defaultTransitionDuration:
@@ -238,6 +287,15 @@ class ConfigData {
         other.theme == theme &&
         other.darkTheme == darkTheme &&
         other.themeMode == themeMode &&
+        other.useStandaloneDesign == useStandaloneDesign &&
+        other.useCupertinoDesign == useCupertinoDesign &&
+        other.materialTheme == materialTheme &&
+        other.materialDarkTheme == materialDarkTheme &&
+        other.materialHighContrastTheme == materialHighContrastTheme &&
+        other.materialHighContrastDarkTheme == materialHighContrastDarkTheme &&
+        other.materialThemeMode == materialThemeMode &&
+        other.cupertinoTheme == cupertinoTheme &&
+        other.materialScaffoldMessengerKey == materialScaffoldMessengerKey &&
         other.defaultPopGesture == defaultPopGesture &&
         other.defaultOpaqueRoute == defaultOpaqueRoute &&
         other.defaultTransitionDuration == defaultTransitionDuration &&
@@ -286,6 +344,15 @@ class ConfigData {
     theme.hashCode ^
     darkTheme.hashCode ^
     themeMode.hashCode ^
+    useStandaloneDesign.hashCode ^
+    useCupertinoDesign.hashCode ^
+    materialTheme.hashCode ^
+    materialDarkTheme.hashCode ^
+    materialHighContrastTheme.hashCode ^
+    materialHighContrastDarkTheme.hashCode ^
+    materialThemeMode.hashCode ^
+    cupertinoTheme.hashCode ^
+    materialScaffoldMessengerKey.hashCode ^
     defaultPopGesture.hashCode ^
     defaultOpaqueRoute.hashCode ^
     defaultTransitionDuration.hashCode ^

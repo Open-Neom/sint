@@ -13,6 +13,16 @@ import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 
+/// A SINT application using Material widgets bundled with the Flutter SDK.
+///
+/// **Migration notice — planned deprecation of the SDK Material integration.**
+/// This API remains supported. Its themes, theme mode and scaffold messenger
+/// key use types from `package:flutter/material.dart`, which are distinct from
+/// standalone `material_ui` types. Keep SDK types when using this constructor.
+///
+/// Standalone SINT adapters are planned and are not available in this release.
+/// Formal deprecation will follow a stable replacement and published support
+/// policy. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
   final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
@@ -86,6 +96,10 @@ class SintMaterialApp extends StatelessWidget {
   final bool useInheritedMediaQuery;
   final bool translateEndpoints;
 
+  /// Creates an app using SDK Material types.
+  ///
+  /// **Migration notice:** this integration remains supported; see
+  /// [SintMaterialApp] for the planned deprecation and migration guide.
   const SintMaterialApp({
     super.key,
     this.navigatorKey,
@@ -151,6 +165,10 @@ class SintMaterialApp extends StatelessWidget {
         routerDelegate = null,
         routerConfig = null;
 
+  /// Creates a router app using SDK Material types.
+  ///
+  /// **Migration notice:** this integration remains supported; see
+  /// [SintMaterialApp] for the planned deprecation and migration guide.
   const SintMaterialApp.router({
     super.key,
     this.routeInformationProvider,

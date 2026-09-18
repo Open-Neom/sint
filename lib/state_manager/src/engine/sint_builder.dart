@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/ui/bind_element.dart';
 import 'package:sint/injection/src/ui/binder.dart';

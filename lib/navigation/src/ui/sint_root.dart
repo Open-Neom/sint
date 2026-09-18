@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:material_ui/material_ui.dart' as material;
+import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
@@ -93,7 +95,8 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
 
   void onInit() {
     // ignore: deprecated_member_use_from_same_package
-    if (config.sintPages == null && config.home == null) {
+    if (config.routerDelegate == null &&
+        config.sintPages == null && config.home == null) {
       throw 'You need to provide sintPages (recommended) or home (deprecated). '
           'Use initialRoute + sintPages for string-based routing.';
     }
@@ -126,7 +129,8 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
       config = config.copyWith(routerDelegate: newDelegate);
     }
 
-    if (config.routeInformationParser == null) {
+    if (config.routeInformationParser == null &&
+        config.routerDelegate is SintDelegate) {
       final newRouteInformationParser =
           SintInformationParser.createInformationParser(
         initialRoute: config.initialRoute ??
@@ -153,6 +157,9 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
 
     // Build path translator for URL segment localization (web).
     if (config.translateEndpoints) {
+      if (config.routerDelegate is! SintDelegate) {
+        throw ArgumentError('translateEndpoints requires a SintDelegate.');
+      }
       final delegate = config.routerDelegate as SintDelegate;
       final segments = PathTranslator.extractSegments(
         delegate.registeredRoutes,
@@ -194,6 +201,18 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     // heavy GPU-intensive animations that can cause jank in browsers.
     if (kIsWeb) return Transition.fade;
 
+    if (config.useStandaloneDesign) {
+      if (config.useCupertinoDesign) return Transition.cupertino;
+      final theme = config.materialTheme ?? material.ThemeData();
+      return switch (theme.pageTransitionsTheme.builders[theme.platform]) {
+        cupertino.CupertinoPageTransitionsBuilder() => Transition.cupertino,
+        material.ZoomPageTransitionsBuilder() => Transition.zoom,
+        material.FadeUpwardsPageTransitionsBuilder() => Transition.fade,
+        material.OpenUpwardsPageTransitionsBuilder() => Transition.native,
+        _ => null,
+      };
+    }
+
     final platform = context.theme.platform;
     final matchingTransition =
         Sint.theme.pageTransitionsTheme.builders[platform];
@@ -221,6 +240,11 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     });
   }
 
+  /// Sets a theme from `package:flutter/material.dart` on the SDK host.
+  ///
+  /// **Migration notice:** standalone `material_ui.ThemeData` is a different
+  /// type. This API remains supported pending a stable standalone replacement.
+  /// See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   void setTheme(ThemeData value) {
     if (config.darkTheme == null) {
       config = config.copyWith(theme: value);
@@ -234,8 +258,43 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     update();
   }
 
+  /// Sets a theme mode from `package:flutter/material.dart` on the SDK host.
+  ///
+  /// **Migration notice:** standalone `material_ui.ThemeMode` is a different
+  /// type. This API remains supported pending a stable standalone replacement.
+  /// See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
   void setThemeMode(ThemeMode value) {
     config = config.copyWith(themeMode: value);
+    update();
+  }
+
+  /// Changes the standalone Material theme without converting legacy types.
+  void setMaterialTheme(material.ThemeData value) {
+    if (!config.useStandaloneDesign) {
+      throw StateError('setMaterialTheme requires a standalone SintApp.');
+    }
+    config = config.materialDarkTheme != null &&
+            value.brightness == Brightness.dark
+        ? config.copyWith(materialDarkTheme: value)
+        : config.copyWith(materialTheme: value);
+    update();
+  }
+
+  /// Changes the standalone Material light/dark selection.
+  void setMaterialThemeMode(material.ThemeMode value) {
+    if (!config.useStandaloneDesign) {
+      throw StateError('setMaterialThemeMode requires a standalone SintApp.');
+    }
+    config = config.copyWith(materialThemeMode: value);
+    update();
+  }
+
+  /// Changes the standalone Cupertino theme.
+  void setCupertinoTheme(cupertino.CupertinoThemeData value) {
+    if (!config.useStandaloneDesign) {
+      throw StateError('setCupertinoTheme requires a standalone SintApp.');
+    }
+    config = config.copyWith(cupertinoTheme: value);
     update();
   }
 

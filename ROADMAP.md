@@ -1,15 +1,89 @@
-# SINT Roadmap — Toward 2.0.0: The Legacy Purge
+# SINT Roadmap — 1.7.0: Adaptive SintApp
+
+> **Current design direction:** [Adaptive SintApp with limited changes](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/sint-app-minimal.md).
+> Reuse one SintRoot, select Cupertino on iOS and Material elsewhere, and add
+> typed materialTheme/cupertinoTheme arguments with a legacy theme transition.
+> Extracting a neutral entry point and separate adapters is no longer an initial
+> requirement. Direct standalone dependencies would require Flutter >=3.44 /
+> Dart >=3.12; the manifest has not changed. Earlier proposals below are retained
+> as alternatives, not mandatory implementation steps.
+
+> **2026-09-12 migration proposal:** [Material/Cupertino coexistence roadmap](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md)
+> defines opt-in standalone UI adapters, a shared runtime, SDK/platform/build
+> validation, and staged deprecation of legacy design APIs. This is a planning
+> document; no adapters or deprecation annotations have shipped from this work.
+> The historical backlog below predates 1.6.2 and must be checked against the
+> changelog before implementation; several items are already complete.
+
+> **Initial preparation:** public API documentation now carries a planned
+> deprecation notice. The [user migration guide](MIGRATION_DESIGN_SYSTEMS.md)
+> distinguishes supported current usage from future adapter availability.
+> Formal analyzer diagnostics remain gated on stable replacements.
 
 > **Versioning philosophy:** The four pillars (State, Injection, Navigation,
 > Translation) do not need breaking changes to evolve. The entire 1.x line is
-> additive evolution — performance, web, XR, DevTools, codegen — with zero
-> breaking changes. **2.0.0 is not a reinvention; it is a single purge event**
-> that removes the inherited GetX debt we keep today only for backwards
-> compatibility.
+> additive evolution — performance, web, XR, DevTools, codegen — preserving
+> existing public contracts. Standalone design-system support can arrive through
+> opt-in adapters in **1.7.0**. A future 2.0 product vision is a separate decision;
+> this migration does not require it. Version numbers still express API
+> compatibility: breaking public types require a major release regardless of
+> the amount of innovation. Legacy UI removal requires its own documented
+> migration and support criteria.
 
-**Trigger criterion for 2.0.0:** when all 21+ neom_modules have gone 2+
-releases without using a single deprecated symbol, the purge becomes free.
-That is the day 2.0.0 ships.
+**Historical target for GetX-alias removal:** all 21+ neom_modules complete 2+
+releases without deprecated symbols. This alone does not authorize removing
+legacy Material/Cupertino APIs or establish compatibility for external users;
+apply the dedicated migration roadmap's release gates as well.
+
+---
+
+## Earlier 1.7.0 proposal — neutral entry point and separate adapters
+
+**Target:** add working, opt-in standalone Material/Cupertino integrations while
+existing SINT applications keep their imports, public types and behavior.
+The preparation notices and migration guide are ready locally; adapters and
+the shared neutral entry point remain pending. This is a release target, not a
+claim that 1.7.0 or its adapters have shipped.
+
+1. **Protect current contracts.** Add a compilable legacy consumer fixture and
+   record the standalone failure from issue #12. Cover public app constructors,
+   theme methods, context extensions and directly used host/route contracts.
+2. **Decouple the shared runtime from design libraries.** Introduce the proposed
+   `sint/foundation.dart` entry point and neutral host/route contracts, preserving
+   one canonical set of controllers, Rx types, DI registrations and translations.
+   Keep legacy wrappers and deep imports source-compatible.
+3. **Deliver standalone adapters.** Implement the proposed `sint_material_ui`
+   first against issue #12, then `sint_cupertino_ui`, including themes, overlays,
+   locales and transitions. These are separate packages with their own version
+   numbers and SDK constraints; `sint` must not depend on them.
+4. **Validate coexistence and migration.** Compile legacy and modern fixtures,
+   exercise shared state/DI identity and lifecycle, and run the platform matrix
+   and pilot applications in the detailed roadmap. Publish exact migration
+   instructions alongside the released adapter APIs.
+5. **Release when the feature works.** Keep documentation notices during
+   development. Formal deprecation diagnostics require stable replacements and
+   an announced support window; they are not a prerequisite for 1.7.0.
+
+**Immediate implementation increment:** legacy compatibility fixtures plus a
+neutral host/route seam and its first Material proof of concept. This proves that
+SDK-specific configuration can be moved behind an adapter without changing
+`ConfigData`, `Sint.rootController` or existing `SintPageRoute` return contracts.
+Do not expose a supposedly neutral entry point that still imports design APIs
+transitively. Advance to the public adapter only after that boundary is verified.
+
+**Release gate:** the legacy fixture still works on the supported minimum SDK;
+the standalone issue #12 scenario and associated public APIs work; both adapters
+pass their documented validation; no duplicated state/DI runtime is introduced;
+and migration instructions reference available APIs. The base package retains
+Flutter >=3.32 / Dart >=3.8; new adapter minima are tested independently.
+If a boundary cannot be preserved, redesign or defer that change instead of
+including a silent breaking change in 1.7.0.
+
+Benchmarks and DevTools below remain separate backlog candidates. They are not
+required to ship this compatibility feature, and library separation alone is
+not a performance claim. See the
+[detailed migration roadmap](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md)
+and [Dart versioning guidance](https://dart.dev/tools/pub/versioning#semantic-versions).
 
 ---
 
@@ -42,7 +116,7 @@ forgotten.
   instance; `ObxError` is neither `Error` nor `Exception`;
   `InstanceInfo.isCreate` null-safety.
 
-### 1.7.0 candidates
+### Historical 1.7.0 candidates — separate from the active migration scope
 
 - **AOT benchmarks** (`dart compile exe` / `benchmark_harness`) so the
   harness measures release-mode performance, not only JIT.
@@ -86,11 +160,14 @@ Open Neom domain.
 
 ---
 
-## Horizon 3 — SINT 2.0.0: The Legacy Purge
+## Horizon 3 — Future major release: architecture and compatibility decisions
 
-A single breaking release that cuts the inherited GetX debt. No
-reinvention — the pillars, APIs and mental model stay exactly as the
-ecosystem already knows them.
+A major release can change the default design-system facade and address
+inherited compatibility debt. Preserve the four pillars and provide a documented
+path for existing consumers. Its product vision and schedule remain undecided.
+The standalone integration target is 1.7.0; it does not automatically schedule a
+major release or legacy removal. Follow the
+[coexistence roadmap](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md).
 
 ### Purge list
 
@@ -117,15 +194,15 @@ ecosystem already knows them.
    without streams would be the definitive performance leap, but changes
    public contracts. Evaluate against the purge cost.
 
-### Suggested cadence
+### Release direction
 
 | Release | Theme |
 |---|---|
-| 1.6.0 | O5a Type-keyed registry + P1 performance backlog |
-| 1.7.0 | AOT benchmarks + competitor baselines (+ DevTools stretch) |
+| 1.6.x | Existing release history; see CHANGELOG for completed work |
+| **1.7.0** | **Opt-in standalone Material/Cupertino support with legacy compatibility** |
 | 1.8.0 | Scoped Rx + codegen + Stream interop + module-aware DI |
 | 1.9.0 | DevTools + Sentinel middleware + XR routing formalized |
-| **2.0.0** | **Legacy Purge** — when the trigger criterion is met |
+| Future major | Product vision and breaking API decisions to be defined separately |
 
 Every 1.x release keeps the discipline installed in 1.4.0: statistical
 benchmark harness, before/after tables in the CHANGELOG, zero analyzer

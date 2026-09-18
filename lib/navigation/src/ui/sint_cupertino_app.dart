@@ -11,6 +11,16 @@ import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/domain/models/config_data.dart';
 
+/// A SINT application using Cupertino widgets bundled with the Flutter SDK.
+///
+/// **Migration notice — planned deprecation of the SDK Cupertino integration.**
+/// This API remains supported. Its theme uses `package:flutter/cupertino.dart`;
+/// its Material configuration uses `package:flutter/material.dart`. Standalone
+/// `cupertino_ui` and `material_ui` types cannot replace these parameter types.
+///
+/// Standalone SINT adapters are planned and are not available in this release.
+/// Formal deprecation will follow a stable replacement and published support
+/// policy. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintCupertinoApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
   final Widget? home;
@@ -68,6 +78,10 @@ class SintCupertinoApp extends StatelessWidget {
   final List<Bind> binds;
   final ScrollBehavior? scrollBehavior;
 
+  /// Creates an app using SDK Cupertino types.
+  ///
+  /// **Migration notice:** this integration remains supported; see
+  /// [SintCupertinoApp] for the planned deprecation and migration guide.
   const SintCupertinoApp({
     super.key,
     this.theme,
@@ -128,6 +142,10 @@ class SintCupertinoApp extends StatelessWidget {
         routerDelegate = null,
         routerConfig = null;
 
+  /// Creates a router app using SDK Cupertino types.
+  ///
+  /// **Migration notice:** this integration remains supported; see
+  /// [SintCupertinoApp] for the planned deprecation and migration guide.
   const SintCupertinoApp.router({
     super.key,
     this.theme,

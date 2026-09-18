@@ -1,5 +1,17 @@
 # Changelog - sint
 
+## [1.7.0-dev.1] - 2026-09-18
+
+### Navigation & Overlays
+- Expand `RouteData.ofRoute` for Flutter dialogs, modal bottom sheets and overlays.
+- Expose `isOverlaid` and `canBack` navigation helpers on `Sint` and `BuildContext`.
+- Enhance `ConfigData` and `SintRoot` with declarative lifecycle integration.
+
+### Migration preparation
+- Document planned deprecation of the supported SDK Material/Cupertino integration in the README and public API Dartdoc, including app hosts, theme methods and context getters.
+- Add `MIGRATION_DESIGN_SYSTEMS.md` with current compatible usage, type-boundary limitations and conditional migration steps for future standalone SINT adapters.
+- Add a coexistence roadmap covering shared state/DI, opt-in UI adapters, compatibility validation and staged deprecation.
+
 ## [1.6.2] - 2026-09-05
 
 ### Correctness and lifecycle

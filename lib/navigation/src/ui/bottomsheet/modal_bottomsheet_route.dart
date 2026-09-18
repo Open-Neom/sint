@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 import 'package:sint/navigation/src/ui/bottomsheet/modal_bottomsheet_layout.dart';
 
+/// A modal bottom-sheet route using Material widgets from the Flutter SDK.
+///
+/// **Migration notice:** this supported route uses SDK Material types and is
+/// planned for deprecation after a stable standalone SINT replacement exists.
+/// Standalone `material_ui.ThemeData` cannot be passed to [theme]. See the
+/// [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   SintModalBottomSheetRoute({
     this.builder,
@@ -26,6 +32,9 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   }
   final bool? isPersistent;
   final WidgetBuilder? builder;
+  /// An optional theme from `package:flutter/material.dart`.
+  ///
+  /// See [SintModalBottomSheetRoute] for the planned migration notice.
   final ThemeData? theme;
   final bool isScrollControlled;
   final Color? backgroundColor;
@@ -210,4 +219,3 @@ class _SintModalBottomSheetState<T> extends State<_SintModalBottomSheet<T>> {
     );
   }
 }
-

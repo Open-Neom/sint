@@ -73,6 +73,7 @@ export 'src/ui/bottomsheet/modal_bottomsheet_route.dart';
 export 'src/ui/dialog/dialog_route.dart';
 
 // UI - Apps
+export 'src/ui/sint_app.dart';
 export 'src/ui/sint_cupertino_app.dart';
 export 'src/ui/sint_material_app.dart';
 export 'src/ui/sint_root.dart';

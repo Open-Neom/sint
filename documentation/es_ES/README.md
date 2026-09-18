@@ -26,6 +26,7 @@
 ---
 
 - [Acerca de SINT](#acerca-de-sint)
+- [Aviso de migración Material y Cupertino](#aviso-de-migración-material-y-cupertino)
 - [Instalación](#instalación)
 - [Los Cuatro Pilares](#los-cuatro-pilares)
   - [Gestión de Estado (S)](#gestión-de-estado-s)
@@ -58,6 +59,30 @@ Todo lo que está fuera de estos cuatro pilares ha sido eliminado: sin cliente H
 - **ORGANIZACIÓN:** Estructura de Clean Architecture. 5 módulos, cada uno mapeado a un pilar.
 
 ---
+
+## Aviso de migración Material y Cupertino
+
+> **Deprecación prevista: la integración actual sigue soportada.**
+> `SintMaterialApp`, `SintCupertinoApp` y las APIs de temas actuales utilizan
+> Material/Cupertino incluidos en el SDK de Flutter. Los adaptadores standalone
+> de SINT están propuestos y **todavía no están disponibles en esta versión**.
+
+Por ahora, conserva los tipos de `package:flutter/material.dart` y
+`package:flutter/cupertino.dart` al utilizar estas APIs. Los tipos equivalentes
+de `material_ui` y `cupertino_ui` son distintos para Dart: cambiar los imports
+no basta para migrar la integración. Esto afecta a todas las plataformas y
+modos de compilación.
+
+La [guía de preparación y migración](../../MIGRATION_DESIGN_SYSTEMS.md) explica
+qué funciona hoy y qué pasos seguir cuando existan los adaptadores. También
+puedes consultar el [roadmap en español](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md).
+Este aviso aparece en la documentación y en la ayuda de las APIs del IDE.
+Las anotaciones `@Deprecated` se añadirán cuando haya reemplazos estables y una
+política de soporte publicada. El plan no depreca estado, inyección ni traducciones.
+
+La migración standalone es oficial y optativa desde Flutter 3.47. Flutter prevé
+deprecar formalmente las bibliotecas del SDK en noviembre de 2026; SINT define
+su transición por separado. [Anuncio oficial](https://flutter.dev/blog/whats-new-in-flutter-3-47).
 
 ## Instalación
 

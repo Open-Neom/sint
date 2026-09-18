@@ -30,6 +30,7 @@
 ---
 
 - [About SINT](#about-sint)
+- [Material and Cupertino Migration Notice](#material-and-cupertino-migration-notice)
 - [What's New in 1.6.2](#whats-new-in-162)
 - [What's New in 1.6.1](#whats-new-in-161)
 - [What's New in 1.6.0](#whats-new-in-160)
@@ -72,6 +73,30 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 - **ORGANIZATION:** Clean Architecture structure. 5 modules, each mapping to a pillar.
 
 ---
+
+## Material and Cupertino Migration Notice
+
+> **Planned deprecation — existing SDK integration remains supported.**
+> `SintMaterialApp`, `SintCupertinoApp` and SINT's current theme APIs use the
+> Material/Cupertino libraries bundled with Flutter. Standalone SINT adapters
+> are planned; they are **not available in this release**.
+
+Keep `package:flutter/material.dart` and `package:flutter/cupertino.dart` types
+at these API boundaries today. The matching standalone classes have different
+Dart type identities: switching imports alone cannot migrate `SintMaterialApp`
+or `Sint.changeTheme()`. This applies on every platform and in every build mode.
+
+Read the [migration and preparation guide](MIGRATION_DESIGN_SYSTEMS.md) for a
+working current example, affected APIs, and the steps to take once adapters are
+available. Formal `@Deprecated` diagnostics will follow stable replacements and
+a published support policy. This initial notice appears in documentation and
+API hover text; it introduces no analyzer diagnostics or runtime logging.
+SINT's state, injection and translation APIs are outside this deprecation plan.
+
+Flutter's standalone packages are official and opt-in in Flutter 3.47. The SDK
+libraries' formal deprecation is scheduled for November 2026; that schedule is
+separate from SINT's migration policy. See the
+[Flutter announcement](https://flutter.dev/blog/whats-new-in-flutter-3-47).
 
 ## What's New in 1.6.2
 

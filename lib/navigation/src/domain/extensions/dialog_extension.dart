@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/ui/dialog/dialog_route.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
@@ -9,7 +9,8 @@ extension DialogExtension on SintInterface {
   /// You can pass a [transitionDuration] and/or [transitionCurve],
   /// overriding the defaults when the dialog shows up and closes.
   /// When the dialog closes, uses those animations in reverse.
-  Future<T?> dialog<T>(Widget widget, {
+  Future<T?> dialog<T>(
+    Widget widget, {
     bool barrierDismissible = true,
     Color? barrierColor,
     bool useSafeArea = true,
@@ -21,25 +22,21 @@ extension DialogExtension on SintInterface {
     RouteSettings? routeSettings,
     String? id,
   }) {
-    assert(debugCheckHasMaterialLocalizations(context!));
-
-    //  final theme = Theme.of(context, shadowThemeOnly: true);
-    final theme = Theme.of(context!);
+    final standalone = rootController.config.useStandaloneDesign;
+    final themes = InheritedTheme.capture(from: context!, to: null);
+    final barrierLabel = standalone
+        ? material.MaterialLocalizations.of(context!).modalBarrierDismissLabel
+        : MaterialLocalizations.of(context!).modalBarrierDismissLabel;
     return generalDialog<T>(
       pageBuilder: (buildContext, animation, secondaryAnimation) {
-        final pageChild = widget;
-        Widget dialog = Builder(builder: (context) {
-          return Theme(data: theme, child: pageChild);
-        });
+        Widget dialog = themes.wrap(widget);
         if (useSafeArea) {
           dialog = SafeArea(child: dialog);
         }
         return dialog;
       },
       barrierDismissible: barrierDismissible,
-      barrierLabel: MaterialLocalizations
-          .of(context!)
-          .modalBarrierDismissLabel,
+      barrierLabel: barrierLabel,
       barrierColor: barrierColor ?? Colors.black54,
       transitionDuration: transitionDuration ?? defaultDialogTransitionDuration,
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -53,13 +50,14 @@ extension DialogExtension on SintInterface {
       },
       navigatorKey: navigatorKey,
       routeSettings:
-      routeSettings ?? RouteSettings(arguments: arguments, name: name),
+          routeSettings ?? RouteSettings(arguments: arguments, name: name),
       id: id,
     );
   }
 
   /// Api from showGeneralDialog with no context
-  Future<T?> generalDialog<T>({required RoutePageBuilder pageBuilder,
+  Future<T?> generalDialog<T>({
+    required RoutePageBuilder pageBuilder,
     bool barrierDismissible = false,
     String? barrierLabel,
     Color barrierColor = const Color(0x80000000),
@@ -67,15 +65,16 @@ extension DialogExtension on SintInterface {
     RouteTransitionsBuilder? transitionBuilder,
     GlobalKey<NavigatorState>? navigatorKey,
     RouteSettings? routeSettings,
-    String? id}) {
+    String? id,
+  }) {
     assert(!barrierDismissible || barrierLabel != null);
-    final key = navigatorKey ?? Sint
-        .nestedKey(id)
-        ?.navigatorKey;
-    final nav = key?.currentState ??
-        Navigator.of(overlayContext!,
-            rootNavigator:
-            true); //overlay context will always return the root navigator
+    final key = navigatorKey ?? Sint.nestedKey(id)?.navigatorKey;
+    final nav =
+        key?.currentState ??
+        Navigator.of(
+          overlayContext!,
+          rootNavigator: true,
+        ); //overlay context will always return the root navigator
     return nav.push<T>(
       SintDialogRoute<T>(
         pageBuilder: pageBuilder,
@@ -131,100 +130,114 @@ extension DialogExtension on SintInterface {
       actions.add(cancel);
     } else {
       if (leanCancel) {
-        actions.add(TextButton(
-          style: TextButton.styleFrom(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            shape: RoundedRectangleBorder(
+        actions.add(
+          TextButton(
+            style: TextButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(
                 side: BorderSide(
-                    color: buttonColor ?? theme.colorScheme.secondary,
-                    width: 2,
-                    style: BorderStyle.solid),
-                borderRadius: BorderRadius.circular(radius)),
+                  color: buttonColor ?? theme.colorScheme.secondary,
+                  width: 2,
+                  style: BorderStyle.solid,
+                ),
+                borderRadius: BorderRadius.circular(radius),
+              ),
+            ),
+            onPressed: () {
+              if (onCancel == null) {
+                //TODO: Close current dialog after api change
+                closeAllDialogs();
+              } else {
+                onCancel.call();
+              }
+            },
+            child: Text(
+              textCancel ?? "Cancel",
+              style: TextStyle(
+                color: cancelTextColor ?? theme.colorScheme.secondary,
+              ),
+            ),
           ),
-          onPressed: () {
-            if (onCancel == null) {
-              //TODO: Close current dialog after api change
-              closeAllDialogs();
-            } else {
-              onCancel.call();
-            }
-          },
-          child: Text(
-            textCancel ?? "Cancel",
-            style: TextStyle(
-                color: cancelTextColor ?? theme.colorScheme.secondary),
-          ),
-        ));
+        );
       }
     }
     if (confirm != null) {
       actions.add(confirm);
     } else {
       if (leanConfirm) {
-        actions.add(TextButton(
+        actions.add(
+          TextButton(
             style: TextButton.styleFrom(
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               backgroundColor: buttonColor ?? theme.colorScheme.secondary,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(radius)),
+                borderRadius: BorderRadius.circular(radius),
+              ),
             ),
             child: Text(
               textConfirm ?? "Ok",
               style: TextStyle(
-                  color: confirmTextColor ?? theme.colorScheme.surface),
+                color: confirmTextColor ?? theme.colorScheme.surface,
+              ),
             ),
             onPressed: () {
               onConfirm?.call();
-            }));
+            },
+          ),
+        );
       }
     }
 
-    Widget baseAlertDialog = Builder(builder: (context) {
-      return AlertDialog(
-        titlePadding: titlePadding ?? const EdgeInsets.all(8),
-        contentPadding: contentPadding ?? const EdgeInsets.all(8),
+    Widget baseAlertDialog = Builder(
+      builder: (context) {
+        return AlertDialog(
+          titlePadding: titlePadding ?? const EdgeInsets.all(8),
+          contentPadding: contentPadding ?? const EdgeInsets.all(8),
 
-        backgroundColor:
-        backgroundColor ?? DialogTheme
-            .of(context)
-            .backgroundColor,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(radius))),
-        title: Text(title, textAlign: TextAlign.center, style: titleStyle),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            content ??
-                Text(middleText,
-                    textAlign: TextAlign.center, style: middleTextStyle),
-            const SizedBox(height: 16),
-            ButtonTheme(
-              minWidth: 78.0,
-              height: 34.0,
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: actions!,
+          backgroundColor:
+              backgroundColor ?? DialogTheme.of(context).backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(radius)),
+          ),
+          title: Text(title, textAlign: TextAlign.center, style: titleStyle),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              content ??
+                  Text(
+                    middleText,
+                    textAlign: TextAlign.center,
+                    style: middleTextStyle,
+                  ),
+              const SizedBox(height: 16),
+              ButtonTheme(
+                minWidth: 78.0,
+                height: 34.0,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: actions!,
+                ),
               ),
-            )
-          ],
-        ),
-        // actions: actions, // ?? <Widget>[cancelButton, confirmButton],
-        buttonPadding: EdgeInsets.zero,
-      );
-    });
+            ],
+          ),
+          // actions: actions, // ?? <Widget>[cancelButton, confirmButton],
+          buttonPadding: EdgeInsets.zero,
+        );
+      },
+    );
 
     return dialog<T>(
       onWillPop != null
           ? PopScope<T>(
-        onPopInvokedWithResult: (didPop, result) =>
-            onWillPop(didPop, result),
-        // onPopInvoked: onWillPop,
-        child: baseAlertDialog,
-      )
+              onPopInvokedWithResult: (didPop, result) =>
+                  onWillPop(didPop, result),
+              // onPopInvoked: onWillPop,
+              child: baseAlertDialog,
+            )
           : baseAlertDialog,
       barrierDismissible: barrierDismissible,
       navigatorKey: navigatorKey,

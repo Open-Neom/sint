@@ -7,10 +7,19 @@
 - Expose `isOverlaid` and `canBack` navigation helpers on `Sint` and `BuildContext`.
 - Enhance `ConfigData` and `SintRoot` with declarative lifecycle integration.
 
-### Migration preparation
-- Document planned deprecation of the supported SDK Material/Cupertino integration in the README and public API Dartdoc, including app hosts, theme methods and context getters.
-- Add `MIGRATION_DESIGN_SYSTEMS.md` with current compatible usage, type-boundary limitations and conditional migration steps for future standalone SINT adapters.
-- Add a coexistence roadmap covering shared state/DI, opt-in UI adapters, compatibility validation and staged deprecation.
+### Standalone design-system preview
+- Add adaptive `SintApp` / `SintApp.router` using standalone `material_ui` and `cupertino_ui`, with one shared SINT runtime. Automatic presentation uses Cupertino on iOS and Material elsewhere; explicit design overrides are available.
+- Add typed Material and Cupertino themes, Material theme variants/mode, typed theme queries and runtime theme-changing APIs.
+- Preserve the existing SDK application classes. The transitional `SintApp(theme:)` argument uses the legacy Material host, carries an actionable `@Deprecated` notice, and rejects mixed legacy/standalone theme arguments.
+- Enable temporary legacy compatibility bridges by default for incremental migration. The bridges do not make legacy and standalone public types interchangeable.
+- Apply declarative standalone theme updates without replacing the SINT root or controllers, and preserve imperative changes across ordinary parent rebuilds.
+- Provide a standalone Material scaffold messenger under the Cupertino host. Resolve dialog localizations and modal-sheet routes using the selected design libraries.
+- Add adaptive-host, typed-theme, controller-lifecycle and mixed-overlay regression tests. Document convenience APIs that still require legacy compatibility.
+- Cancel snackbar timers when removing their overlays without an exit animation.
+- Bound standalone library versions below Material 1.3.0 / Cupertino 1.1.0: those releases use a Foundation annotation unavailable on the declared Flutter 3.44 baseline, despite allowing it in their manifests.
+- Raise the package SDK requirement to Flutter >=3.44.0 / Dart >=3.12.0 for all consumers because the standalone libraries are direct dependencies.
+- Update the migration guide and roadmaps to describe the implemented preview. Separate adapter packages remain a historical alternative, not an installation requirement.
+- Update CI from the obsolete Flutter 3.32 job to a Flutter 3.44.4 baseline plus the latest stable Flutter 3.x. Application build/runtime validation remains separate from package analysis and widget tests.
 
 ## [1.6.2] - 2026-09-05
 

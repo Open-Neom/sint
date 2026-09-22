@@ -1,34 +1,27 @@
 # SINT Roadmap — 1.7.0: Adaptive SintApp
 
-> **Current design direction:** [Adaptive SintApp with limited changes](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/sint-app-minimal.md).
-> Reuse one SintRoot, select Cupertino on iOS and Material elsewhere, and add
-> typed materialTheme/cupertinoTheme arguments with a legacy theme transition.
-> Extracting a neutral entry point and separate adapters is no longer an initial
-> requirement. Direct standalone dependencies would require Flutter >=3.44 /
-> Dart >=3.12; the manifest has not changed. Earlier proposals below are retained
-> as alternatives, not mandatory implementation steps.
+> **Local preview status, 2026-09-21:** `1.7.0-dev.1` implements
+> [adaptive SintApp](docs/roadmaps/sint-app-minimal.md) using one SintRoot and
+> standalone Material/Cupertino hosts. Typed `materialTheme` / `cupertinoTheme`
+> coexist with a deprecated transitional `theme` argument and existing SDK hosts.
+> The manifest now requires **Flutter >=3.44 / Dart >=3.12** for all consumers.
+> This is source/development status, not a claim of stable publication or
+> completed application builds.
 
-> **2026-09-12 migration proposal:** [Material/Cupertino coexistence roadmap](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md)
-> defines opt-in standalone UI adapters, a shared runtime, SDK/platform/build
-> validation, and staged deprecation of legacy design APIs. This is a planning
-> document; no adapters or deprecation annotations have shipped from this work.
-> The historical backlog below predates 1.6.2 and must be checked against the
-> changelog before implementation; several items are already complete.
+The next release gates are regression tests for host selection, theme updates,
+legacy coexistence and overlays; SDK validation; and **Cyberneom + Giglab**
+build/runtime checks for Android, macOS and web as supported by each app.
+Giglab replaces Gigmeout for native macOS validation. The package CI uses
+Flutter 3.44.4 plus the latest stable 3.x; the exact declared floor 3.44.0 needs
+its own release validation. The [migration guide](MIGRATION_DESIGN_SYSTEMS.md)
+explains the current API and SDK upgrade requirement.
 
-> **Initial preparation:** public API documentation now carries a planned
-> deprecation notice. The [user migration guide](MIGRATION_DESIGN_SYSTEMS.md)
-> distinguishes supported current usage from future adapter availability.
-> Formal analyzer diagnostics remain gated on stable replacements.
-
-> **Versioning philosophy:** The four pillars (State, Injection, Navigation,
-> Translation) do not need breaking changes to evolve. The entire 1.x line is
-> additive evolution — performance, web, XR, DevTools, codegen — preserving
-> existing public contracts. Standalone design-system support can arrive through
-> opt-in adapters in **1.7.0**. A future 2.0 product vision is a separate decision;
-> this migration does not require it. Version numbers still express API
-> compatibility: breaking public types require a major release regardless of
-> the amount of innovation. Legacy UI removal requires its own documented
-> migration and support criteria.
+Separate adapters and a neutral entry point are retained below as historical
+alternatives, not prerequisites for this implementation. Existing public SDK
+types have not been replaced with standalone types. SDK requirements did change,
+so this preview must not be described as compatible with every former consumer.
+Removal of legacy public APIs still requires a documented migration/support
+window and a compatibility-based version decision.
 
 **Historical target for GetX-alias removal:** all 21+ neom_modules complete 2+
 releases without deprecated symbols. This alone does not authorize removing
@@ -38,6 +31,10 @@ apply the dedicated migration roadmap's release gates as well.
 ---
 
 ## Earlier 1.7.0 proposal — neutral entry point and separate adapters
+
+**Historical alternative only.** The following proposal predates the direct
+`SintApp` implementation and its raised SDK floor. It is preserved as design
+history; the current release gates and user instructions are above.
 
 **Target:** add working, opt-in standalone Material/Cupertino integrations while
 existing SINT applications keep their imports, public types and behavior.

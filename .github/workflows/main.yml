@@ -13,7 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flutter: ["3.32.0", "3.44.4"]
+        # The standalone design packages require Flutter >=3.44 / Dart >=3.12.
+        # Keep the supported baseline and exercise the latest stable Flutter 3.x.
+        flutter: ["3.44.4", "3.x"]
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -21,6 +23,7 @@ jobs:
           flutter-version: "${{ matrix.flutter }}"
           channel: stable
           cache: true
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter pub get
         working-directory: performance
@@ -46,6 +49,7 @@ jobs:
           flutter-version: "3.44.4"
           channel: stable
           cache: true
+      - run: flutter --version
       - run: flutter pub get
       - name: Serial JIT measurements without coverage
         run: dart run tool/benchmark_runner.dart --full --output=build/benchmarks/ci.json

@@ -62,27 +62,29 @@ Todo lo que está fuera de estos cuatro pilares ha sido eliminado: sin cliente H
 
 ## Aviso de migración Material y Cupertino
 
-> **Deprecación prevista: la integración actual sigue soportada.**
-> `SintMaterialApp`, `SintCupertinoApp` y las APIs de temas actuales utilizan
-> Material/Cupertino incluidos en el SDK de Flutter. Los adaptadores standalone
-> de SINT están propuestos y **todavía no están disponibles en esta versión**.
+> **Preview local: SINT 1.7.0-dev.1.** El código actual incluye `SintApp` con
+> `material_ui` y `cupertino_ui`. Este estado de desarrollo no afirma que exista
+> una publicación estable. Requiere **Flutter >=3.44.0 / Dart >=3.12.0**, también
+> si se utilizan las clases legacy.
 
-Por ahora, conserva los tipos de `package:flutter/material.dart` y
-`package:flutter/cupertino.dart` al utilizar estas APIs. Los tipos equivalentes
-de `material_ui` y `cupertino_ui` son distintos para Dart: cambiar los imports
-no basta para migrar la integración. Esto afecta a todas las plataformas y
-modos de compilación.
+`SintApp` elige Cupertino en iOS y Material en las demás plataformas. Puedes
+fijar `design: SintDesign.material` o `SintDesign.cupertino`; en web el modo
+automático considera la plataforma del navegador. `materialTheme` recibe
+`material_ui.ThemeData` y `cupertinoTheme` recibe `cupertino_ui.CupertinoThemeData`.
+Cambiar el host no convierte los widgets de tus páginas ni esos tipos públicos.
 
-La [guía de preparación y migración](../../MIGRATION_DESIGN_SYSTEMS.md) explica
-qué funciona hoy y qué pasos seguir cuando existan los adaptadores. También
-puedes consultar el [roadmap en español](https://github.com/Open-Neom/sint/blob/main/docs/roadmaps/design-systems-migration.md).
-Este aviso aparece en la documentación y en la ayuda de las APIs del IDE.
-Las anotaciones `@Deprecated` se añadirán cuando haya reemplazos estables y una
-política de soporte publicada. El plan no depreca estado, inyección ni traducciones.
+`SintMaterialApp` y `SintCupertinoApp` conservan sus tipos del SDK.
+`SintApp(theme: temaAntiguo)` conserva temporalmente el host Material legacy,
+incluso en iOS, y muestra una advertencia `@Deprecated` para usar los nuevos
+parámetros. No se puede combinar `theme` con los temas standalone. Todavía no
+hay fecha de eliminación; estado, inyección y traducciones siguen vigentes.
 
-La migración standalone es oficial y optativa desde Flutter 3.47. Flutter prevé
-deprecar formalmente las bibliotecas del SDK en noviembre de 2026; SINT define
-su transición por separado. [Anuncio oficial](https://flutter.dev/blog/whats-new-in-flutter-3-47).
+Los bridges de compatibilidad se activan por defecto durante la migración.
+Consulta la [guía de migración](../../MIGRATION_DESIGN_SYSTEMS.md) y el
+[diseño actual](../../docs/roadmaps/sint-app-minimal.md) para los imports, métodos
+de temas, limitaciones y verificaciones de adopción. Esta implementación no
+requiere paquetes adaptadores separados. La validación de pilotos usa Cyberneom
+y Giglab; cada resultado de compilación debe comprobarse por plataforma.
 
 ## Instalación
 

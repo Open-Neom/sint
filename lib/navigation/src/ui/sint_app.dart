@@ -473,7 +473,13 @@ class SintApp extends StatelessWidget {
                 config.materialTheme ??
                 material.ThemeData.dark()
           : config.materialTheme ?? material.ThemeData.light();
-      contents = material.Theme(data: materialTheme, child: contents);
+      contents = material.Theme(
+        data: materialTheme,
+        child: material.ScaffoldMessenger(
+          key: config.materialScaffoldMessengerKey,
+          child: contents,
+        ),
+      );
     }
     return contents;
   }

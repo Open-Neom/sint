@@ -20,8 +20,8 @@ import 'package:sint/navigation/src/ui/sint_root.dart';
 /// key use types from `package:flutter/material.dart`, which are distinct from
 /// standalone `material_ui` types. Keep SDK types when using this constructor.
 ///
-/// Standalone SINT adapters are planned and are not available in this release.
-/// Formal deprecation will follow a stable replacement and published support
+/// The standalone SintApp preview is available in SINT 1.7.0-dev.1.
+/// This SDK host remains supported. Formal deprecation will follow a stable replacement and published support
 /// policy. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;

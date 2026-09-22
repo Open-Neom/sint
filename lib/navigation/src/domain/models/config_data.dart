@@ -64,7 +64,8 @@ class ConfigData {
   final material.ThemeData? materialHighContrastDarkTheme;
   final material.ThemeMode? materialThemeMode;
   final cupertino.CupertinoThemeData? cupertinoTheme;
-  final GlobalKey<material.ScaffoldMessengerState>? materialScaffoldMessengerKey;
+  final GlobalKey<material.ScaffoldMessengerState>?
+  materialScaffoldMessengerKey;
   final bool? defaultPopGesture;
   final bool defaultOpaqueRoute;
   final Duration defaultTransitionDuration;
@@ -132,6 +133,9 @@ class ConfigData {
   }) : routing = routing ?? Routing();
 
   ConfigData copyWith({
+    // Replaces the complete standalone design configuration, including nulls.
+    // Used when the application supplies new declarative theme arguments.
+    ConfigData? designConfiguration,
     ValueChanged<Routing?>? routingCallback,
     Transition? defaultTransition,
     VoidCallback? onInit,
@@ -199,9 +203,9 @@ class ConfigData {
       sintPages: pages ?? sintPages,
       unknownRoute: unknownPage ?? unknownRoute,
       routeInformationProvider:
-      routeInformationProvider ?? this.routeInformationProvider,
+          routeInformationProvider ?? this.routeInformationProvider,
       routeInformationParser:
-      routeInformationParser ?? this.routeInformationParser,
+          routeInformationParser ?? this.routeInformationParser,
       routerDelegate: routerDelegate ?? this.routerDelegate,
       backButtonDispatcher: backButtonDispatcher ?? this.backButtonDispatcher,
       navigatorObservers: navigatorObservers ?? this.navigatorObservers,
@@ -220,27 +224,45 @@ class ConfigData {
       theme: theme ?? this.theme,
       darkTheme: darkTheme ?? this.darkTheme,
       themeMode: themeMode ?? this.themeMode,
-      useStandaloneDesign: useStandaloneDesign ?? this.useStandaloneDesign,
-      useCupertinoDesign: useCupertinoDesign ?? this.useCupertinoDesign,
-      materialTheme: materialTheme ?? this.materialTheme,
-      materialDarkTheme: materialDarkTheme ?? this.materialDarkTheme,
-      materialHighContrastTheme:
-          materialHighContrastTheme ?? this.materialHighContrastTheme,
-      materialHighContrastDarkTheme:
-          materialHighContrastDarkTheme ?? this.materialHighContrastDarkTheme,
-      materialThemeMode: materialThemeMode ?? this.materialThemeMode,
-      cupertinoTheme: cupertinoTheme ?? this.cupertinoTheme,
-      materialScaffoldMessengerKey:
-          materialScaffoldMessengerKey ?? this.materialScaffoldMessengerKey,
+      useStandaloneDesign:
+          designConfiguration?.useStandaloneDesign ??
+          useStandaloneDesign ??
+          this.useStandaloneDesign,
+      useCupertinoDesign:
+          designConfiguration?.useCupertinoDesign ??
+          useCupertinoDesign ??
+          this.useCupertinoDesign,
+      materialTheme: designConfiguration != null
+          ? designConfiguration.materialTheme
+          : materialTheme ?? this.materialTheme,
+      materialDarkTheme: designConfiguration != null
+          ? designConfiguration.materialDarkTheme
+          : materialDarkTheme ?? this.materialDarkTheme,
+      materialHighContrastTheme: designConfiguration != null
+          ? designConfiguration.materialHighContrastTheme
+          : materialHighContrastTheme ?? this.materialHighContrastTheme,
+      materialHighContrastDarkTheme: designConfiguration != null
+          ? designConfiguration.materialHighContrastDarkTheme
+          : materialHighContrastDarkTheme ?? this.materialHighContrastDarkTheme,
+      materialThemeMode: designConfiguration != null
+          ? designConfiguration.materialThemeMode
+          : materialThemeMode ?? this.materialThemeMode,
+      cupertinoTheme: designConfiguration != null
+          ? designConfiguration.cupertinoTheme
+          : cupertinoTheme ?? this.cupertinoTheme,
+      materialScaffoldMessengerKey: designConfiguration != null
+          ? designConfiguration.materialScaffoldMessengerKey
+          : materialScaffoldMessengerKey ?? this.materialScaffoldMessengerKey,
       defaultPopGesture: defaultPopGesture ?? this.defaultPopGesture,
       defaultOpaqueRoute: defaultOpaqueRoute ?? this.defaultOpaqueRoute,
       defaultTransitionDuration:
-      defaultTransitionDuration ?? this.defaultTransitionDuration,
+          defaultTransitionDuration ?? this.defaultTransitionDuration,
       defaultTransitionCurve:
-      defaultTransitionCurve ?? this.defaultTransitionCurve,
+          defaultTransitionCurve ?? this.defaultTransitionCurve,
       defaultDialogTransitionCurve:
-      defaultDialogTransitionCurve ?? this.defaultDialogTransitionCurve,
-      defaultDialogTransitionDuration: defaultDialogTransitionDuration ??
+          defaultDialogTransitionCurve ?? this.defaultDialogTransitionCurve,
+      defaultDialogTransitionDuration:
+          defaultDialogTransitionDuration ??
           this.defaultDialogTransitionDuration,
       snackBarStyle: snackBarStyle ?? this.snackBarStyle,
       translateEndpoints: translateEndpoints ?? this.translateEndpoints,
@@ -312,56 +334,56 @@ class ConfigData {
   @override
   int get hashCode {
     return routingCallback.hashCode ^
-    defaultTransition.hashCode ^
-    onInit.hashCode ^
-    onReady.hashCode ^
-    onDispose.hashCode ^
-    enableLog.hashCode ^
-    logWriterCallback.hashCode ^
-    smartManagement.hashCode ^
-    binds.hashCode ^
-    transitionDuration.hashCode ^
-    defaultGlobalState.hashCode ^
-    sintPages.hashCode ^
-    unknownRoute.hashCode ^
-    routeInformationProvider.hashCode ^
-    routeInformationParser.hashCode ^
-    routerDelegate.hashCode ^
-    backButtonDispatcher.hashCode ^
-    navigatorObservers.hashCode ^
-    navigatorKey.hashCode ^
-    scaffoldMessengerKey.hashCode ^
-    translationsKeys.hashCode ^
-    translations.hashCode ^
-    locale.hashCode ^
-    fallbackLocale.hashCode ^
-    initialRoute.hashCode ^
-    customTransition.hashCode ^
-    // ignore: deprecated_member_use_from_same_package
-    home.hashCode ^
-    testMode.hashCode ^
-    unikey.hashCode ^
-    theme.hashCode ^
-    darkTheme.hashCode ^
-    themeMode.hashCode ^
-    useStandaloneDesign.hashCode ^
-    useCupertinoDesign.hashCode ^
-    materialTheme.hashCode ^
-    materialDarkTheme.hashCode ^
-    materialHighContrastTheme.hashCode ^
-    materialHighContrastDarkTheme.hashCode ^
-    materialThemeMode.hashCode ^
-    cupertinoTheme.hashCode ^
-    materialScaffoldMessengerKey.hashCode ^
-    defaultPopGesture.hashCode ^
-    defaultOpaqueRoute.hashCode ^
-    defaultTransitionDuration.hashCode ^
-    defaultTransitionCurve.hashCode ^
-    defaultDialogTransitionCurve.hashCode ^
-    defaultDialogTransitionDuration.hashCode ^
-    routing.hashCode ^
-    snackBarStyle.hashCode ^
-    translateEndpoints.hashCode ^
-    parameters.hashCode;
+        defaultTransition.hashCode ^
+        onInit.hashCode ^
+        onReady.hashCode ^
+        onDispose.hashCode ^
+        enableLog.hashCode ^
+        logWriterCallback.hashCode ^
+        smartManagement.hashCode ^
+        binds.hashCode ^
+        transitionDuration.hashCode ^
+        defaultGlobalState.hashCode ^
+        sintPages.hashCode ^
+        unknownRoute.hashCode ^
+        routeInformationProvider.hashCode ^
+        routeInformationParser.hashCode ^
+        routerDelegate.hashCode ^
+        backButtonDispatcher.hashCode ^
+        navigatorObservers.hashCode ^
+        navigatorKey.hashCode ^
+        scaffoldMessengerKey.hashCode ^
+        translationsKeys.hashCode ^
+        translations.hashCode ^
+        locale.hashCode ^
+        fallbackLocale.hashCode ^
+        initialRoute.hashCode ^
+        customTransition.hashCode ^
+        // ignore: deprecated_member_use_from_same_package
+        home.hashCode ^
+        testMode.hashCode ^
+        unikey.hashCode ^
+        theme.hashCode ^
+        darkTheme.hashCode ^
+        themeMode.hashCode ^
+        useStandaloneDesign.hashCode ^
+        useCupertinoDesign.hashCode ^
+        materialTheme.hashCode ^
+        materialDarkTheme.hashCode ^
+        materialHighContrastTheme.hashCode ^
+        materialHighContrastDarkTheme.hashCode ^
+        materialThemeMode.hashCode ^
+        cupertinoTheme.hashCode ^
+        materialScaffoldMessengerKey.hashCode ^
+        defaultPopGesture.hashCode ^
+        defaultOpaqueRoute.hashCode ^
+        defaultTransitionDuration.hashCode ^
+        defaultTransitionCurve.hashCode ^
+        defaultDialogTransitionCurve.hashCode ^
+        defaultDialogTransitionDuration.hashCode ^
+        routing.hashCode ^
+        snackBarStyle.hashCode ^
+        translateEndpoints.hashCode ^
+        parameters.hashCode;
   }
 }

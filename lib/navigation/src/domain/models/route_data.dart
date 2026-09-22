@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/navigation/src/router/sint_page_route.dart';
 import 'package:sint/navigation/src/ui/bottomsheet/modal_bottomsheet_route.dart';
 import 'package:sint/navigation/src/ui/dialog/dialog_route.dart';
@@ -11,7 +12,9 @@ class RouteData {
   final bool isDialog;
   final String? name;
 
-  @Deprecated('Use isSintPageRoute instead. Part of the legacy GetX route inspection.')
+  @Deprecated(
+    'Use isSintPageRoute instead. Part of the legacy GetX route inspection.',
+  )
   bool get isGetPageRoute => isSintPageRoute;
 
   const RouteData({
@@ -25,8 +28,14 @@ class RouteData {
     return RouteData(
       name: extractRouteName(route),
       isSintPageRoute: route is SintPageRoute,
-      isDialog: route is SintDialogRoute || route is RawDialogRoute || route is DialogRoute,
-      isBottomSheet: route is SintModalBottomSheetRoute || route is ModalBottomSheetRoute,
+      isDialog:
+          route is SintDialogRoute ||
+          route is RawDialogRoute ||
+          route is DialogRoute,
+      isBottomSheet:
+          route is SintModalBottomSheetRoute ||
+          route is ModalBottomSheetRoute ||
+          route is material.ModalBottomSheetRoute,
     );
   }
 }

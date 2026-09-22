@@ -1,10 +1,14 @@
 # SINT 1.7.0: SintApp adaptativo con cambios acotados
 
-Revisión de diseño del 12 de septiembre de 2026. Esta propuesta sustituye la
-extracción de un entrypoint neutral y los paquetes adaptadores como requisitos
-iniciales. Todavía no implementa `SintApp` ni modifica dependencias o versiones.
+Diseño del 12 de septiembre de 2026, actualizado al estado local del 21 de
+septiembre: **SINT 1.7.0-dev.1 ya implementa `SintApp`** y declara Flutter >=3.44 /
+Dart >=3.12 con dependencias directas de `material_ui` y `cupertino_ui`.
+La extracción de un entrypoint neutral y paquetes adaptadores deja de ser
+requisito inicial. Esta preview no equivale a una publicación estable ni a
+confirmar todos los builds de los pilotos. La [guía de migración](../../MIGRATION_DESIGN_SYSTEMS.md)
+describe las APIs actuales.
 
-## Contrato propuesto
+## Contrato implementado en la preview
 
 `SintApp` reutiliza un único `SintRoot`, los controllers, bindings, rutas y
 traducciones existentes. Selecciona el host visual en su construcción:
@@ -26,7 +30,7 @@ Adoptar el nuevo modo automático sí es una decisión visual de la aplicación.
 Los argumentos modernos son fuertemente tipados:
 
 ```dart
-// Fragmento de API propuesta; no disponible todavía.
+// Tipos de la API de la preview; no es un programa completo.
 final material.ThemeData? materialTheme;
 final cupertino.CupertinoThemeData? cupertinoTheme;
 
@@ -44,21 +48,21 @@ bibliotecas standalone y de `flutter/material.dart`, respectivamente. El aviso
 se introduce junto con alternativas funcionales. No describe el uso legacy
 coherente como un error; explica por qué no acepta tipos standalone.
 
-Para conservar un camino compatible, `SintApp(theme: antiguo)` puede delegar
+Para conservar un camino compatible, `SintApp(theme: antiguo)` delega
 en el host Material legacy, también en iOS, durante la transición. No se pasa
 ese objeto al host moderno. Combinar `theme` con argumentos modernos produce
 un error de configuración claro también en release. La selección automática
 por plataforma se aplica al camino moderno; esta excepción legacy debe quedar
 documentada y probada.
 
-## Ajustes internos necesarios
+## Implementación y límites que deben validarse
 
-1. Añadir `SintApp` y la selección de host alrededor del `SintRoot` existente.
+1. `SintApp` selecciona el host alrededor del `SintRoot` existente.
    No duplicar el runtime ni extraer paquetes como primer paso.
-2. Añadir almacenamiento y setters tipados para temas modernos. Conservar las
+2. Se añadieron almacenamiento y setters tipados para temas modernos. Conservar las
    firmas legacy de `ConfigData` y `SintRoot`; resolver también modo, tema
    oscuro, alto contraste y claves específicas de Material.
-3. Añadir consultas tipadas para Material y Cupertino. `Sint.theme` y
+3. Se añadieron consultas tipadas para Material y Cupertino. `Sint.theme` y
    `context.theme` actuales siguen retornando Material legacy; no pueden
    cambiar de tipo según el dispositivo sin romper su contrato estático.
 4. Dirigir localizaciones, transiciones, diálogos, sheets y snackbars al host
@@ -77,16 +81,17 @@ Los bridges ayudan a subárboles legacy; no convierten parámetros públicos.
 
 Incorporar los dos paquetes standalone directamente a `sint` exige actualmente
 Flutter >=3.44 y Dart >=3.12 para esa versión. Se deja de poder prometer el
-mínimo actual Flutter 3.32/Dart 3.8 en ella, aunque se utilice el camino legacy.
+mínimo anterior Flutter 3.32/Dart 3.8 en ella, aunque se utilice el camino legacy.
 Un `if` de plataforma no modifica la resolución de dependencias.
 
-Este diseño evita la separación inicial en paquetes, pero requiere adoptar y
-comunicar ese mínimo de SDK al preparar el release. Si conservar Flutter 3.32
-en la misma versión vuelve a ser un requisito, habrá que distribuir la fachada
-moderna aparte. Este documento no modifica el manifiesto ni da por resuelta
-esa condición de compatibilidad.
+El manifiesto de la preview ya adopta ese mínimo de SDK; las aplicaciones que
+no puedan actualizar deben conservar una versión compatible de SINT 1.6.x.
+Si conservar Flutter 3.32 en la misma versión vuelve a ser un requisito, habrá
+que distribuir la fachada moderna aparte. La matriz CI incluye 3.44.4 y la
+última estable 3.x; ejecutar la versión exacta del mínimo declarado, 3.44.0,
+sigue siendo una verificación de release.
 
-## Primera entrega verificable
+## Verificaciones para la entrega estable
 
 Probar selección iOS/resto, override, temas predeterminados y ambos temas;
 compatibilidad de `theme` legacy sin casts; identidad y lifecycle del único
@@ -94,6 +99,10 @@ root; cambios de tema; localizaciones y un diálogo/sheet en cada host.
 Mantener una app Material en iOS como control. La primera prueba usa el patrón
 `MyApp -> SentinelApp -> SintApp` del ejemplo del usuario. No declarar resuelto
 el issue #12 hasta validar también sus APIs públicas fuera del constructor.
+Los pilotos son **Cyberneom y Giglab** en Android, macOS y web según los targets
+de cada proyecto. Giglab sustituye a Gigmeout para la comprobación nativa macOS.
+Distinguir análisis, widget tests, builds y ejecución de la app en el informe;
+este documento no declara resultados satisfactorios por adelantado.
 
 Fuentes: [plataforma Flutter](https://api.flutter.dev/flutter/foundation/defaultTargetPlatform.html),
 [límites del bridge](https://docs.flutter.dev/release/breaking-changes/material-ui-and-cupertino-ui#bridge-capabilities-and-limitations),

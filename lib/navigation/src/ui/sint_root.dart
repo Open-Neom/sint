@@ -21,11 +21,7 @@ import 'package:sint/navigation/src/router/sint_delegate.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 
 class SintRoot extends StatefulWidget {
-  const SintRoot({
-    super.key,
-    required this.config,
-    required this.child,
-  });
+  const SintRoot({super.key, required this.config, required this.child});
   final ConfigData config;
   final Widget child;
   @override
@@ -88,6 +84,72 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   @override
+  void didUpdateWidget(covariant SintRoot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previous = oldWidget.config;
+    final next = widget.config;
+    if (next.useStandaloneDesign &&
+        (previous.useStandaloneDesign != next.useStandaloneDesign ||
+            previous.useCupertinoDesign != next.useCupertinoDesign ||
+            previous.materialTheme != next.materialTheme ||
+            previous.materialDarkTheme != next.materialDarkTheme ||
+            previous.materialHighContrastTheme !=
+                next.materialHighContrastTheme ||
+            previous.materialHighContrastDarkTheme !=
+                next.materialHighContrastDarkTheme ||
+            previous.materialThemeMode != next.materialThemeMode ||
+            previous.cupertinoTheme != next.cupertinoTheme ||
+            previous.materialScaffoldMessengerKey !=
+                next.materialScaffoldMessengerKey)) {
+      // Only changed declarative arguments replace runtime values. Updating a
+      // messenger key, for example, must not undo an imperative theme change.
+      T? changedValue<T>(T? oldValue, T? newValue, T? runtimeValue) =>
+          oldValue != newValue ? newValue : runtimeValue;
+      config = config.copyWith(
+        designConfiguration: next.copyWith(
+          useStandaloneDesign: next.useStandaloneDesign,
+          useCupertinoDesign: next.useCupertinoDesign,
+          materialTheme: changedValue(
+            previous.materialTheme,
+            next.materialTheme,
+            config.materialTheme,
+          ),
+          materialDarkTheme: changedValue(
+            previous.materialDarkTheme,
+            next.materialDarkTheme,
+            config.materialDarkTheme,
+          ),
+          materialHighContrastTheme: changedValue(
+            previous.materialHighContrastTheme,
+            next.materialHighContrastTheme,
+            config.materialHighContrastTheme,
+          ),
+          materialHighContrastDarkTheme: changedValue(
+            previous.materialHighContrastDarkTheme,
+            next.materialHighContrastDarkTheme,
+            config.materialHighContrastDarkTheme,
+          ),
+          materialThemeMode: changedValue(
+            previous.materialThemeMode,
+            next.materialThemeMode,
+            config.materialThemeMode,
+          ),
+          cupertinoTheme: changedValue(
+            previous.cupertinoTheme,
+            next.cupertinoTheme,
+            config.cupertinoTheme,
+          ),
+          materialScaffoldMessengerKey: changedValue(
+            previous.materialScaffoldMessengerKey,
+            next.materialScaffoldMessengerKey,
+            config.materialScaffoldMessengerKey,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
   void dispose() {
     onClose();
     super.dispose();
@@ -96,14 +158,16 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   void onInit() {
     // ignore: deprecated_member_use_from_same_package
     if (config.routerDelegate == null &&
-        config.sintPages == null && config.home == null) {
+        config.sintPages == null &&
+        config.home == null) {
       throw 'You need to provide sintPages (recommended) or home (deprecated). '
           'Use initialRoute + sintPages for string-based routing.';
     }
 
     if (config.routerDelegate == null) {
       // ignore: deprecated_member_use_from_same_package
-      final resolvedPages = config.sintPages ??
+      final resolvedPages =
+          config.sintPages ??
           [
             SintPage(
               // ignore: deprecated_member_use_from_same_package
@@ -119,11 +183,11 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
         navigatorKey: config.navigatorKey,
         navigatorObservers: (config.navigatorObservers == null
             ? <NavigatorObserver>[
-                SintNavigationObserver(config.routingCallback, Sint.routing)
+                SintNavigationObserver(config.routingCallback, Sint.routing),
               ]
             : <NavigatorObserver>[
                 SintNavigationObserver(config.routingCallback, config.routing),
-                ...config.navigatorObservers!
+                ...config.navigatorObservers!,
               ]),
       );
       config = config.copyWith(routerDelegate: newDelegate);
@@ -133,14 +197,16 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
         config.routerDelegate is SintDelegate) {
       final newRouteInformationParser =
           SintInformationParser.createInformationParser(
-        initialRoute: config.initialRoute ??
-            config.sintPages?.first.name ??
-            // ignore: deprecated_member_use_from_same_package
-            cleanRouteName("/${config.home.runtimeType}"),
-      );
+            initialRoute:
+                config.initialRoute ??
+                config.sintPages?.first.name ??
+                // ignore: deprecated_member_use_from_same_package
+                cleanRouteName("/${config.home.runtimeType}"),
+          );
 
-      config =
-          config.copyWith(routeInformationParser: newRouteInformationParser);
+      config = config.copyWith(
+        routeInformationParser: newRouteInformationParser,
+      );
     }
 
     if (config.locale != null) Sint.locale = config.locale;
@@ -273,8 +339,8 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     if (!config.useStandaloneDesign) {
       throw StateError('setMaterialTheme requires a standalone SintApp.');
     }
-    config = config.materialDarkTheme != null &&
-            value.brightness == Brightness.dark
+    config =
+        config.materialDarkTheme != null && value.brightness == Brightness.dark
         ? config.copyWith(materialDarkTheme: value)
         : config.copyWith(materialTheme: value);
     update();

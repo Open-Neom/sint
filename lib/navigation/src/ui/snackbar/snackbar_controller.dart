@@ -336,6 +336,7 @@ class SnackbarController {
   }
 
   void removeOverlay() {
+    _cancelTimer();
     if (!_isTesting) {
       for (var element in _overlayEntries) {
         element.remove();

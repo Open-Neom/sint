@@ -31,6 +31,7 @@
 
 - [About SINT](#about-sint)
 - [Material and Cupertino Migration Notice](#material-and-cupertino-migration-notice)
+- [1.7.0 Development Preview](#170-development-preview)
 - [What's New in 1.6.2](#whats-new-in-162)
 - [What's New in 1.6.1](#whats-new-in-161)
 - [What's New in 1.6.0](#whats-new-in-160)
@@ -76,27 +77,47 @@ Everything outside these four pillars has been removed: no HTTP client, no anima
 
 ## Material and Cupertino Migration Notice
 
-> **Planned deprecation — existing SDK integration remains supported.**
-> `SintMaterialApp`, `SintCupertinoApp` and SINT's current theme APIs use the
-> Material/Cupertino libraries bundled with Flutter. Standalone SINT adapters
-> are planned; they are **not available in this release**.
+> **Local development preview: SINT 1.7.0-dev.1.**
+> `SintApp` provides standalone Material/Cupertino hosts in the current source.
+> This is development status, not a claim that a stable release is published.
+> This version requires **Flutter >=3.44.0 / Dart >=3.12.0**, including when
+> using the legacy application classes.
 
-Keep `package:flutter/material.dart` and `package:flutter/cupertino.dart` types
-at these API boundaries today. The matching standalone classes have different
-Dart type identities: switching imports alone cannot migrate `SintMaterialApp`
-or `Sint.changeTheme()`. This applies on every platform and in every build mode.
+`SintApp` selects Cupertino on iOS and Material on other target platforms. Set
+`design: SintDesign.material` or `SintDesign.cupertino` to override that choice.
+On web, automatic selection follows the browser's target platform. Configure
+`materialTheme` with `material_ui.ThemeData` and `cupertinoTheme` with
+`cupertino_ui.CupertinoThemeData`; a platform check does not convert these types.
 
-Read the [migration and preparation guide](MIGRATION_DESIGN_SYSTEMS.md) for a
-working current example, affected APIs, and the steps to take once adapters are
-available. Formal `@Deprecated` diagnostics will follow stable replacements and
-a published support policy. This initial notice appears in documentation and
-API hover text; it introduces no analyzer diagnostics or runtime logging.
-SINT's state, injection and translation APIs are outside this deprecation plan.
+The existing `SintMaterialApp` and `SintCupertinoApp` keep their SDK types.
+`SintApp(theme: sdkTheme)` temporarily uses the legacy Material host and emits
+a targeted `@Deprecated` analyzer diagnostic directing users to the new theme
+arguments. Do not combine that legacy parameter with standalone themes. There
+is no announced removal date. State, injection and translation are unaffected.
 
-Flutter's standalone packages are official and opt-in in Flutter 3.47. The SDK
-libraries' formal deprecation is scheduled for November 2026; that schedule is
-separate from SINT's migration policy. See the
-[Flutter announcement](https://flutter.dev/blog/whats-new-in-flutter-3-47).
+The [migration guide](MIGRATION_DESIGN_SYSTEMS.md) documents current imports,
+working API shapes, theme operations, compatibility bridges and validation
+requirements. Separate adapter packages are not required by this implementation.
+Flutter's SDK-library migration schedule is separate from SINT's support policy;
+see the [Flutter announcement](https://flutter.dev/blog/whats-new-in-flutter-3-47).
+
+## 1.7.0 Development Preview
+
+- `SintApp` and `SintApp.router` share the existing SINT root, registry and router
+  while choosing a standalone design-system host.
+- Typed Material/Cupertino theme configuration, queries and runtime theme setters
+  coexist with legacy APIs; automatic host selection does not rewrite page widgets.
+- Temporary legacy compatibility bridges are enabled by default for gradual
+  migration. Their theme mapping does not convert public types or every component
+  theme. Validate package subtrees before opting out.
+- The SDK requirement rises from the 1.6.2 baseline of Flutter 3.32 / Dart 3.8 to
+  Flutter 3.44 / Dart 3.12 because the standalone packages are direct dependencies.
+- Pilot validation targets Cyberneom and Giglab on Android, macOS and web. A
+  successful widget test or analyzer run does not by itself establish successful
+  native/web application builds or runtime behavior.
+
+The following version sections describe historical releases and their own SDK
+requirements, not the requirement of this development preview.
 
 ## What's New in 1.6.2
 

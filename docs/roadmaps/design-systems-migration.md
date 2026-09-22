@@ -1,14 +1,17 @@
 # Roadmap de convivencia Material/Cupertino en SINT
 
-> **Revisión posterior:** el enfoque inicial vigente es
-> [SintApp adaptativo con cambios acotados](sint-app-minimal.md). Este documento
-> conserva el inventario de riesgos y la alternativa de núcleo neutral/adaptadores,
-> pero su extracción en paquetes ya no es requisito del primer paso. La variante
-> directa exige revisar el mínimo de SDK; el manifiesto sigue sin cambios.
+> **Documento histórico; estado actualizado al 21 de septiembre de 2026.**
+> La preview local 1.7.0-dev.1 implementa [SintApp adaptativo](sint-app-minimal.md)
+> dentro de `sint`, con dependencias directas y mínimo Flutter 3.44 / Dart 3.12.
+> El inventario y la alternativa de paquetes separados de este documento se
+> conservan para consulta; sus pasos, mínimos antiguos y nombres de adaptadores
+> no son requisitos vigentes. La [guía actual](../../MIGRATION_DESIGN_SYSTEMS.md)
+> describe qué usar. La validación pendiente se registra por plataforma y no se
+> deduce del estado de este documento.
 
 Propuesta técnica del 12 de septiembre de 2026 para [issue #12](https://github.com/Open-Neom/sint/issues/12). Base: SINT 1.6.2, commit `139c6658ed55c2320f9774136294959b9ae81a54`.
 
-Este documento define trabajo pendiente; no implementa la migración ni fija fechas. `foundation.dart`, `sint_material_ui` y `sint_cupertino_ui` son nombres propuestos, no APIs disponibles. Se revisará su disponibilidad antes de publicar.
+El texto histórico que sigue define la propuesta original; no fija fechas ni describe el estado implementado actual. `foundation.dart`, `sint_material_ui` y `sint_cupertino_ui` son nombres propuestos, no APIs disponibles. Se revisará su disponibilidad antes de publicar.
 
 El objetivo es que usuarios actuales conserven imports y comportamiento mientras otros adoptan standalone. Ambas integraciones compartirán estado, DI, rutas y traducciones. **La versión objetivo es SINT 1.7.0**, mediante integración optativa y contratos existentes compatibles. Cambiar tipos de APIs existentes o la fachada predeterminada requiere una decisión explícita de versión mayor; esos cambios quedan fuera de 1.7.0.
 

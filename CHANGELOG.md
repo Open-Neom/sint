@@ -1,5 +1,11 @@
 # Changelog - sint
 
+## Unreleased
+
+- Synchronize declarative history with imperative Navigator removals and back
+  actions, preserving results, PopScope, middleware and navigation modes.
+- Honor SintNavigator onDidRemovePage and legacy onPopPage callbacks.
+
 ## [1.7.0-dev.1] - 2026-09-18
 
 ### Navigation & Overlays

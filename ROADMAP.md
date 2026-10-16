@@ -148,10 +148,9 @@ Open Neom domain.
 - **SINT DevTools extension** (1.9.0, if not shipped in 1.7.0).
 - **Native `sint_sentinel` integration** (1.9.0): the circuit breaker /
   rate limiter as a formal framework middleware.
-- **VR/XR spatial routing** (1.9.0): `sint_vr` patterns absorbed on top of
-  the segment route index — spatial navigation as a first-class Pillar N
-  capability. Unique to SINT; no other Flutter framework has this on its
-  horizon.
+- **Host lifecycle integration**: keep route visibility and navigation hooks
+  generic. Domain-specific session behavior belongs in external modules;
+  it does not add a second state or dependency-injection runtime to SINT.
 - **Flutter Web performance program** (continuous): bundle size, deferred
   loading, wasm readiness.
 

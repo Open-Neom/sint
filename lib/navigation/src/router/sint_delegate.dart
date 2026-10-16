@@ -47,6 +47,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }
 
   final List<RouteDecoder> _activePages = <RouteDecoder>[];
+  late final _routeObserver = _SintStackObserver(this);
   final PopMode backButtonPopMode;
   final PreventDuplicateHandlingMode preventDuplicateHandlingMode;
 
@@ -60,7 +61,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   final TransitionDelegate<dynamic>? transitionDelegate;
 
   final Iterable<SintPage> Function(RouteDecoder currentNavStack)?
-      pickPagesForRootNavigator;
+  pickPagesForRootNavigator;
 
   List<RouteDecoder> get activePages => _activePages;
 
@@ -106,15 +107,14 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     GlobalKey<NavigatorState>? navigatorKey,
     String? initialRoute,
     required List<SintPage> pages,
-  })  : navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
-        initialRoute =
-            initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
-        notFoundRoute = notFoundRoute ??= SintPage(
-          name: '/404',
-          page: () => const Scaffold(
-            body: Center(child: Text('Route not found')),
-          ),
-        ) {
+  }) : navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
+       initialRoute =
+           initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
+       notFoundRoute = notFoundRoute ??= SintPage(
+         name: '/404',
+         page: () =>
+             const Scaffold(body: Center(child: Text('Route not found'))),
+       ) {
     if (!showHashOnUrl && kIsWeb && !SintUrlStrategy.isSet) {
       try {
         setUrlStrategy();
@@ -126,6 +126,12 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     addPages(pages);
     addPage(notFoundRoute);
     Sint.log('SintDelegate is created !');
+  }
+
+  @override
+  void dispose() {
+    _routeObserver.clear();
+    super.dispose();
   }
 
   Future<RouteDecoder?> runMiddleware(RouteDecoder config) {
@@ -143,7 +149,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     }
     // Both middleware pipelines honor `priority` with a stable sort (1.5.0).
     final middlewares = MiddlewareRunner.sortByPriority(
-        config.currentTreeBranch.last.middlewares);
+      config.currentTreeBranch.last.middlewares,
+    );
     if (middlewares.isEmpty) {
       return config;
     }
@@ -252,7 +259,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   Future<void> _pushHistory(RouteDecoder config) async {
     if (config.route!.preventDuplicates) {
       final originalEntryIndex = _activePages.indexWhere(
-          (element) => element.pageSettings?.name == config.pageSettings?.name);
+        (element) => element.pageSettings?.name == config.pageSettings?.name,
+      );
       if (originalEntryIndex >= 0) {
         switch (preventDuplicateHandlingMode) {
           case PreventDuplicateHandlingMode.popUntilOriginalRoute:
@@ -309,12 +317,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
       //create a new route with the remaining tree branch
       final res = await _popHistory<T>(result);
-      await _pushHistory(
-        RouteDecoder(
-          remaining.toList(),
-          null,
-        ),
-      );
+      await _pushHistory(RouteDecoder(remaining.toList(), null));
       return res;
     } else {
       //remove entire entry
@@ -366,38 +369,43 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   ///
   /// visual pages must have [SintPage.participatesInRootNavigator] set to true
   Iterable<SintPage> getVisualPages(RouteDecoder? currentHistory) {
-    final res = currentHistory!.currentTreeBranch
-        .where((r) => r.participatesInRootNavigator != null);
+    final res = currentHistory!.currentTreeBranch.where(
+      (r) => r.participatesInRootNavigator != null,
+    );
     if (res.isEmpty) {
       //default behavior, all router participate in root navigator
       return _activePages.map((e) => e.route!);
     } else {
       //user specified at least one participatesInRootNavigator
-      return res
-          .where((element) => element.participatesInRootNavigator == true);
+      return res.where(
+        (element) => element.participatesInRootNavigator == true,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentHistory = currentConfiguration;
-    final pages = currentHistory == null
-        ? <SintPage>[]
-        : pickPagesForRootNavigator?.call(currentHistory).toList() ??
-            getVisualPages(currentHistory).toList();
+    final pages = _currentVisualPages();
     if (pages.isEmpty) {
-      return ColoredBox(
-        color: Theme.of(context).scaffoldBackgroundColor,
-      );
+      return ColoredBox(color: Theme.of(context).scaffoldBackgroundColor);
     }
     return SintNavigator(
       key: navigatorKey,
-      onPopPage: _onPopVisualRoute,
+      onDidRemovePage: _onDidRemovePage,
       pages: pages,
-      observers: navigatorObservers,
+      observers: [_routeObserver, ...?navigatorObservers],
+      restorationScopeId: restorationScopeId,
       transitionDelegate:
           transitionDelegate ?? const DefaultTransitionDelegate<dynamic>(),
     );
+  }
+
+  List<SintPage> _currentVisualPages() {
+    final currentHistory = currentConfiguration;
+    return currentHistory == null
+        ? <SintPage>[]
+        : pickPagesForRootNavigator?.call(currentHistory).toList() ??
+              getVisualPages(currentHistory).toList();
   }
 
   @override
@@ -428,8 +436,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }) async {
     if ((pathParams != null && pathParams.isNotEmpty) ||
         (queryParams != null && queryParams.isNotEmpty)) {
-      page = resolveRoutePath(page,
-          pathParams: pathParams, queryParams: queryParams);
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: queryParams,
+      );
     }
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
@@ -484,10 +495,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     _routeTree.addRoute(getPage);
     final args = _buildPageSettings(routeName, arguments);
     final route = _getRouteDecoder<T>(args);
-    final result = await _push<T>(
-      route!,
-      rebuildStack: rebuildStack,
-    );
+    final result = await _push<T>(route!, rebuildStack: rebuildStack);
     _routeTree.removeRoute(getPage);
     return result;
   }
@@ -582,8 +590,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }) async {
     if ((pathParams != null && pathParams.isNotEmpty) ||
         (queryParams != null && queryParams.isNotEmpty)) {
-      newRouteName = resolveRoutePath(newRouteName,
-          pathParams: pathParams, queryParams: queryParams);
+      newRouteName = resolveRoutePath(
+        newRouteName,
+        pathParams: pathParams,
+        queryParams: queryParams,
+      );
     }
     final args = _buildPageSettings(newRouteName, arguments);
     final route = _getRouteDecoder<T>(args);
@@ -628,8 +639,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }) async {
     if ((pathParams != null && pathParams.isNotEmpty) ||
         (queryParams != null && queryParams.isNotEmpty)) {
-      page = resolveRoutePath(page,
-          pathParams: pathParams, queryParams: queryParams);
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: queryParams,
+      );
     }
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
@@ -691,8 +705,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }
 
   @override
-  Future<R?> backAndtoNamed<T, R>(String page,
-      {T? result, Object? arguments}) async {
+  Future<R?> backAndtoNamed<T, R>(
+    String page, {
+    T? result,
+    Object? arguments,
+  }) async {
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<R>(args);
     if (route == null) return null;
@@ -792,9 +809,12 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   @protected
   RouteDecoder _configureRouterDecoder<T>(
-      RouteDecoder decoder, PageSettings arguments) {
-    final parameters =
-        arguments.params.isEmpty ? arguments.query : arguments.params;
+    RouteDecoder decoder,
+    PageSettings arguments,
+  ) {
+    final parameters = arguments.params.isEmpty
+        ? arguments.query
+        : arguments.params;
     arguments.params.addAll(arguments.query);
     if (decoder.parameters.isEmpty) {
       decoder.parameters.addAll(parameters);
@@ -816,10 +836,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
     final preventDuplicateHandlingMode =
         res.route?.preventDuplicateHandlingMode ??
-            PreventDuplicateHandlingMode.reorderRoutes;
+        PreventDuplicateHandlingMode.reorderRoutes;
 
-    final onStackPage = _activePages
-        .firstWhereOrNull((element) => element.route?.key == res.route?.key);
+    final onStackPage = _activePages.firstWhereOrNull(
+      (element) => element.route?.key == res.route?.key,
+    );
 
     /// There are no duplicate router in the stack
     if (onStackPage == null) {
@@ -869,8 +890,9 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     // duplicate that desyncs the browser history from the internal stack.
     final targetName = configuration.pageSettings?.name;
     if (targetName != null) {
-      final existingIndex = _activePages
-          .indexWhere((element) => element.pageSettings?.name == targetName);
+      final existingIndex = _activePages.indexWhere(
+        (element) => element.pageSettings?.name == targetName,
+      );
       if (existingIndex >= 0) {
         if (existingIndex == _activePages.length - 1) {
           // Already at the requested route — nothing to do.
@@ -892,18 +914,15 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   /// vanity slug via `Sint.currentRoute`.
   void _pushNotFoundWithOriginalUrl(String requestedUrl) {
     final pageSettings = _buildPageSettings(requestedUrl);
-    final decoder = RouteDecoder(
-      [
-        notFoundRoute.copyWith(
-          name: requestedUrl,
-          key: ValueKey(requestedUrl),
-          completer: _activePages.isEmpty ? null : Completer(),
-          arguments: pageSettings,
-          parameters: pageSettings.params,
-        ),
-      ],
-      pageSettings,
-    );
+    final decoder = RouteDecoder([
+      notFoundRoute.copyWith(
+        name: requestedUrl,
+        key: ValueKey(requestedUrl),
+        completer: _activePages.isEmpty ? null : Completer(),
+        arguments: pageSettings,
+        parameters: pageSettings.params,
+      ),
+    ], pageSettings);
     _push(decoder);
   }
 
@@ -914,28 +933,37 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     return route;
   }
 
-  Future<bool> handlePopupRoutes({
-    Object? result,
-  }) async {
+  Future<bool> handlePopupRoutes({Object? result}) async {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return false;
     Route? currentRoute;
-    navigatorKey.currentState!.popUntil((route) {
+    navigator.popUntil((route) {
       currentRoute = route;
       return true;
     });
     if (currentRoute is PopupRoute) {
-      return await navigatorKey.currentState!.maybePop(result);
+      return await navigator.maybePop(result);
     }
     return false;
   }
 
   @override
-  Future<bool> popRoute({
-    Object? result,
-    PopMode? popMode,
-  }) async {
+  Future<bool> popRoute({Object? result, PopMode? popMode}) async {
     //Returning false will cause the entire app to be popped.
     final wasPopup = await handlePopupRoutes(result: result);
     if (wasPopup) return true;
+
+    final navigator = navigatorKey.currentState;
+    final current = _routeObserver.topRoute;
+    if (navigator == null || current == null) return false;
+
+    // Flutter routes pushed above a SINT page must be handled first. Let
+    // maybePop deliver PopScope callbacks. A first visual SINT page may still
+    // have logical history when the root navigator's pages are filtered.
+    if (current.popDisposition == RoutePopDisposition.doNotPop ||
+        current.settings is! Page) {
+      return navigator.maybePop(result);
+    }
 
     if (_canPop(popMode ?? backButtonPopMode)) {
       await _pop(popMode ?? backButtonPopMode, result);
@@ -953,13 +981,105 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     notifyListeners();
   }
 
-  bool _onPopVisualRoute(Route<dynamic> route, dynamic result) {
-    final didPop = route.didPop(result);
-    if (!didPop) {
-      return false;
+  void _onDidRemovePage(Page<Object?> page) {
+    _removePageFromHistory(page, _routeObserver.routeFor(page));
+  }
+
+  void _onRouteRemoved(Route<dynamic> route) {
+    final settings = route.settings;
+    if (settings is Page<Object?>) {
+      _removePageFromHistory(settings, route);
     }
-    _popWithResult(result);
+  }
+
+  void _removePageFromHistory(Page<Object?> page, Route<dynamic>? route) {
+    final index = _activePages.indexWhere(
+      (entry) => _samePage(entry.route, page),
+    );
+    // Preserve the root. Declarative back already removed its history entry,
+    // so Navigator's later removal callbacks must be idempotent.
+    if (index <= 0) return;
+    // Filtering a page out of the root navigator is not a logical pop. Such a
+    // page remains in history and must be available when navigating back.
+    if (!_currentVisualPages().any((candidate) => _samePage(candidate, page))) {
+      return;
+    }
+    final removed = _activePages.removeAt(index);
+    final completer = removed.route?.completer;
+    if (completer != null && !completer.isCompleted) {
+      if (route == null) {
+        completer.complete();
+      } else {
+        unawaited(
+          route.popped.then((value) {
+            if (!completer.isCompleted) completer.complete(value);
+          }),
+        );
+      }
+    }
     notifyListeners();
-    return true;
+  }
+
+  bool _samePage(SintPage? candidate, Page<Object?> page) {
+    if (identical(candidate, page)) return true;
+    // Copies retain their key and result completer. Do not remove a newer
+    // replacement that happens to use the same key as the departing page.
+    return candidate != null &&
+        candidate.key == page.key &&
+        page is SintPage &&
+        identical(candidate.completer, page.completer);
+  }
+}
+
+/// Tracks imperative routes as well as pages. Some Flutter versions do not
+/// report every removeRoute/pushAndRemoveUntil removal via onDidRemovePage.
+class _SintStackObserver extends NavigatorObserver {
+  _SintStackObserver(this.owner);
+
+  final SintDelegate owner;
+  final _routes = <Route<dynamic>>{};
+  Route<dynamic>? topRoute;
+
+  void clear() {
+    _routes.clear();
+    topRoute = null;
+  }
+
+  Route<dynamic>? routeFor(Page<Object?> page) {
+    for (final route in _routes) {
+      if (identical(route.settings, page)) return route;
+    }
+    return null;
+  }
+
+  @override
+  void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
+    this.topRoute = topRoute;
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.add(route);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    owner._onRouteRemoved(route);
+    _routes.remove(route);
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    owner._onRouteRemoved(route);
+    _routes.remove(route);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute != null) {
+      owner._onRouteRemoved(oldRoute);
+      _routes.remove(oldRoute);
+    }
+    if (newRoute != null) _routes.add(newRoute);
   }
 }

@@ -96,12 +96,12 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shouldShowBack = showBackButton ?? _shouldShowBackButton();
+    final shouldShowBack = showBackButton ?? _shouldShowBackButton(context);
 
     return AppBar(
-      leading: leading ?? (shouldShowBack ? _buildBackButton() : null),
+      leading: leading ?? (shouldShowBack ? _buildBackButton(context) : null),
       automaticallyImplyLeading: false,
-      title: _buildTitle(),
+      title: _buildTitle(context),
       titleSpacing: titleSpacing,
       backgroundColor: backgroundColor,
       elevation: elevation,
@@ -118,10 +118,21 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     return s[0].toUpperCase() + s.substring(1);
   }
 
-  Widget _buildTitle() {
+  Color _resolveForegroundColor(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+    if (isLight) {
+      return theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
+    }
+    return theme.appBarTheme.foregroundColor ?? Colors.white;
+  }
+
+  Widget _buildTitle(BuildContext context) {
     final displayTitle = capitalize ? _capitalize(title) : title;
+    final fg = _resolveForegroundColor(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final style = titleStyle ?? TextStyle(
-      color: Colors.white.withAlpha(204),
+      color: isLight ? fg : fg.withAlpha(204),
       fontWeight: FontWeight.bold,
     );
 
@@ -141,13 +152,16 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Text(displayTitle, style: style, overflow: TextOverflow.ellipsis);
   }
 
-  Widget _buildBackButton() {
+  Widget _buildBackButton(BuildContext context) {
+    final fg = _resolveForegroundColor(context);
     return IconButton(
-      icon: const Icon(Icons.arrow_back, color: Colors.white),
+      icon: Icon(Icons.arrow_back, color: fg),
       tooltip: 'Back',
       onPressed: () {
         if (_canSintGoBack()) {
           Sint.back();
+        } else if (Navigator.maybeOf(context)?.canPop() ?? false) {
+          Navigator.of(context).pop();
         } else {
           Sint.offAllNamed(fallbackRoute);
         }
@@ -164,7 +178,9 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
   }
 
-  bool _shouldShowBackButton() {
+  bool _shouldShowBackButton(BuildContext context) {
+    if (Navigator.maybeOf(context)?.canPop() ?? false) return true;
+
     final current = Sint.currentRoute;
     final isRootRoute = current == '/' || current == '/root'
         || current == '/home' || current == '/login' || current.isEmpty;

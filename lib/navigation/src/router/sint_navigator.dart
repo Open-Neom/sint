@@ -12,17 +12,19 @@ class SintNavigator extends Navigator {
     super.initialRoute,
     super.restorationScopeId,
   }) : super(
-    onDidRemovePage: onDidRemovePage ?? _defaultOnDidRemovePage,
-    observers: [
-      HeroController(),
-      ...?observers,
-    ],
-    transitionDelegate:
-    transitionDelegate ?? const DefaultTransitionDelegate<dynamic>(),
-  );
+          // Keep the legacy callback usable for direct SintNavigator consumers.
+          // SintDelegate uses onDidRemovePage to synchronize completed removals.
+          // ignore: deprecated_member_use
+          onPopPage: onDidRemovePage == null ? onPopPage : null,
+          onDidRemovePage: onDidRemovePage ??
+              (onPopPage == null ? _defaultOnDidRemovePage : null),
+          observers: [
+            HeroController(),
+            ...?observers,
+          ],
+          transitionDelegate:
+              transitionDelegate ?? const DefaultTransitionDelegate<dynamic>(),
+        );
 
-  static void _defaultOnDidRemovePage(
-      Page<dynamic> route) {
-  }
-
+  static void _defaultOnDidRemovePage(Page<dynamic> route) {}
 }

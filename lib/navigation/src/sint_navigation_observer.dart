@@ -59,7 +59,7 @@ class SintNavigationObserver extends NavigatorObserver {
 
     if (newRoute.isBottomSheet || newRoute.isDialog) {
       Sint.log("OPEN ${newRoute.name}");
-    } else if (newRoute.isGetPageRoute) {
+    } else if (newRoute.isSintPageRoute) {
       Sint.log("GOING TO ROUTE ${newRoute.name}");
     }
 

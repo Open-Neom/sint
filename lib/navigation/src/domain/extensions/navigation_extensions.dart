@@ -730,12 +730,6 @@ extension NavigationExtension on SintInterface {
     offAllNamed(initialRoute, id: id);
   }
 
-  /// **DEPRECATED** — Logic merged into [back]. Use `Sint.back()` directly.
-  @Deprecated('Web-safe logic is now built into back(). Use Sint.back() directly.')
-  void webBack<T>({T? result, String? id}) {
-    back<T>(result: result, id: id);
-  }
-
   // ─── End Web-Aware Navigation ────────────────────────────
 
   Future<void> updateLocale(Locale l) async {

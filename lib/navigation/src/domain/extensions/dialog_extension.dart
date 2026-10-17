@@ -122,6 +122,13 @@ extension DialogExtension on SintInterface {
     // the navigator used to push the dialog
     GlobalKey<NavigatorState>? navigatorKey,
   }) {
+    final standalone = rootController.config.useStandaloneDesign;
+    final secondaryColor = standalone
+        ? materialTheme.colorScheme.secondary
+        : theme.colorScheme.secondary;
+    final surfaceColor = standalone
+        ? materialTheme.colorScheme.surface
+        : theme.colorScheme.surface;
     var leanCancel = onCancel != null || textCancel != null;
     var leanConfirm = onConfirm != null || textConfirm != null;
     actions ??= [];
@@ -130,35 +137,53 @@ extension DialogExtension on SintInterface {
       actions.add(cancel);
     } else {
       if (leanCancel) {
-        actions.add(
-          TextButton(
-            style: TextButton.styleFrom(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: buttonColor ?? theme.colorScheme.secondary,
-                  width: 2,
-                  style: BorderStyle.solid,
-                ),
-                borderRadius: BorderRadius.circular(radius),
-              ),
-            ),
-            onPressed: () {
-              if (onCancel == null) {
-                //TODO: Close current dialog after api change
-                closeAllDialogs();
-              } else {
-                onCancel.call();
-              }
-            },
-            child: Text(
-              textCancel ?? "Cancel",
-              style: TextStyle(
-                color: cancelTextColor ?? theme.colorScheme.secondary,
-              ),
-            ),
+        void handleCancel() {
+          if (onCancel == null) {
+            closeAllDialogs();
+          } else {
+            onCancel.call();
+          }
+        }
+
+        final cancelChild = Text(
+          textCancel ?? "Cancel",
+          style: TextStyle(color: cancelTextColor ?? secondaryColor),
+        );
+        final cancelShape = RoundedRectangleBorder(
+          side: BorderSide(
+            color: buttonColor ?? secondaryColor,
+            width: 2,
+            style: BorderStyle.solid,
           ),
+          borderRadius: BorderRadius.circular(radius),
+        );
+
+        actions.add(
+          standalone
+              ? material.TextButton(
+                  style: material.TextButton.styleFrom(
+                    tapTargetSize: material.MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    shape: cancelShape,
+                  ),
+                  onPressed: handleCancel,
+                  child: cancelChild,
+                )
+              : TextButton(
+                  style: TextButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    shape: cancelShape,
+                  ),
+                  onPressed: handleCancel,
+                  child: cancelChild,
+                ),
         );
       }
     }
@@ -166,65 +191,104 @@ extension DialogExtension on SintInterface {
       actions.add(confirm);
     } else {
       if (leanConfirm) {
+        final confirmChild = Text(
+          textConfirm ?? "Ok",
+          style: TextStyle(color: confirmTextColor ?? surfaceColor),
+        );
+        final confirmShape = RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+        );
+
         actions.add(
-          TextButton(
-            style: TextButton.styleFrom(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              backgroundColor: buttonColor ?? theme.colorScheme.secondary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
-              ),
-            ),
-            child: Text(
-              textConfirm ?? "Ok",
-              style: TextStyle(
-                color: confirmTextColor ?? theme.colorScheme.surface,
-              ),
-            ),
-            onPressed: () {
-              onConfirm?.call();
-            },
-          ),
+          standalone
+              ? material.TextButton(
+                  style: material.TextButton.styleFrom(
+                    tapTargetSize: material.MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor: buttonColor ?? secondaryColor,
+                    shape: confirmShape,
+                  ),
+                  onPressed: () {
+                    onConfirm?.call();
+                  },
+                  child: confirmChild,
+                )
+              : TextButton(
+                  style: TextButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor: buttonColor ?? secondaryColor,
+                    shape: confirmShape,
+                  ),
+                  onPressed: () {
+                    onConfirm?.call();
+                  },
+                  child: confirmChild,
+                ),
         );
       }
     }
 
     Widget baseAlertDialog = Builder(
       builder: (context) {
+        final dialogShape = RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(radius)),
+        );
+        final dialogTitle = Text(
+          title,
+          textAlign: TextAlign.center,
+          style: titleStyle,
+        );
+        final actionsWrap = Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: actions!,
+        );
+        final dialogContent = Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            content ??
+                Text(
+                  middleText,
+                  textAlign: TextAlign.center,
+                  style: middleTextStyle,
+                ),
+            const SizedBox(height: 16),
+            standalone
+                ? material.ButtonTheme(
+                    minWidth: 78.0,
+                    height: 34.0,
+                    child: actionsWrap,
+                  )
+                : ButtonTheme(
+                    minWidth: 78.0,
+                    height: 34.0,
+                    child: actionsWrap,
+                  ),
+          ],
+        );
+
+        if (standalone) {
+          return material.AlertDialog(
+            titlePadding: titlePadding ?? const EdgeInsets.all(8),
+            contentPadding: contentPadding ?? const EdgeInsets.all(8),
+            backgroundColor:
+                backgroundColor ??
+                material.DialogTheme.of(context).backgroundColor,
+            shape: dialogShape,
+            title: dialogTitle,
+            content: dialogContent,
+            buttonPadding: EdgeInsets.zero,
+          );
+        }
         return AlertDialog(
           titlePadding: titlePadding ?? const EdgeInsets.all(8),
           contentPadding: contentPadding ?? const EdgeInsets.all(8),
-
           backgroundColor:
               backgroundColor ?? DialogTheme.of(context).backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(radius)),
-          ),
-          title: Text(title, textAlign: TextAlign.center, style: titleStyle),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              content ??
-                  Text(
-                    middleText,
-                    textAlign: TextAlign.center,
-                    style: middleTextStyle,
-                  ),
-              const SizedBox(height: 16),
-              ButtonTheme(
-                minWidth: 78.0,
-                height: 34.0,
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: actions!,
-                ),
-              ),
-            ],
-          ),
-          // actions: actions, // ?? <Widget>[cancelButton, confirmButton],
+          shape: dialogShape,
+          title: dialogTitle,
+          content: dialogContent,
           buttonPadding: EdgeInsets.zero,
         );
       },

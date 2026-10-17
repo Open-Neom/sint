@@ -32,7 +32,6 @@ export 'src/domain/mixins/sint_navigation_mixin.dart';
 export 'src/domain/models/config_data.dart';
 export 'src/domain/models/path_decoded.dart';
 export 'src/domain/models/route_data.dart';
-export 'src/domain/models/route_node.dart';
 export 'src/domain/models/routing.dart';
 export 'src/domain/models/sint_snackbar_style.dart';
 
@@ -53,11 +52,7 @@ export 'src/router/middleware_runner.dart';
 export 'src/router/page_redirect.dart';
 export 'src/router/page_settings.dart';
 export 'src/router/route_decoder.dart';
-export 'src/router/route_match_result.dart';
-export 'src/router/route_matcher.dart';
 export 'src/router/route_parser.dart';
-export 'src/router/route_tree.dart';
-export 'src/router/route_tree_result.dart';
 export 'src/router/router_report_manager.dart';
 export 'src/router/sint_test_mode.dart';
 export 'src/router/url_strategy/url_strategy.dart';
@@ -100,6 +95,7 @@ export 'src/ui/transitions/zoom_in_transition.dart';
 export 'src/ui/widgets/directionality_drag_gesture_recognizer.dart';
 export 'src/ui/widgets/sint_app_bar.dart';
 export 'src/ui/widgets/sint_back_gesture_detector.dart';
+export 'src/ui/widgets/sint_router_outlet.dart';
 
 // Utils
 export 'src/utils/navigation_constants.dart';

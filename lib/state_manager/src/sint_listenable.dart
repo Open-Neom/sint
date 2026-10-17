@@ -57,11 +57,23 @@ class SintListenable<T> extends ListNotifier implements RxInterface<T> {
 
   T _value;
 
+  @protected
+  T get rawValue => _value;
+
+  @protected
+  set rawValue(T newValue) {
+    _value = newValue;
+  }
+
   @override
   T get value {
     reportRead();
     return _value;
   }
+
+  /// Reads the current value without registering a reactive dependency in an
+  /// enclosing `Obx` or `Computed` scope.
+  T get peek => _value;
 
   void _notify() {
     refresh();

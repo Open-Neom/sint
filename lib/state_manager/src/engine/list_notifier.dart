@@ -7,9 +7,77 @@ import 'package:sint/state_manager/src/engine/notifier.dart';
 /// The core notification engine for Pillar S (State).
 /// Maintained with original names to ensure multirepo compatibility.
 class ListNotifier extends Listenable {
+  static int _batchDepth = 0;
+  static bool _isFlushingBatch = false;
+  static final List<ListNotifier> _batchedNotifiers = <ListNotifier>[];
+  static final List<VoidCallback> _batchedComputed = <VoidCallback>[];
+
+  /// Whether execution is currently inside a [batch] block.
+  static bool get isBatching => _batchDepth > 0;
+
+  /// Whether a completed [batch] block is currently flushing queued listeners.
+  static bool get isFlushingBatch => _isFlushingBatch;
+
+  /// Internal hook for `Computed<T>` to coalesce recomputations during a batch flush.
+  @protected
+  static void enqueueBatchedComputed(VoidCallback flushCallback) {
+    _batchedComputed.add(flushCallback);
+  }
+
+  /// Runs [action] while coalescing synchronous [ListNotifier] notifications.
+  ///
+  /// Each mutated notifier inside [action] is queued at most once and its
+  /// listeners are notified when the outermost [batch] completes.
+  static T batch<T>(T Function() action) {
+    _batchDepth++;
+    try {
+      return action();
+    } finally {
+      _batchDepth--;
+      if (_batchDepth == 0 &&
+          (_batchedNotifiers.isNotEmpty || _batchedComputed.isNotEmpty)) {
+        _flushBatch();
+      }
+    }
+  }
+
+  static void _flushBatch() {
+    if (_isFlushingBatch) return;
+    _isFlushingBatch = true;
+    try {
+      while (_batchedNotifiers.isNotEmpty || _batchedComputed.isNotEmpty) {
+        var i = 0;
+        while (i < _batchedNotifiers.length) {
+          final notifier = _batchedNotifiers[i++];
+          notifier._queuedInBatch = false;
+          if (!notifier.isDisposed) {
+            notifier._dispatchNotifications();
+          }
+        }
+        _batchedNotifiers.clear();
+
+        var c = 0;
+        while (c < _batchedComputed.length && _batchedNotifiers.isEmpty) {
+          final nextComputed = _batchedComputed[c++];
+          nextComputed();
+        }
+        if (c > 0) {
+          if (c == _batchedComputed.length) {
+            _batchedComputed.clear();
+          } else {
+            _batchedComputed.removeRange(0, c);
+          }
+        }
+      }
+    } finally {
+      _isFlushingBatch = false;
+    }
+  }
+
   List<_ListenerEntry>? _updaters = <_ListenerEntry>[];
   int _notificationDepth = 0;
   int _removedListeners = 0;
+  bool _queuedInBatch = false;
 
   @override
   Disposer addListener(SintStateUpdate listener) {
@@ -72,6 +140,19 @@ class ListNotifier extends Listenable {
   }
 
   void _notifyUpdate() {
+    final list = _updaters;
+    if (list == null || list.isEmpty) return;
+    if (_batchDepth > 0) {
+      if (!_queuedInBatch) {
+        _queuedInBatch = true;
+        _batchedNotifiers.add(this);
+      }
+      return;
+    }
+    _dispatchNotifications();
+  }
+
+  void _dispatchNotifications() {
     final list = _updaters;
     if (list == null || list.isEmpty) return;
     // No allocation on the notification path. Additions are deferred to the

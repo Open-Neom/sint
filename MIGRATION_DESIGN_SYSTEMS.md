@@ -1,9 +1,8 @@
 # Material and Cupertino migration guide
 
-**Status: local development preview, SINT 1.7.0-dev.1, September 21, 2026.**
-The current source includes `SintApp` using the standalone `material_ui` and
-`cupertino_ui` libraries. This document describes that implementation; it does
-not claim a stable release has been published or that every pilot build passed.
+**Status: SINT 2.0.0 (October 2026).**
+SINT 2.0.0 includes `SintApp` and `SintApp.router` using the standalone
+`material_ui` and `cupertino_ui` libraries over a single shared SINT runtime.
 
 This version requires **Flutter >=3.44.0 and Dart >=3.12.0**. These requirements
 apply to all consumers, including applications using `SintMaterialApp` or
@@ -24,8 +23,7 @@ separate-adapter proposal retained in the historical roadmap.
 | `SintApp` | `material_ui.ThemeData`, `cupertino_ui.CupertinoThemeData` | Standalone; automatic Cupertino on iOS and Material on other target platforms. |
 | `SintApp(design: SintDesign.material)` | Standalone themes | Material on every platform. |
 | `SintApp(design: SintDesign.cupertino)` | Standalone themes | Cupertino on every platform. |
-| `SintApp(theme: sdkTheme)` | `flutter/material.dart` `ThemeData` | Transitional, deprecated parameter; uses the legacy Material host, including on iOS. |
-| `SintMaterialApp` / `SintCupertinoApp` | Their existing SDK types | Existing integration remains available. |
+| `SintMaterialApp` / `SintCupertinoApp` | Their existing SDK types | Existing SDK integration remains available. |
 
 Automatic selection uses Flutter's `defaultTargetPlatform`. In a browser on
 iOS, it selects Cupertino. Use an explicit design to keep a single presentation
@@ -160,13 +158,11 @@ operations actually used by the application. Validate dialogs, sheets,
 snackbars, localization and theme inheritance in both host modes. A successful
 compilation does not prove those inherited-widget requirements at runtime.
 
-In this preview, `Sint.dialog` and `Sint.bottomSheet` select the standalone
-infrastructure under `SintApp`. `Sint.defaultDialog` still builds SDK Material
-widgets, and `Sint.snackbar(mainButton:)` still accepts the SDK `TextButton`
-type. Keep compatibility enabled for these convenience APIs. To supply a
-standalone action widget, `Sint.rawSnackbar(mainButton:)` accepts `Widget`;
-alternatively use the standalone library's snackbar through its scaffold
-messenger. A bridge cannot convert the `mainButton` parameter's Dart type.
+In SINT 1.7.0, `Sint.dialog`, `Sint.defaultDialog`, and `Sint.bottomSheet`
+select the standalone infrastructure under `SintApp`, and `Sint.snackbar(mainButton:)`
+and `Sint.rawSnackbar(mainButton:)` accept `Widget` so both standalone
+`material_ui.TextButton` / `cupertino_ui.CupertinoButton` and legacy SDK buttons
+can be passed directly.
 
 Custom `localizationsDelegates` precede the standalone default delegates, so
 applications can override their types. When migrating custom localization APIs,

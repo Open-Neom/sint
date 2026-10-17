@@ -181,48 +181,6 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets(
-    'legacy theme still uses the SDK host on iOS',
-    (tester) async {
-      await tester.pumpWidget(
-        SintApp(
-          // ignore: deprecated_member_use
-          theme: legacy.ThemeData.dark(),
-          sintPages: _pages(const legacy.Scaffold(body: Text('legacy'))),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(legacy.MaterialApp), findsOneWidget);
-      expect(find.byType(cupertino.CupertinoApp), findsNothing);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-  );
-
-  testWidgets(
-    'mixed legacy and standalone arguments give an actionable error',
-    (tester) async {
-      await tester.pumpWidget(
-        SintApp(
-          // ignore: deprecated_member_use
-          theme: legacy.ThemeData(),
-          materialTheme: material.ThemeData(),
-          sintPages: _pages(const SizedBox()),
-        ),
-      );
-      expect(
-        tester.takeException(),
-        isA<FlutterError>().having(
-          (error) => error.toString(),
-          'message',
-          contains('Remove theme'),
-        ),
-      );
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
-
   for (final design in [SintDesign.material, SintDesign.cupertino]) {
     testWidgets(
       'compatibility bridges support legacy convenience overlays in $design',
@@ -235,17 +193,25 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        Sint.defaultDialog(title: 'Legacy alert', textCancel: 'Dismiss');
+        Sint.defaultDialog(title: 'Standalone alert', textCancel: 'Dismiss');
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        expect(find.byType(legacy.AlertDialog), findsOneWidget);
+        expect(find.byType(material.AlertDialog), findsOneWidget);
         await tester.tap(find.text('Dismiss'));
         await tester.pumpAndSettle();
-        expect(find.byType(legacy.AlertDialog), findsNothing);
-        final snackbar = Sint.snackbar('Notice', 'Compatibility message');
+        expect(find.byType(material.AlertDialog), findsNothing);
+        final snackbar = Sint.snackbar(
+          'Notice',
+          'Compatibility message',
+          mainButton: material.TextButton(
+            onPressed: () {},
+            child: const Text('Action'),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.text('Compatibility message'), findsOneWidget);
+        expect(find.text('Action'), findsOneWidget);
         snackbar.close(withAnimations: false);
         await tester.pumpAndSettle();
         await tester.pumpWidget(const SizedBox());
@@ -282,6 +248,13 @@ void main() {
         Sint.closeDialog();
         await tester.pumpAndSettle();
         expect(find.text('dialog'), findsNothing);
+        Sint.defaultDialog(title: 'Modern alert', textCancel: 'Close');
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byType(material.AlertDialog), findsOneWidget);
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(find.byType(material.AlertDialog), findsNothing);
         Sint.bottomSheet(const SizedBox(height: 80, child: Text('sheet')));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

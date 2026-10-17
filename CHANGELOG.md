@@ -1,31 +1,55 @@
 # Changelog - sint
 
-## Unreleased
+## [2.0.0] - 2026-10-17
 
-- Synchronize declarative history with imperative Navigator removals and back
-  actions, preserving results, PopScope, middleware and navigation modes.
-- Honor SintNavigator onDidRemovePage and legacy onPopPage callbacks.
+### Pillar S — Next-Gen Reactive Engine
+- **Incremental `Obx` Subscription Reconciliation ($O(1)$ steady-state rebuilds)**: `ObxReactiveElement` and `Notifier` now maintain a persistent identity map (`Map<ListNotifier, Disposer>`) across builds instead of tearing down and re-subscribing every listener on every widget rebuild. Conditional branches that become inactive are automatically unsubscribed in `finally`, while steady-state rebuilds perform zero `_ListenerEntry` allocations and zero linear `containsListener` scans.
+- **Synchronous Batching (`Sint.batch` / `ListNotifier.batch`)**: Coalesce synchronous mutations across multiple `Rx` / `ListNotifier` instances into a single notification wave when the outermost `Sint.batch(() { ... })` block exits.
+- **Memoized Derived State (`Sint.computed` / `Computed<T>`) & Untracked Reads (`Sint.untrack` / `rx.peek`)**: First-class computed reactive signal extending `SintListenable<T>`. Automatically tracks upstream `Rx` reads via incremental subscription reconciliation, memoizes the computed value, and only notifies downstream `Obx` / listeners when the recomputed value changes (`!=`). Coalesces diamond dependencies into a single evaluation during `Sint.batch`. Supports dependency-free reads inside reactive scopes via `Sint.untrack(() => ...)` and `rx.peek`.
+- **Scoped Controller Reactive Lifecycle (`SintController.computed`, `everSync`, `autoDispose`)**: `SintController` now provides zero-Stream synchronous workers (`everSync`), controller-scoped `computed(...)` signals, and `autoDispose(...)` so derived signals and listeners observing global/external services automatically detach when the controller closes.
+- **Unified Collection Semantics (`RxMap` & `RxSet`)**:
+  - Override `RxMap.addAll` to apply all key-value changes and fire `refresh()` at most once (instead of once per key via `MapMixin.addAll`).
+  - Unify `Set.obs` with `List.obs` and `Map.obs` reference semantics (`RxSet<E>(this)`).
+  - Harden `RxSet.addAll`, `SetExtension.assign`, and `SetExtension.assignAll` to snapshot iterables safely and only fire a single `refresh()` when set contents actually change.
 
-## [1.7.0-dev.1] - 2026-09-18
+### Pillar N — Multi-Level Prefix Trie & Zero-Recompile Route Matching
+- **Multi-Level Literal Prefix Trie (`_LiteralTrieNode`)**: Upgrade `RouteParser` from 1st-segment bucketing to a multi-level literal prefix trie that indexes all leading pure-literal segments while preserving exact registration order (`first-wins`). Shared-prefix route tables (e.g. `/api/v1/...`, `/api/v2/...`) now narrow candidates in $O(\text{depth})$ hash lookups.
+- **Zero-Recompile `SintPage.copyWith` & Single-Copy `matchRoute`**: `SintPage.copyWith` reuses the pre-compiled `PathDecoded` (`RegExp` + parameter keys) when the route pattern is unchanged, and `RouteParser.matchRoute` allocates each matched `SintPage` once per segment without recompiling route templates on navigation.
+- **$O(1)$ Duplicate Route Pattern Detection**: Replace the $O(R^2)$ linear scan in `_warnIfDuplicate` with an $O(1)$ pattern-owner map during route table registration.
 
-### Navigation & Overlays
-- Expand `RouteData.ofRoute` for Flutter dialogs, modal bottom sheets and overlays.
-- Expose `isOverlaid` and `canBack` navigation helpers on `Sint` and `BuildContext`.
-- Enhance `ConfigData` and `SintRoot` with declarative lifecycle integration.
+### Verified Benchmark Improvements (`1.7.0` → `2.0.0`)
 
-### Standalone design-system preview
-- Add adaptive `SintApp` / `SintApp.router` using standalone `material_ui` and `cupertino_ui`, with one shared SINT runtime. Automatic presentation uses Cupertino on iOS and Material elsewhere; explicit design overrides are available.
-- Add typed Material and Cupertino themes, Material theme variants/mode, typed theme queries and runtime theme-changing APIs.
-- Preserve the existing SDK application classes. The transitional `SintApp(theme:)` argument uses the legacy Material host, carries an actionable `@Deprecated` notice, and rejects mixed legacy/standalone theme arguments.
-- Enable temporary legacy compatibility bridges by default for incremental migration. The bridges do not make legacy and standalone public types interchangeable.
+| Scenario (`test/benchmarks/route_benchmark_test.dart`) | 1.7.0 Median (µs/op) | 2.0.0 Median (µs/op) | Improvement |
+| --- | ---: | ---: | --- |
+| `route.hot.shared.entries=1000.miss=false` (`/api/item999/:id`) | `250.48 µs` | `2.56 µs` | **97.8× faster** ($O(N) \to O(\text{depth})$) |
+| `route.hot.shared.entries=1000.miss=true` (`/api/missing/42`) | `235.51 µs` | `1.83 µs` | **128.7× faster** ($O(N) \to O(\text{depth})$) |
+| `route.hot.shared.entries=100.miss=false` (`/api/item99/:id`) | `28.39 µs` | `2.61 µs` | **10.9× faster** |
+| `route.hot.unique.entries=1000.miss=false` (`/r999/item/:id`) | `4.55 µs` | `2.15 µs` | **2.1× faster** (zero `RegExp` recompile in `matchRoute`) |
+| `route.cold.construct_and_first_match.entries=100` | `145.46 µs` | `97.24 µs` | **1.5× faster** ($O(1)$ duplicate pattern check) |
+
+### Migration & Compatibility Policy (`@Deprecated` `Get` Aliases Retained Until `3.0.0`)
+- **Zero-Friction GetX Migration (`2.x` Support Window)**: All `@Deprecated` GetX compatibility aliases (`final Get = Sint`, `GetxController`, `GetxService`, `GetMaterialApp`, `GetCupertinoApp`, `GetPage`, `GetPageRoute`, `GetBuilder`, `GetRouterOutlet`, `GetSnackBar`, `GetDialogRoute`, `GetModalBottomSheetRoute`, `GetPageBuilder`, `RouteData.isGetPageRoute`, and `home:`) remain available throughout **SINT `2.x`** with `@Deprecated('... Will be removed in SINT 3.0.0.')` notices so teams migrating from GetX can adopt SINT 2.0 immediately and migrate symbols incrementally.
+- **Internal Dead Code Cleanup**: Removed unused internal router prototype files (`route_tree.dart`, `route_matcher.dart`, `route_tree_result.dart`, `route_match_result.dart`, `route_node.dart`), the typo file `obx_reacive_element.dart`, and `Sint.webBack()` (merged into web-safe `Sint.back()`).
+
+## [1.7.0] - 2026-10-17
+
+### Standalone Material & Cupertino Design Systems (Issue #12)
+- Add adaptive `SintApp` and `SintApp.router` using standalone `material_ui` and `cupertino_ui` over a single shared `SintRoot`, dependency registry, router, and translation runtime. Automatic presentation uses Cupertino on iOS and Material elsewhere; explicit overrides (`SintDesign.material`, `SintDesign.cupertino`) are available.
+- Add typed Material and Cupertino theme configuration (`materialTheme`, `materialDarkTheme`, `materialHighContrastTheme`, `materialHighContrastDarkTheme`, `materialThemeMode`, `cupertinoTheme`, `materialScaffoldMessengerKey`), typed theme queries (`Sint.materialTheme`, `context.materialTheme`, `context.materialTextTheme`, `Sint.cupertinoTheme`, `context.cupertinoTheme`), and runtime theme setters (`Sint.changeMaterialTheme`, `Sint.changeMaterialThemeMode`, `Sint.changeCupertinoTheme`).
+- Preserve existing SDK application classes (`SintMaterialApp` and `SintCupertinoApp`). The transitional `SintApp(theme:)` parameter uses the legacy Material host, carries an actionable `@Deprecated` notice, and rejects mixed legacy/standalone theme arguments.
+- Enable temporary legacy compatibility bridges (`MaterialUiCompatibilityBridge` / `CupertinoUiCompatibilityBridge`) by default for incremental migration.
 - Apply declarative standalone theme updates without replacing the SINT root or controllers, and preserve imperative changes across ordinary parent rebuilds.
-- Provide a standalone Material scaffold messenger under the Cupertino host. Resolve dialog localizations and modal-sheet routes using the selected design libraries.
-- Add adaptive-host, typed-theme, controller-lifecycle and mixed-overlay regression tests. Document convenience APIs that still require legacy compatibility.
+- Support standalone `material_ui` widgets in `Sint.dialog`, `Sint.defaultDialog`, `Sint.bottomSheet`, and widen `Sint.snackbar(mainButton:)` to `Widget?` so standalone `material_ui.TextButton` and `cupertino_ui.CupertinoButton` work directly without legacy bridge casts.
+- Provide a standalone Material `ScaffoldMessenger` under the Cupertino host and resolve dialog localizations and modal-sheet routes using the active design libraries.
+- Raise the package SDK floor to Flutter >=3.44.0 / Dart >=3.12.0 (`material_ui: ">=1.1.1 <1.3.0"`, `cupertino_ui: ">=1.0.0 <1.1.0"`).
+
+### Navigation, Nested Outlets & Overlays (Issue #10)
+- Restore and modernize `SintRouterOutlet` (with `@Deprecated` `GetRouterOutlet` alias), `RouterOutlet`, `IndexedRouteBuilder` (with automatic `RouterListener` updates), `RouterListener`, `InheritedNavigator`, `NavKeyExt`, and `PagesListExt` in `lib/navigation/src/ui/widgets/sint_router_outlet.dart` using pure `package:flutter/widgets.dart`.
+- Synchronize declarative history with imperative `Navigator` removals and back actions (`SintDelegate`, `SintNavigator`, `SintAppBar`), preserving route results, `PopScope`, middleware, and navigation modes.
+- Honor `SintNavigator` `onDidRemovePage` and legacy `onPopPage` callbacks.
+- Expand `RouteData.ofRoute` for Flutter dialogs, modal bottom sheets, and overlays.
+- Expose `isOverlaid` and `canBack` navigation helpers on `Sint` and `BuildContext`.
 - Cancel snackbar timers when removing their overlays without an exit animation.
-- Bound standalone library versions below Material 1.3.0 / Cupertino 1.1.0: those releases use a Foundation annotation unavailable on the declared Flutter 3.44 baseline, despite allowing it in their manifests.
-- Raise the package SDK requirement to Flutter >=3.44.0 / Dart >=3.12.0 for all consumers because the standalone libraries are direct dependencies.
-- Update the migration guide and roadmaps to describe the implemented preview. Separate adapter packages remain a historical alternative, not an installation requirement.
-- Update CI from the obsolete Flutter 3.32 job to a Flutter 3.44.4 baseline plus the latest stable Flutter 3.x. Application build/runtime validation remains separate from package analysis and widget tests.
 
 ## [1.6.2] - 2026-09-05
 

@@ -20,7 +20,6 @@ export 'src/engine/sint_controller.dart';
 export 'src/sint_listenable.dart';
 
 // UI
-export 'src/ui/obx_reacive_element.dart';
 export 'src/ui/obx_reactive_element.dart';
 export 'src/ui/obx_widget.dart';
 export 'src/ui/sint_listener.dart';

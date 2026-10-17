@@ -9,6 +9,7 @@ export 'src/domain/errors/bind_error.dart';
 export 'src/domain/errors/obx_error.dart';
 export 'src/domain/extensions/sint_reset.dart';
 export 'src/domain/models/rx_bool.dart';
+export 'src/domain/models/rx_computed.dart';
 export 'src/domain/models/rx_custom.dart';
 export 'src/domain/models/rx_impl.dart';
 export 'src/domain/models/rx_interface.dart';

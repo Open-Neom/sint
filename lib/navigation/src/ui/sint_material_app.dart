@@ -15,14 +15,13 @@ import 'package:sint/navigation/src/ui/sint_root.dart';
 
 /// A SINT application using Material widgets bundled with the Flutter SDK.
 ///
-/// **Migration notice — planned deprecation of the SDK Material integration.**
+/// **Migration notice — SDK Material integration.**
 /// This API remains supported. Its themes, theme mode and scaffold messenger
 /// key use types from `package:flutter/material.dart`, which are distinct from
 /// standalone `material_ui` types. Keep SDK types when using this constructor.
 ///
-/// The standalone SintApp preview is available in SINT 1.7.0-dev.1.
-/// This SDK host remains supported. Formal deprecation will follow a stable replacement and published support
-/// policy. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
+/// For standalone `material_ui` and `cupertino_ui` packages (Flutter 3.47+),
+/// use `SintApp`. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
   final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
@@ -35,7 +34,7 @@ class SintMaterialApp extends StatelessWidget {
   /// becomes inconsistent. Always define routes via [sintPages] and
   /// set [initialRoute] to the desired starting route name.
   @Deprecated('Use initialRoute + sintPages instead. '
-      'home will be removed in SINT 2.0')
+      'home will be removed in SINT 3.0.0.')
   final Widget? home;
 
   final Map<String, WidgetBuilder>? routes;

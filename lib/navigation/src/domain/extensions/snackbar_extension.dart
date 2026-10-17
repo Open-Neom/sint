@@ -134,7 +134,7 @@ extension SnackbarExtension on SintInterface {
         Color? leftBarIndicatorColor,
         List<BoxShadow>? boxShadows,
         Gradient? backgroundGradient,
-        TextButton? mainButton,
+        Widget? mainButton,
         OnTap? onTap,
         OnHover? onHover,
         bool? isDismissible,

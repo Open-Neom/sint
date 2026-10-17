@@ -10,10 +10,9 @@ import 'domain/interfaces/sint_interface.dart';
 ///the parentheses and the magic will occur.
 class _SintImpl extends SintInterface {}
 
-/// The official SINT 1.5.0 API
+/// The official SINT 2.0.0 API
 final Sint = _SintImpl();
 
-/// DEPRECATED: Legacy alias for seamless migration of the 38 repos.
-/// Prune this once SINT-Native adoption reaches 100%.
-@Deprecated('Use Sint instead. Get alias will be removed in SINT 2.0')
+/// Legacy GetX compatibility alias.
+@Deprecated('Use Sint instead. Get alias will be removed in SINT 3.0.0.')
 final Get = Sint;

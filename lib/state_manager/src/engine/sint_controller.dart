@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:sint/core/src/domain/models/rx_computed.dart';
 import 'package:sint/core/src/domain/models/rx_interface.dart';
 import 'package:sint/injection/src/lifecycle.dart';
+import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
+import 'package:sint/state_manager/src/sint_listenable.dart';
 
 import 'list_notifier.dart';
 
@@ -11,36 +14,89 @@ import 'list_notifier.dart';
 /// state management system. This class provides methods to update the UI
 /// when the controller's state changes.
 ///
-/// Includes reactive **workers** (`ever`, `once`, `debounce`, `interval`)
-/// that auto-cancel when the controller is disposed.
+/// Includes reactive **workers** (`ever`, `everSync`, `once`, `debounce`,
+/// `interval`), scoped **`computed`**, and **`autoDispose`** helpers that
+/// automatically clean up when the controller is disposed.
 ///
 /// Example:
 /// ```dart
 /// class CounterController extends SintController {
-///   var count = 0.obs;
+///   final count = 0.obs;
+///   late final doubled = computed(() => count.value * 2);
 ///
 ///   @override
 ///   void onInit() {
 ///     super.onInit();
-///     ever(count, (val) => print('Count changed to $val'));
+///     everSync(count, (val) => print('Count changed synchronously to $val'));
 ///     debounce(count, (val) => saveToDb(val));
 ///   }
 ///
 ///   void increment() => count.value++;
 /// }
+/// ```
 abstract class SintController extends ListNotifier with SintLifeCycleMixin {
 
-  // ─── Workers ──────────────────────────────────────────────
-  // Reactive listeners with automatic lifecycle management.
-  // Built on top of Rx.listen() — the engine already supports it,
-  // these are the ergonomic wrappers.
+  // ─── Workers & Scoped Reactive Resources ──────────────────
+  // Reactive listeners and resources with automatic lifecycle management.
 
   final List<StreamSubscription> _workers = [];
+  final List<Disposer> _syncDisposers = [];
 
   /// Active timers created by [debounce] and [interval] workers.
   /// Tracked so they can be cancelled in [onClose] — otherwise a pending
   /// timer would fire its callback on an already-disposed controller.
   final List<Timer> _timers = [];
+
+  /// Creates a memoized [Computed] signal scoped to this controller and
+  /// automatically disposes its upstream subscriptions in [onClose].
+  Computed<T> computed<T>(T Function() compute) {
+    final signal = Computed<T>(compute);
+    _syncDisposers.add(signal.dispose);
+    return signal;
+  }
+
+  /// Registers [resource] (`RxInterface`, [ListNotifier], [Computed],
+  /// [StreamSubscription], [Timer], or [Disposer] callback) to be
+  /// automatically closed/disposed when [onClose] runs.
+  D autoDispose<D>(D resource) {
+    if (resource is RxInterface) {
+      _syncDisposers.add(resource.close);
+    } else if (resource is ListNotifier) {
+      _syncDisposers.add(resource.dispose);
+    } else if (resource is StreamSubscription) {
+      _workers.add(resource);
+    } else if (resource is Timer) {
+      _timers.add(resource);
+    } else if (resource is Disposer) {
+      _syncDisposers.add(resource);
+    } else {
+      throw ArgumentError.value(
+        resource,
+        'resource',
+        'Expected RxInterface, ListNotifier, StreamSubscription, Timer, or Disposer.',
+      );
+    }
+    return resource;
+  }
+
+  /// Synchronous, zero-Stream worker that invokes [callback] immediately
+  /// whenever [listenable] notifies (including coalesced `Sint.batch` flushes).
+  /// Automatically disposes when this controller closes.
+  Disposer everSync<T>(
+    SintListenable<T> listenable,
+    void Function(T) callback,
+  ) {
+    final disposer = listenable.addListener(() {
+      if (!isDisposed && !listenable.isDisposed) {
+        callback(listenable.peek);
+      }
+    });
+    _syncDisposers.add(disposer);
+    return () {
+      disposer();
+      _syncDisposers.remove(disposer);
+    };
+  }
 
   /// Calls [callback] every time [rx] changes.
   /// Auto-cancels on controller disposal.
@@ -155,6 +211,11 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
       sub.cancel();
     }
     _workers.clear();
+    final disposers = List<Disposer>.of(_syncDisposers);
+    _syncDisposers.clear();
+    for (final disposer in disposers) {
+      disposer();
+    }
     super.onClose();
   }
 }

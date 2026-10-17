@@ -12,17 +12,15 @@ class RouteData {
   final bool isDialog;
   final String? name;
 
-  @Deprecated(
-    'Use isSintPageRoute instead. Part of the legacy GetX route inspection.',
-  )
-  bool get isGetPageRoute => isSintPageRoute;
-
   const RouteData({
     required this.name,
     required this.isSintPageRoute,
     required this.isBottomSheet,
     required this.isDialog,
   });
+
+  @Deprecated('Use isSintPageRoute instead. Will be removed in SINT 3.0.0.')
+  bool get isGetPageRoute => isSintPageRoute;
 
   factory RouteData.ofRoute(Route? route) {
     return RouteData(

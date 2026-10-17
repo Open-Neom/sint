@@ -13,7 +13,6 @@ import 'package:sint/navigation/src/domain/models/config_data.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
 import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/router/sint_page.dart';
-import 'package:sint/navigation/src/ui/sint_material_app.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/translation/sint_translation.dart';
 
@@ -32,22 +31,12 @@ enum SintDesign {
   cupertino,
 }
 
-const _legacyThemeNotice =
-    'theme accepts SDK ThemeData, which is incompatible with standalone '
-    'material_ui.ThemeData and cupertino_ui.CupertinoThemeData. '
-    'Use materialTheme and/or cupertinoTheme. The legacy theme parameter '
-    'will be removed in a future major release.';
-
 /// A SINT application with standalone Material and Cupertino design systems.
 ///
 /// [design] selects the host. In [SintDesign.auto], iOS uses [cupertinoTheme]
 /// and other target platforms use [materialTheme]. Both hosts share one
 /// [SintRoot], dependency registry, router and translation configuration.
 /// Selecting a host does not convert the widgets used by application pages.
-///
-/// [theme] is a migration-only alternative: providing an SDK theme preserves
-/// the existing [SintMaterialApp] host, including on iOS. It cannot be combined
-/// with standalone theme arguments or an explicit Cupertino design.
 ///
 /// During incremental migration, [enableLegacyCompatibility] supplies Flutter's
 /// temporary compatibility bridges and an SDK ScaffoldMessenger to descendants,
@@ -57,7 +46,6 @@ class SintApp extends StatelessWidget {
   const SintApp({
     super.key,
     this.design = SintDesign.auto,
-    @Deprecated(_legacyThemeNotice) this.theme,
     this.materialTheme,
     this.materialDarkTheme,
     this.materialHighContrastTheme,
@@ -122,7 +110,6 @@ class SintApp extends StatelessWidget {
   const SintApp.router({
     super.key,
     this.design = SintDesign.auto,
-    @Deprecated(_legacyThemeNotice) this.theme,
     this.materialTheme,
     this.materialDarkTheme,
     this.materialHighContrastTheme,
@@ -182,11 +169,6 @@ class SintApp extends StatelessWidget {
        initialRoute = null;
 
   final SintDesign design;
-
-  /// An SDK theme that temporarily selects the legacy Material host.
-  @Deprecated(_legacyThemeNotice)
-  final legacy.ThemeData? theme;
-
   final material.ThemeData? materialTheme;
   final material.ThemeData? materialDarkTheme;
   final material.ThemeData? materialHighContrastTheme;
@@ -264,30 +246,11 @@ class SintApp extends StatelessWidget {
         'or backButtonDispatcher arguments.',
       );
     }
-    // ignore: deprecated_member_use_from_same_package
-    if (theme != null &&
-        (materialTheme != null ||
-            materialDarkTheme != null ||
-            materialHighContrastTheme != null ||
-            materialHighContrastDarkTheme != null ||
-            materialThemeMode != null ||
-            cupertinoTheme != null ||
-            materialScaffoldMessengerKey != null ||
-            design == SintDesign.cupertino)) {
-      throw FlutterError(
-        'SintApp: legacy theme cannot be combined with standalone theme '
-        'arguments, materialScaffoldMessengerKey or SintDesign.cupertino. '
-        'Remove theme and supply materialTheme and/or cupertinoTheme to '
-        'use the standalone host.',
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     _validateConfiguration();
-    // ignore: deprecated_member_use_from_same_package
-    if (theme != null) return _buildLegacy();
 
     final useCupertino = _useCupertino;
     return SintRoot(
@@ -301,6 +264,7 @@ class SintApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        // ignore: deprecated_member_use_from_same_package
         home: null,
         initialRoute: initialRoute,
         locale: locale,
@@ -482,115 +446,5 @@ class SintApp extends StatelessWidget {
       );
     }
     return contents;
-  }
-
-  Widget _buildLegacy() {
-    // Preserve the SDK host for the transitional theme parameter. A legacy
-    // ThemeData is never cast or passed to a standalone MaterialApp.
-    if (routerConfig == null &&
-        routerDelegate == null &&
-        routeInformationParser == null &&
-        routeInformationProvider == null &&
-        backButtonDispatcher == null) {
-      return SintMaterialApp(
-        navigatorKey: navigatorKey,
-        initialRoute: initialRoute,
-        // ignore: deprecated_member_use_from_same_package
-        theme: theme,
-        builder: builder,
-        title: title,
-        onGenerateTitle: onGenerateTitle,
-        color: color,
-        textDirection: textDirection,
-        locale: locale,
-        fallbackLocale: fallbackLocale,
-        localizationsDelegates: localizationsDelegates,
-        localeListResolutionCallback: localeListResolutionCallback,
-        localeResolutionCallback: localeResolutionCallback,
-        supportedLocales: supportedLocales,
-        debugShowMaterialGrid: debugShowMaterialGrid,
-        showPerformanceOverlay: showPerformanceOverlay,
-        checkerboardRasterCacheImages: checkerboardRasterCacheImages,
-        checkerboardOffscreenLayers: checkerboardOffscreenLayers,
-        showSemanticsDebugger: showSemanticsDebugger,
-        debugShowCheckedModeBanner: debugShowCheckedModeBanner,
-        shortcuts: shortcuts,
-        scrollBehavior: scrollBehavior,
-        actions: actions,
-        customTransition: customTransition,
-        translationsKeys: translationsKeys,
-        translations: translations,
-        routingCallback: routingCallback,
-        defaultTransition: defaultTransition,
-        opaqueRoute: opaqueRoute,
-        onInit: onInit,
-        onReady: onReady,
-        onDispose: onDispose,
-        enableLog: enableLog,
-        logWriterCallback: logWriterCallback,
-        popGesture: popGesture,
-        smartManagement: smartManagement,
-        binds: binds,
-        transitionDuration: transitionDuration,
-        defaultGlobalState: defaultGlobalState,
-        sintPages: sintPages,
-        navigatorObservers: navigatorObservers,
-        unknownRoute: unknownRoute,
-        snackBarStyle: snackBarStyle,
-        translateEndpoints: translateEndpoints,
-      );
-    }
-    return SintMaterialApp.router(
-      // ignore: deprecated_member_use_from_same_package
-      theme: theme,
-      routeInformationProvider:
-          routerConfig?.routeInformationProvider ?? routeInformationProvider,
-      routeInformationParser:
-          routerConfig?.routeInformationParser ?? routeInformationParser,
-      routerDelegate: routerConfig?.routerDelegate ?? routerDelegate,
-      backButtonDispatcher:
-          routerConfig?.backButtonDispatcher ?? backButtonDispatcher,
-      builder: builder,
-      title: title,
-      onGenerateTitle: onGenerateTitle,
-      color: color,
-      textDirection: textDirection,
-      locale: locale,
-      fallbackLocale: fallbackLocale,
-      localizationsDelegates: localizationsDelegates,
-      localeListResolutionCallback: localeListResolutionCallback,
-      localeResolutionCallback: localeResolutionCallback,
-      supportedLocales: supportedLocales,
-      debugShowMaterialGrid: debugShowMaterialGrid,
-      showPerformanceOverlay: showPerformanceOverlay,
-      checkerboardRasterCacheImages: checkerboardRasterCacheImages,
-      checkerboardOffscreenLayers: checkerboardOffscreenLayers,
-      showSemanticsDebugger: showSemanticsDebugger,
-      debugShowCheckedModeBanner: debugShowCheckedModeBanner,
-      shortcuts: shortcuts,
-      scrollBehavior: scrollBehavior,
-      actions: actions,
-      customTransition: customTransition,
-      translationsKeys: translationsKeys,
-      translations: translations,
-      routingCallback: routingCallback,
-      defaultTransition: defaultTransition,
-      opaqueRoute: opaqueRoute,
-      onInit: onInit,
-      onReady: onReady,
-      onDispose: onDispose,
-      enableLog: enableLog,
-      logWriterCallback: logWriterCallback,
-      popGesture: popGesture,
-      smartManagement: smartManagement,
-      binds: binds,
-      transitionDuration: transitionDuration,
-      defaultGlobalState: defaultGlobalState,
-      sintPages: sintPages,
-      navigatorObservers: navigatorObservers,
-      unknownRoute: unknownRoute,
-      snackBarStyle: snackBarStyle,
-      translateEndpoints: translateEndpoints,
-    );
   }
 }

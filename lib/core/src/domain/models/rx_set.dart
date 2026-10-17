@@ -61,8 +61,12 @@ class RxSet<E> extends SintListenable<Set<E>>
 
   @override
   void addAll(Iterable<E> elements) {
-    value.addAll(elements);
-    refresh();
+    final target = value;
+    final prevLength = target.length;
+    target.addAll(elements);
+    if (target.length != prevLength) {
+      refresh();
+    }
   }
 
   @override
@@ -99,34 +103,66 @@ class RxSet<E> extends SintListenable<Set<E>>
       refresh();
     }
   }
+
+  void _assign(E item) {
+    final target = value;
+    if (target.length == 1 && target.contains(item)) return;
+    target
+      ..clear()
+      ..add(item);
+    refresh();
+  }
+
+  void _assignAll(Iterable<E> items) {
+    final target = value;
+    if (identical(this, items) || identical(target, items)) return;
+    final nextItems = Set<E>.of(items);
+    if (target.length == nextItems.length && target.containsAll(nextItems)) {
+      return;
+    }
+    target
+      ..clear()
+      ..addAll(nextItems);
+    refresh();
+  }
 }
 
 extension SetExtension<E> on Set<E> {
   RxSet<E> get obs {
-    return RxSet<E>(<E>{})..addAll(this);
+    return RxSet<E>(this);
   }
 
-  /// Add [item] to [List<E>] only if [condition] is true.
+  /// Add [item] to [Set<E>] only if [condition] is true.
   void addIf(dynamic condition, E item) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) add(item);
   }
 
-  /// Adds [Iterable<E>] to [List<E>] only if [condition] is true.
+  /// Adds [Iterable<E>] to [Set<E>] only if [condition] is true.
   void addAllIf(dynamic condition, Iterable<E> items) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) addAll(items);
   }
 
-  /// Replaces all existing items of this list with [item]
+  /// Replaces all existing items of this set with [item].
   void assign(E item) {
-    clear();
-    add(item);
+    if (this is RxSet<E>) {
+      (this as RxSet<E>)._assign(item);
+    } else {
+      clear();
+      add(item);
+    }
   }
 
-  /// Replaces all existing items of this list with [items]
+  /// Replaces all existing items of this set with [items].
   void assignAll(Iterable<E> items) {
-    clear();
-    addAll(items);
+    if (this is RxSet<E>) {
+      (this as RxSet<E>)._assignAll(items);
+    } else {
+      if (identical(this, items)) return;
+      final nextItems = List<E>.of(items);
+      clear();
+      addAll(nextItems);
+    }
   }
 }

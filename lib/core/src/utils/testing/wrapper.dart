@@ -22,15 +22,16 @@ class Wrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return SintMaterialApp(
       defaultTransition: defaultTransition,
-      initialRoute: initialRoute,
+      initialRoute: initialRoute ?? '/',
       translations: WrapperTranslations(),
       locale: WrapperTranslations.locale,
-      sintPages: namedRoutes,
-      home: namedRoutes == null
-          ? Scaffold(
-        body: child,
-      )
-          : null,
+      sintPages: namedRoutes ??
+          [
+            SintPage(
+              name: '/',
+              page: () => Scaffold(body: child),
+            ),
+          ],
     );
   }
 }

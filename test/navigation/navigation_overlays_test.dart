@@ -18,7 +18,17 @@ void main() {
     print('='*50 + '\n');
 
     // STEP 0: Settle initial environment
-    await tester.pumpWidget(const SintMaterialApp(home: Scaffold(body: Center(child: Text('Base')))));
+    await tester.pumpWidget(
+      SintMaterialApp(
+        initialRoute: '/',
+        sintPages: [
+          SintPage(
+            name: '/',
+            page: () => const Scaffold(body: Center(child: Text('Base'))),
+          ),
+        ],
+      ),
+    );
     await tester.pumpAndSettle();
 
     // STEP 1: Snackbar Queue Benchmark

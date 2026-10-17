@@ -4,7 +4,7 @@
 /// injection, route management in a practical way and quick translations.
 ///
 /// ## Material and Cupertino migration notice
-/// SintApp provides standalone Material/Cupertino support in the 1.7.0 preview.
+/// SintApp provides standalone Material/Cupertino support in SINT 1.7.0.
 /// SintMaterialApp and SintCupertinoApp remain supported SDK integrations;
 /// keep SDK types in their parameters, or migrate to SintApp's typed themes.
 /// This notice does not deprecate SINT's state, injection or translation APIs.

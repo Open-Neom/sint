@@ -14,32 +14,45 @@ class RouteParser {
   RouteParser({
     required List<SintPage> routes,
   }) {
-    this.routes = _RouteList(routes, () => _indexDirty = true);
+    this.routes = _RouteList(routes, () {
+      _indexDirty = true;
+      _patternsDirty = true;
+    });
   }
 
   /// Mutable registered routes. Every mutation, including replacing or
   /// reordering entries without changing the length, invalidates the index.
   late final List<SintPage> routes;
 
-  // ── Segment route index (1.5.0) ─────────────────────────────────────
-  // Routes are bucketed by the type of their FIRST segment:
+  // ── Multi-level prefix route index (2.0.0) ──────────────────────────
+  // Routes are bucketed by their FIRST segment rank:
   //   literal > param with pattern > simple param > wildcard.
-  // Matching evaluates only candidate buckets for each cumulative path.
-  // Shared first segments can still require O(k × routes) regex checks;
-  // distinct literal prefixes reduce the number of candidates examined.
+  // Literal-first routes (rank 0) are further indexed into a multi-level
+  // literal prefix trie (_LiteralTrieNode) keyed by all leading pure-literal
+  // segments, while preserving exact registration order (first-wins).
   bool _indexDirty = true;
-  final Map<String, List<SintPage>> _literalIndex = {};
+  bool _patternsDirty = true;
+  final _LiteralTrieNode _literalTrie = _LiteralTrieNode();
   final List<SintPage> _patternParamRoutes = [];
   final List<SintPage> _simpleParamRoutes = [];
   final List<SintPage> _wildcardRoutes = [];
+  final Map<String, String> _patternOwners = {};
 
-  static const String _rootKey = '';
+  static Iterable<String> _pathSegments(String routeName) {
+    final qIndex = routeName.indexOf('?');
+    final hIndex = routeName.indexOf('#');
+    var end = routeName.length;
+    if (qIndex >= 0 && qIndex < end) end = qIndex;
+    if (hIndex >= 0 && hIndex < end) end = hIndex;
+    final cleanPath = end == routeName.length
+        ? routeName
+        : routeName.substring(0, end);
+    return cleanPath.split('/').where((element) => element.isNotEmpty);
+  }
 
   /// Rank of a route based on its first segment type.
   /// Lower rank = higher precedence.
-  static int _routeRank(SintPage route) {
-    final segments =
-        route.name.split('/').where((element) => element.isNotEmpty);
+  static int _routeRank(Iterable<String> segments) {
     if (segments.isEmpty) return 0; // root '/' is literal
     final first = segments.first;
     // A param anywhere in the first segment (':id', 'file.:ext') makes
@@ -54,17 +67,21 @@ class RouteParser {
   }
 
   void _rebuildIndex() {
-    _literalIndex.clear();
+    _literalTrie.clear();
     _patternParamRoutes.clear();
     _simpleParamRoutes.clear();
     _wildcardRoutes.clear();
-    for (final route in routes) {
-      switch (_routeRank(route)) {
+    for (var i = 0; i < routes.length; i++) {
+      final route = routes[i];
+      final segments = _pathSegments(route.name);
+      switch (_routeRank(segments)) {
         case 0:
-          final segments =
-              route.name.split('/').where((element) => element.isNotEmpty);
-          final key = segments.isEmpty ? _rootKey : segments.first;
-          _literalIndex.putIfAbsent(key, () => []).add(route);
+          var node = _literalTrie;
+          for (final seg in segments) {
+            if (seg.contains(':')) break;
+            node = node.children.putIfAbsent(seg, _LiteralTrieNode.new);
+          }
+          node.routes.add(_IndexedRoute(i, route));
           break;
         case 1:
           _patternParamRoutes.add(route);
@@ -85,6 +102,15 @@ class RouteParser {
     }
   }
 
+  void _ensurePatterns() {
+    if (!_patternsDirty) return;
+    _patternOwners.clear();
+    for (final existing in routes) {
+      _patternOwners.putIfAbsent(existing.path.regex.pattern, () => existing.name);
+    }
+    _patternsDirty = false;
+  }
+
   RouteDecoder matchRoute(String name, {PageSettings? arguments}) {
     final uri = Uri.parse(name);
     arguments?.pathParams.clear();
@@ -102,13 +128,13 @@ class RouteParser {
       cumulativePaths.add(curPath);
     }
 
-    final treeBranch = cumulativePaths
-        .map((e) => MapEntry(e, _findRoute(e)))
-        .where((element) => element.value != null)
-
-        ///Prevent page be disposed
-        .map((e) => MapEntry(e.key, e.value!.copyWith(key: ValueKey(e.key))))
-        .toList();
+    final treeBranch = <MapEntry<String, SintPage>>[];
+    for (final path in cumulativePaths) {
+      final matched = _findRoute(path);
+      if (matched != null) {
+        treeBranch.add(MapEntry(path, matched));
+      }
+    }
 
     // ── Slug / vanity-URL fix ──────────────────────────────────────────
     // When the URL has segments beyond "/" (e.g. "/serzenmontoya") but
@@ -138,15 +164,18 @@ class RouteParser {
       // Path params are also exposed SEPARATELY from query params (1.5.0);
       // `params` keeps the legacy merged behavior (query + path).
       arguments?.pathParams.addAll(parsedParams);
-      //copy parameters to all pages.
+      // Copy parameters, unique ValueKey, and matched name to all pages in
+      // a single allocation while reusing the pre-compiled PathDecoded.
       final mappedTreeBranch = treeBranch
           .map(
             (e) => e.value.copyWith(
+              key: ValueKey(e.key),
+              name: e.key,
+              path: e.value.path,
               parameters: {
                 if (e.value.parameters != null) ...e.value.parameters!,
                 ...params,
               },
-              name: e.key,
             ),
           )
           .toList();
@@ -163,7 +192,7 @@ class RouteParser {
 
     //route not found
     return RouteDecoder(
-      treeBranch.map((e) => e.value).toList(),
+      const <SintPage>[],
       arguments,
     );
   }
@@ -194,9 +223,12 @@ class RouteParser {
   void addRoute<T>(SintPage<T> route) {
     // Flatten already visits every descendant; recursively registering its
     // output again would grow a depth-n branch to 2^(n-1) entries.
+    _ensurePatterns();
+    final routeList = routes as _RouteList;
     for (final page in [route, ..._flattenPage(route)]) {
       _warnIfDuplicate(page);
-      routes.add(page);
+      routeList.addSilently(page);
+      _indexDirty = true;
     }
   }
 
@@ -204,17 +236,18 @@ class RouteParser {
   /// registered routes compile to the same pattern — historically a
   /// silent first-wins situation.
   void _warnIfDuplicate(SintPage route) {
+    _ensurePatterns();
     final pattern = route.path.regex.pattern;
-    for (final existing in routes) {
-      if (existing.path.regex.pattern == pattern) {
-        Sint.log(
-          // ignore: lines_longer_than_80_chars
-          'Duplicate route "${route.name}" matches the same pattern as "${existing.name}" — the first registered route wins.',
-          isError: true,
-        );
-        return;
-      }
+    final existingName = _patternOwners[pattern];
+    if (existingName != null) {
+      Sint.log(
+        // ignore: lines_longer_than_80_chars
+        'Duplicate route "${route.name}" matches the same pattern as "$existingName" — the first registered route wins.',
+        isError: true,
+      );
+      return;
     }
+    _patternOwners[pattern] = route.name;
   }
 
   List<SintPage> _flattenPage(SintPage route) {
@@ -248,15 +281,33 @@ class RouteParser {
     // Candidate buckets in precedence order:
     // literal > param with pattern > simple param > wildcard.
     // Within a bucket, registration order is preserved (first wins).
-    final segments = name.split('/').where((element) => element.isNotEmpty);
-    final literalKey = segments.isEmpty ? _rootKey : segments.first;
+    final segments = _pathSegments(name);
 
-    final literalCandidates = _literalIndex[literalKey];
-    if (literalCandidates != null) {
-      final value = literalCandidates.firstWhereOrNull(
-        (route) => route.path.regex.hasMatch(name),
-      );
-      if (value != null) return value;
+    SintPage? bestLiteralMatch;
+    var bestLiteralOrder = 0x7fffffff;
+
+    void checkNode(_LiteralTrieNode node) {
+      for (final entry in node.routes) {
+        if (entry.order >= bestLiteralOrder) break;
+        if (entry.route.path.regex.hasMatch(name)) {
+          bestLiteralOrder = entry.order;
+          bestLiteralMatch = entry.route;
+          break;
+        }
+      }
+    }
+
+    var currentNode = _literalTrie;
+    checkNode(currentNode);
+    for (final seg in segments) {
+      final nextNode = currentNode.children[seg];
+      if (nextNode == null) break;
+      currentNode = nextNode;
+      checkNode(currentNode);
+    }
+
+    if (bestLiteralMatch != null) {
+      return bestLiteralMatch;
     }
 
     for (final candidates in [
@@ -331,6 +382,10 @@ class _RouteList extends ListBase<SintPage> {
     _onChanged();
   }
 
+  void addSilently(SintPage value) {
+    _values.add(value);
+  }
+
   @override
   void addAll(Iterable<SintPage> iterable) {
     // Snapshot self-iterables and complete fallible iteration before mutating.
@@ -359,4 +414,21 @@ class _RouteList extends ListBase<SintPage> {
     _values.replaceRange(start, end, values);
     _onChanged();
   }
+}
+
+class _LiteralTrieNode {
+  final Map<String, _LiteralTrieNode> children = {};
+  final List<_IndexedRoute> routes = [];
+
+  void clear() {
+    children.clear();
+    routes.clear();
+  }
+}
+
+class _IndexedRoute {
+  const _IndexedRoute(this.order, this.route);
+
+  final int order;
+  final SintPage route;
 }

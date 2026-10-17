@@ -13,16 +13,17 @@ import 'package:sint/navigation/src/domain/models/config_data.dart';
 
 /// A SINT application using Cupertino widgets bundled with the Flutter SDK.
 ///
-/// **Migration notice — planned deprecation of the SDK Cupertino integration.**
+/// **Migration notice — SDK Cupertino integration.**
 /// This API remains supported. Its theme uses `package:flutter/cupertino.dart`;
 /// its Material configuration uses `package:flutter/material.dart`. Standalone
 /// `cupertino_ui` and `material_ui` types cannot replace these parameter types.
 ///
-/// The standalone SintApp preview is available in SINT 1.7.0-dev.1.
-/// This SDK host remains supported. Formal deprecation will follow a stable replacement and published support
-/// policy. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
+/// For standalone `cupertino_ui` and `material_ui` packages (Flutter 3.47+),
+/// use `SintApp`. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintCupertinoApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
+  @Deprecated('Use initialRoute + sintPages instead. '
+      'home will be removed in SINT 3.0.0.')
   final Widget? home;
   final Map<String, WidgetBuilder>? routes;
   final String? initialRoute;
@@ -198,6 +199,7 @@ class SintCupertinoApp extends StatelessWidget {
     this.unknownRoute,
   })  : navigatorKey = null,
         onGenerateRoute = null,
+        // ignore: deprecated_member_use_from_same_package
         home = null,
         onGenerateInitialRoutes = null,
         onUnknownRoute = null,
@@ -216,6 +218,7 @@ class SintCupertinoApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        // ignore: deprecated_member_use_from_same_package
         home: home,
         initialRoute: initialRoute,
         locale: locale,

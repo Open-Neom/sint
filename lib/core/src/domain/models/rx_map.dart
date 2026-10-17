@@ -41,6 +41,25 @@ class RxMap<K, V> extends SintListenable<Map<K, V>>
   }
 
   @override
+  void addAll(Map<K, V> other) {
+    if (other.isEmpty) return;
+    final target = value;
+    final entries = identical(target, other)
+        ? List<MapEntry<K, V>>.of(other.entries)
+        : other.entries;
+    var changed = false;
+    for (final entry in entries) {
+      if (!target.containsKey(entry.key) || target[entry.key] != entry.value) {
+        target[entry.key] = entry.value;
+        changed = true;
+      }
+    }
+    if (changed) {
+      refresh();
+    }
+  }
+
+  @override
   void clear() {
     if (value.isNotEmpty) {
       value.clear();

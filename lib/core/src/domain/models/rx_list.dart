@@ -7,35 +7,38 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 /// Create a list similar to `List<T>`
 class RxList<E> extends SintListenable<List<E>>
     with ListMixin<E>, RxObjectMixin<List<E>> {
-  RxList([super.initial = const []]);
+  RxList([List<E> initial = const []])
+      : super(initial.isEmpty ? <E>[] : List<E>.of(initial));
+
+  RxList._(super.initial);
 
   factory RxList.filled(int length, E fill, {bool growable = false}) {
-    return RxList(List.filled(length, fill, growable: growable));
+    return RxList._(List.filled(length, fill, growable: growable));
   }
 
   factory RxList.empty({bool growable = false}) {
-    return RxList(List.empty(growable: growable));
+    return RxList._(List.empty(growable: growable));
   }
 
   /// Creates a list containing all [elements].
   factory RxList.from(Iterable elements, {bool growable = true}) {
-    return RxList(List.from(elements, growable: growable));
+    return RxList._(List.from(elements, growable: growable));
   }
 
   /// Creates a list from [elements].
   factory RxList.of(Iterable<E> elements, {bool growable = true}) {
-    return RxList(List.of(elements, growable: growable));
+    return RxList._(List.of(elements, growable: growable));
   }
 
   /// Generates a list of values.
   factory RxList.generate(int length, E Function(int index) generator,
       {bool growable = true}) {
-    return RxList(List.generate(length, generator, growable: growable));
+    return RxList._(List.generate(length, generator, growable: growable));
   }
 
   /// Creates an unmodifiable list containing all [elements].
   factory RxList.unmodifiable(Iterable elements) {
-    return RxList(List.unmodifiable(elements));
+    return RxList._(List.unmodifiable(elements));
   }
 
   @override
@@ -182,7 +185,7 @@ class RxList<E> extends SintListenable<List<E>>
 }
 
 extension ListExtension<E> on List<E> {
-  RxList<E> get obs => RxList<E>(this);
+  RxList<E> get obs => RxList<E>._(this);
 
   /// Add [item] to [List<E>] only if [item] is not null.
   void addNonNull(E item) {

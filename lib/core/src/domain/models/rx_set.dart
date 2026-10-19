@@ -6,7 +6,26 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 
 class RxSet<E> extends SintListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
-  RxSet([super.initial = const {}]);
+  RxSet([Set<E> initial = const {}])
+      : super(initial.isEmpty ? <E>{} : Set<E>.of(initial));
+
+  RxSet._(super.initial);
+
+  factory RxSet.from(Iterable elements) {
+    return RxSet._(Set.from(elements));
+  }
+
+  factory RxSet.of(Iterable<E> elements) {
+    return RxSet._(Set.of(elements));
+  }
+
+  factory RxSet.unmodifiable(Iterable<E> elements) {
+    return RxSet._(Set.unmodifiable(elements));
+  }
+
+  factory RxSet.identity() {
+    return RxSet._(Set.identity());
+  }
 
   /// Special override to push() element(s) in a reactive way
   /// inside the List,
@@ -129,7 +148,7 @@ class RxSet<E> extends SintListenable<Set<E>>
 
 extension SetExtension<E> on Set<E> {
   RxSet<E> get obs {
-    return RxSet<E>(this);
+    return RxSet<E>._(this);
   }
 
   /// Add [item] to [Set<E>] only if [condition] is true.

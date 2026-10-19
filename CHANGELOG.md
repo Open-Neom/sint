@@ -1,5 +1,10 @@
 # Changelog - sint
 
+## [2.0.1] - 2026-10-18
+
+### Bug Fixes (Pillar S — Reactive Collections, Issue #13)
+- **Mutable Default Backing Collections for `RxList()`, `RxSet()`, and `RxMap()`**: Fixed an issue where default-constructed `RxList()`, `RxSet()`, and `RxMap()` (or instances seeded with a `const` collection literal) forwarded `const []` / `const {}` directly as the backing collection, causing `UnsupportedError` when calling mutating methods such as `add`, `removeWhere`, or `[]=` (#13). Default constructors now always initialize a mutable, growable backing collection (`<E>[]` / `List<E>.of(initial)`, `<E>{}` / `Set<E>.of(initial)`, `<K, V>{}` / `Map<K, V>.of(initial)`), matching GetX 4.7.3 behavior while preserving explicit unmodifiable/fixed-length named factories (`RxList.unmodifiable`, `RxList.filled`, `RxList.empty`, `RxSet.unmodifiable`, `RxMap.unmodifiable`).
+
 ## [2.0.0] - 2026-10-17
 
 ### Pillar S — Next-Gen Reactive Engine

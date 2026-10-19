@@ -62,9 +62,55 @@ void main() {
       expect(src.containsKey('b'), isFalse,
           reason: 'changes to RxMap must not bleed back to source');
     });
+
+    test('default RxMap() and const-initialized RxMap are mutable (Issue #13)',
+        () {
+      final emptyMap = RxMap<String, int>();
+      emptyMap['a'] = 1;
+      emptyMap.remove('a');
+      expect(emptyMap, isEmpty);
+
+      final seededMap = RxMap<String, int>(const {'x': 10});
+      seededMap['y'] = 20;
+      expect(seededMap, {'x': 10, 'y': 20});
+    });
+  });
+
+  group('RxList default constructor mutability (Issue #13)', () {
+    test('default RxList() creates a mutable, growable list', () {
+      final items = RxList<int>();
+      expect(() => items.removeWhere((item) => item == 1), returnsNormally);
+      items.add(1);
+      items.addAll([2, 3]);
+      items.removeWhere((item) => item == 2);
+      expect(items.toList(), [1, 3]);
+    });
+
+    test('RxList initialized with const list creates a mutable copy', () {
+      final items = RxList<int>(const [1, 2]);
+      items.add(3);
+      expect(items.toList(), [1, 2, 3]);
+    });
+
+    test('RxList.unmodifiable still enforces unmodifiability', () {
+      final items = RxList<int>.unmodifiable([1, 2]);
+      expect(() => items.add(3), throwsUnsupportedError);
+    });
   });
 
   group('RxSet', () {
+    test('default RxSet() and const-initialized RxSet are mutable (Issue #13)',
+        () {
+      final items = RxSet<int>();
+      items.add(1);
+      items.retainWhere((e) => e != 1);
+      expect(items, isEmpty);
+
+      final seeded = RxSet<int>(const {1, 2});
+      seeded.add(3);
+      expect(seeded.toSet(), {1, 2, 3});
+    });
+
     test('add and remove notify', () async {
       final s = <int>{1, 2}.obs;
       var fired = 0;

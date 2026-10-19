@@ -6,25 +6,28 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 
 class RxMap<K, V> extends SintListenable<Map<K, V>>
     with MapMixin<K, V>, RxObjectMixin<Map<K, V>> {
-  RxMap([super.initial = const {}]);
+  RxMap([Map<K, V> initial = const {}])
+      : super(initial.isEmpty ? <K, V>{} : Map<K, V>.of(initial));
+
+  RxMap._(super.initial);
 
   factory RxMap.from(Map<K, V> other) {
-    return RxMap(Map.from(other));
+    return RxMap._(Map.from(other));
   }
 
   /// Creates a [LinkedHashMap] with the same keys and values as [other].
   factory RxMap.of(Map<K, V> other) {
-    return RxMap(Map.of(other));
+    return RxMap._(Map.of(other));
   }
 
   ///Creates an unmodifiable hash based map containing the entries of [other].
   factory RxMap.unmodifiable(Map<dynamic, dynamic> other) {
-    return RxMap(Map.unmodifiable(other));
+    return RxMap._(Map.unmodifiable(other));
   }
 
   /// Creates an identity map with the default implementation, [LinkedHashMap].
   factory RxMap.identity() {
-    return RxMap(Map.identity());
+    return RxMap._(Map.identity());
   }
 
   @override
@@ -83,7 +86,7 @@ class RxMap<K, V> extends SintListenable<Map<K, V>>
 
 extension MapExtension<K, V> on Map<K, V> {
   RxMap<K, V> get obs {
-    return RxMap<K, V>(this);
+    return RxMap<K, V>._(this);
   }
 
   void addIf(dynamic condition, K key, V value) {

@@ -24,7 +24,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter --version
-      - run: flutter pub get
+      - if: matrix.flutter == '3.44.4'
+        run: flutter pub downgrade
+      - if: matrix.flutter != '3.44.4'
+        run: flutter pub get
       - run: flutter pub get
         working-directory: performance
       - run: flutter analyze
@@ -50,7 +53,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter --version
-      - run: flutter pub get
+      - run: flutter pub downgrade
       - name: Serial JIT measurements without coverage
         run: dart run tool/benchmark_runner.dart --full --output=build/benchmarks/ci.json
       # Hosted workers are not a stable historical baseline. Archive samples;

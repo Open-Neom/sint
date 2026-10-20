@@ -1,5 +1,10 @@
 # Changelog - sint
 
+## [2.0.2] - 2026-10-20
+
+### Dependencies & Compatibility (160/160 Pub Points)
+- **Widen `material_ui` and `cupertino_ui` Upper Bounds (`^1.1.1` / `^1.0.0`)**: Updated dependency constraints from `material_ui: ">=1.1.1 <1.3.0"` and `cupertino_ui: ">=1.0.0 <1.1.0"` to `material_ui: ^1.1.1` and `cupertino_ui: ^1.0.0`, supporting the latest standalone design package releases (`material_ui 1.8.0+` and `cupertino_ui 1.1.4+`) while preserving lower-bound compatibility (`pub downgrade`).
+
 ## [2.0.1] - 2026-10-18
 
 ### Bug Fixes (Pillar S — Reactive Collections, Issue #13)

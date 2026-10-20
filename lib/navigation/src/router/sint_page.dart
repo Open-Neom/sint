@@ -121,7 +121,7 @@ class SintPage<T> extends Page<T> {
     SintPage? unknownRoute,
     List<SintMiddleware>? middlewares,
     bool? preventDuplicates,
-    final double Function(BuildContext context)? gestureWidth,
+    double Function(BuildContext context)? gestureWidth,
     bool? participatesInRootNavigator,
     Object? arguments,
     bool? showCupertinoParallax,

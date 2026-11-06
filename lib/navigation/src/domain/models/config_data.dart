@@ -5,6 +5,7 @@ import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 import 'package:sint/core/src/domain/typedefs/core_typedefs.dart';
 import 'package:sint/core/src/domain/enums/smart_management.dart';
 import 'package:sint/injection/src/bind.dart';
+import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
 import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/router/index.dart';
@@ -28,6 +29,7 @@ class ConfigData {
   final bool? enableLog;
   final LogWriterCallback? logWriterCallback;
   final SmartManagement smartManagement;
+  final BindingsInterface? initialBinding;
   final List<Bind> binds;
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
@@ -87,6 +89,7 @@ class ConfigData {
     required this.enableLog,
     required this.logWriterCallback,
     required this.smartManagement,
+    this.initialBinding,
     required this.binds,
     required this.transitionDuration,
     required this.defaultGlobalState,
@@ -144,6 +147,7 @@ class ConfigData {
     bool? enableLog,
     LogWriterCallback? logWriterCallback,
     SmartManagement? smartManagement,
+    BindingsInterface? initialBinding,
     List<Bind>? binds,
     Duration? transitionDuration,
     bool? defaultGlobalState,
@@ -197,6 +201,7 @@ class ConfigData {
       enableLog: enableLog ?? this.enableLog,
       logWriterCallback: logWriterCallback ?? this.logWriterCallback,
       smartManagement: smartManagement ?? this.smartManagement,
+      initialBinding: initialBinding ?? this.initialBinding,
       binds: binds ?? this.binds,
       transitionDuration: transitionDuration ?? this.transitionDuration,
       defaultGlobalState: defaultGlobalState ?? this.defaultGlobalState,
@@ -284,6 +289,7 @@ class ConfigData {
         other.enableLog == enableLog &&
         other.logWriterCallback == logWriterCallback &&
         other.smartManagement == smartManagement &&
+        other.initialBinding == initialBinding &&
         listEquals(other.binds, binds) &&
         other.transitionDuration == transitionDuration &&
         other.defaultGlobalState == defaultGlobalState &&
@@ -341,6 +347,7 @@ class ConfigData {
         enableLog.hashCode ^
         logWriterCallback.hashCode ^
         smartManagement.hashCode ^
+        initialBinding.hashCode ^
         binds.hashCode ^
         transitionDuration.hashCode ^
         defaultGlobalState.hashCode ^

@@ -81,6 +81,7 @@ class SintMaterialApp extends StatelessWidget {
   final LogWriterCallback? logWriterCallback;
   final bool? popGesture;
   final SmartManagement smartManagement;
+  final BindingsInterface? initialBinding;
   final List<Bind> binds;
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
@@ -151,6 +152,7 @@ class SintMaterialApp extends StatelessWidget {
     this.transitionDuration,
     this.defaultGlobalState,
     this.smartManagement = SmartManagement.full,
+    this.initialBinding,
     this.binds = const [],
     this.unknownRoute,
     this.snackBarStyle,
@@ -215,6 +217,7 @@ class SintMaterialApp extends StatelessWidget {
     this.logWriterCallback,
     this.popGesture,
     this.smartManagement = SmartManagement.full,
+    this.initialBinding,
     this.binds = const [],
     this.transitionDuration,
     this.defaultGlobalState,
@@ -260,6 +263,7 @@ class SintMaterialApp extends StatelessWidget {
         routingCallback: routingCallback,
         scaffoldMessengerKey: scaffoldMessengerKey,
         smartManagement: smartManagement,
+        initialBinding: initialBinding,
         transitionDuration: transitionDuration,
         translations: translations,
         translationsKeys: translationsKeys,

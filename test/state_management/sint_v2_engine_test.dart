@@ -241,16 +241,36 @@ void main() {
           SintPage(name: '/', page: () => const SizedBox()),
           SintPage(name: '/api', page: () => const SizedBox()),
           SintPage(name: '/api/v1', page: () => const SizedBox()),
-          SintPage(name: '/api/:version/items', page: () => const SizedBox()),
-          SintPage(name: '/api/v1/items', page: () => const SizedBox()),
+          SintPage(
+            name: '/api/:version/items',
+            page: () => const SizedBox(),
+            title: 'param-version-items',
+          ),
+          SintPage(
+            name: '/api/:edition/items',
+            page: () => const SizedBox(),
+            title: 'param-edition-items',
+          ),
+          SintPage(
+            name: '/api/v1/items',
+            page: () => const SizedBox(),
+            title: 'literal-v1-items',
+          ),
           SintPage(name: '/api/v2/users', page: () => const SizedBox()),
         ],
       );
 
-      // '/api/:version/items' was registered BEFORE '/api/v1/items', so
-      // within rank 0 ('api'), first-registered wins.
-      final itemsMatch = parser.matchRoute('/api/v1/items');
-      expect(itemsMatch.route?. parameters?['version'], 'v1');
+      // Deeper literal '/api/v1/items' takes precedence over earlier-registered
+      // parameterized '/api/:version/items'.
+      final literalItemsMatch = parser.matchRoute('/api/v1/items');
+      expect(literalItemsMatch.route?.title, 'literal-v1-items');
+      expect(literalItemsMatch.route?.parameters, isEmpty);
+
+      // Among same-specificity param routes ('/api/:version/items' before
+      // '/api/:edition/items'), registration order (first-wins) is preserved.
+      final paramItemsMatch = parser.matchRoute('/api/v3/items');
+      expect(paramItemsMatch.route?.title, 'param-version-items');
+      expect(paramItemsMatch.route?.parameters?['version'], 'v3');
 
       // Deep literal route '/api/v2/users' resolves via multi-level trie.
       final usersMatch = parser.matchRoute('/api/v2/users');

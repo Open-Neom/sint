@@ -91,6 +91,7 @@ class SintApp extends StatelessWidget {
     this.logWriterCallback,
     this.popGesture,
     this.smartManagement = SmartManagement.full,
+    this.initialBinding,
     this.binds = const [],
     this.transitionDuration,
     this.defaultGlobalState,
@@ -158,6 +159,7 @@ class SintApp extends StatelessWidget {
     this.logWriterCallback,
     this.popGesture,
     this.smartManagement = SmartManagement.full,
+    this.initialBinding,
     this.binds = const [],
     this.transitionDuration,
     this.defaultGlobalState,
@@ -215,6 +217,7 @@ class SintApp extends StatelessWidget {
   final LogWriterCallback? logWriterCallback;
   final bool? popGesture;
   final SmartManagement smartManagement;
+  final BindingsInterface? initialBinding;
   final List<Bind> binds;
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
@@ -282,6 +285,7 @@ class SintApp extends StatelessWidget {
         routingCallback: routingCallback,
         scaffoldMessengerKey: null,
         smartManagement: smartManagement,
+        initialBinding: initialBinding,
         transitionDuration: transitionDuration,
         translations: translations,
         translationsKeys: translationsKeys,

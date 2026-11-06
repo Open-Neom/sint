@@ -93,10 +93,11 @@ mixin RxObjectMixin<T> on SintListenable<T> {
   /// Updates the [value] and adds it to the stream, updating the observer
   /// Widget, only if it's different from the previous value.
   @override
+  @pragma('vm:prefer-inline')
   set value(T val) {
     if (isDisposed) return;
     sentToStream = false;
-    if (value == val && !firstRebuild) return;
+    if (peek == val && !firstRebuild) return;
     firstRebuild = false;
     sentToStream = true;
     super.value = val;

@@ -1,3 +1,4 @@
+import 'package:sint/injection/sint_injection.dart';
 import 'package:sint/navigation/sint_navigation.dart';
 import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_controller.dart';
 import 'package:sint/state_manager/sint_state_manager.dart';
@@ -6,6 +7,15 @@ import 'package:sint/state_manager/sint_state_manager.dart';
 
 @Deprecated('Use SintController instead. Will be removed in SINT 3.0.0.')
 typedef GetxController = SintController;
+
+@Deprecated('Use SintService instead. Will be removed in SINT 3.0.0.')
+typedef GetxService = SintService;
+
+@Deprecated('Use SintView instead. Will be removed in SINT 3.0.0.')
+typedef GetView<T> = SintView<T>;
+
+@Deprecated('Use SintMiddleware instead. Will be removed in SINT 3.0.0.')
+typedef GetMiddleware = SintMiddleware;
 
 @Deprecated('Use SintMaterialApp or SintApp instead. Will be removed in SINT 3.0.0.')
 typedef GetMaterialApp = SintMaterialApp;

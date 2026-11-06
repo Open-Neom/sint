@@ -733,6 +733,7 @@ extension NavigationExtension on SintInterface {
   // ─── End Web-Aware Navigation ────────────────────────────
 
   Future<void> updateLocale(Locale l) async {
+    await Sint.ensureLocaleLoaded(l);
     Sint.locale = l;
     await forceAppUpdate();
   }
@@ -1039,7 +1040,7 @@ extension NavigationExtension on SintInterface {
   /// Path parameters are NOT included.
   /// Usage: `String? tab = Sint.queryParams['tab'];`
   Map<String, String> get queryParams {
-    if (_shouldUseMock) return const {};
+    if (_shouldUseMock) return SintTestMode.queryParameters;
     return rootController.rootDelegate.queryParams;
   }
 

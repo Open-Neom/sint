@@ -137,10 +137,13 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
 
     if (preTitle != null) {
+      if (displayTitle.isEmpty) {
+        return preTitle!;
+      }
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          preTitle!,
+          Flexible(child: preTitle!),
           const SizedBox(width: 10),
           Flexible(
             child: Text(displayTitle, style: style, overflow: TextOverflow.ellipsis),

@@ -61,6 +61,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   late ConfigData config;
+  bool? _refreshRoutesAfterReassemble;
 
   @override
   void initState() {
@@ -69,6 +70,12 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     SintEngine.instance.addObserver(this);
     onInit();
     super.initState();
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    _refreshRoutesAfterReassemble = true;
   }
 
   void onClose() {
@@ -88,6 +95,12 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     final previous = oldWidget.config;
     final next = widget.config;
+    if (_refreshRoutesAfterReassemble == true &&
+        next.sintPages != null &&
+        config.routerDelegate is SintDelegate) {
+      _refreshRoutesAfterReassemble = false;
+      (config.routerDelegate as SintDelegate).refreshRoutes(next.sintPages!);
+    }
     if (next.useStandaloneDesign &&
         (previous.useStandaloneDesign != next.useStandaloneDesign ||
             previous.useCupertinoDesign != next.useCupertinoDesign ||
@@ -156,6 +169,11 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   void onInit() {
+    Sint.smartManagement = config.smartManagement;
+    Sint.isLogEnable = config.enableLog ?? kDebugMode;
+    Sint.log = config.logWriterCallback ?? defaultLogWriterCallback;
+    config.initialBinding?.dependencies();
+
     // ignore: deprecated_member_use_from_same_package
     if (config.routerDelegate == null &&
         config.sintPages == null &&

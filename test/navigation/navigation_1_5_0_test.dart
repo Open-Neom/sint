@@ -50,13 +50,32 @@ void main() {
     });
 
     test('precedence: literal wins over earlier-registered param', () {
-      // Param registered FIRST — the index must still prefer the literal.
+      // Param registered FIRST — the index must still prefer the literal
+      // SintPage (verified via title + empty pathParams, since matchRoute
+      // rewrites route.name to the matched path).
       final parser = RouteParser(routes: [
-        _page('/user/:id'),
-        _page('/user/new'),
+        SintPage(
+          name: '/profile/:profileId',
+          page: () => const SizedBox(),
+          title: 'profile-param',
+        ),
+        SintPage(
+          name: '/profile/edit',
+          page: () => const SizedBox(),
+          title: 'profile-edit-literal',
+        ),
       ]);
-      final decoder = parser.matchRoute('/user/new');
-      expect(decoder.route!.name, '/user/new');
+      final settings = PageSettings(Uri.parse('/profile/edit'));
+      final decoder = parser.matchRoute('/profile/edit', arguments: settings);
+      expect(decoder.route!.name, '/profile/edit');
+      expect(decoder.route!.title, 'profile-edit-literal');
+      expect(settings.pathParams, isEmpty);
+
+      final paramSettings = PageSettings(Uri.parse('/profile/abc123'));
+      final paramDecoder =
+          parser.matchRoute('/profile/abc123', arguments: paramSettings);
+      expect(paramDecoder.route!.title, 'profile-param');
+      expect(paramSettings.pathParams['profileId'], 'abc123');
     });
 
     test('first-wins preserved among same-rank routes', () {

@@ -66,6 +66,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   List<RouteDecoder> get activePages => _activePages;
 
   final _routeTree = RouteParser(routes: []);
+  int? _hotReloadRevisionSlot;
 
   List<SintPage> get registeredRoutes => _routeTree.routes;
 
@@ -75,6 +76,45 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   void clearRouteTree() {
     _routeTree.routes.clear();
+  }
+
+  /// Refreshes registered routes after a Dart VM Hot Reload and rebinds
+  /// pushed active pages so deferred library closures stay synchronized.
+  void refreshRoutes(List<SintPage> pages) {
+    clearRouteTree();
+    addPages(pages);
+    addPage(notFoundRoute);
+
+    final rev = (_hotReloadRevisionSlot ?? 0) + 1;
+    _hotReloadRevisionSlot = rev;
+    var updatedActive = false;
+    for (var i = 0; i < _activePages.length; i++) {
+      final entry = _activePages[i];
+      final existingRoute = entry.route;
+      final settings = entry.pageSettings;
+      if (existingRoute == null || settings == null) continue;
+      final matched = _routeTree.matchRoute(
+        settings.uri.path,
+        arguments: settings,
+      );
+      final freshTemplate = matched.route;
+      if (freshTemplate != null) {
+        entry.route = freshTemplate.copyWith(
+          key: i == 0
+              ? existingRoute.key
+              : ValueKey('${existingRoute.name}#hr$rev'),
+          name: existingRoute.name,
+          completer: existingRoute.completer,
+          arguments: existingRoute.arguments,
+          parameters: existingRoute.parameters,
+          transitionDuration: i == 0 ? null : Duration.zero,
+        );
+        updatedActive = true;
+      }
+    }
+    if (updatedActive) {
+      notifyListeners();
+    }
   }
 
   void addPage(SintPage getPage) {

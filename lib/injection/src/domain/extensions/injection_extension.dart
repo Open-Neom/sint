@@ -1,28 +1,238 @@
+import 'dart:async';
+
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/lifecycle.dart';
+import 'package:sint/injection/src/sint_service.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
 import 'package:sint/injection/src/domain/models/instance_info.dart';
 import 'package:sint/injection/src/domain/models/route_dependency.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 
+/// Describes a scoped dependency override supplied to `SintScope`.
+class SintOverride<S> {
+  SintOverride._({
+    required this._builder,
+    required this._isLazy,
+    this.tag,
+  });
+
+  /// Overrides `T` (and optional [tag]) with an eager [instance] within a `SintScope`.
+  static SintOverride<T> value<T>(T instance, {String? tag}) =>
+      SintOverride<T>._(
+        builder: () => instance,
+        isLazy: false,
+        tag: tag,
+      );
+
+  /// Overrides `T` (and optional [tag]) with a lazy [builder] within a `SintScope`.
+  static SintOverride<T> lazy<T>(
+    InstanceBuilderCallback<T> builder, {
+    String? tag,
+  }) =>
+      SintOverride<T>._(
+        builder: builder,
+        isLazy: true,
+        tag: tag,
+      );
+
+  final InstanceBuilderCallback<S> _builder;
+  final bool _isLazy;
+  final String? tag;
+
+  Type get overrideType => S;
+
+  _InstanceBuilderFactory<S> _createFactory() {
+    final factory = _InstanceBuilderFactory<S>(
+      isSingleton: true,
+      builderFunc: _builder,
+      permanent: true,
+      isInit: false,
+      fenix: false,
+      tag: tag,
+    );
+    if (!_isLazy) {
+      final instance = factory.getDependency();
+      factory.isInit = true;
+      factory.generation = Object();
+      if (instance is SintLifeCycleMixin) {
+        instance.onStart();
+      }
+    }
+    return factory;
+  }
+}
+
+/// Internal container holding scoped overrides for a single `SintScope`.
+class SintScopeContainer {
+  SintScopeContainer(Iterable<SintOverride<dynamic>> overrides) {
+    for (final override in overrides) {
+      (_factories[override.overrideType] ??=
+          <String?, _InstanceBuilderFactory>{})[override.tag] =
+          override._createFactory();
+    }
+  }
+
+  final Map<Type, Map<String?, _InstanceBuilderFactory>> _factories = {};
+  bool _disposed = false;
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    for (final tagMap in _factories.values) {
+      for (final factory in tagMap.values) {
+        final instance = factory.dependency;
+        factory.dependency = null;
+        factory.isInit = false;
+        factory.generation = null;
+        if (instance is SintLifeCycleMixin) {
+          instance.onDelete();
+        }
+      }
+    }
+    _factories.clear();
+  }
+}
+
 extension InjectionExtension on SintInterface {
   T call<T>() => find<T>();
 
   /// Active factories indexed by opaque handles for legacy string-key callers.
+  /// Populated lazily only when [registeredKeys] or [_factoryForKey] is used.
   static final Map<String, _InstanceBuilderFactory> _singl = {};
   static final Map<String, Set<_InstanceBuilderFactory>> _legacySingl = {};
   static int _nextHandle = 0;
+  static bool _hasUnindexedFactories = false;
 
   /// Type-keyed injection registry (O5a - SINT 1.6.0)
   /// Provides O(1) type-identity lookups, eliminating string concatenation
   /// overhead and dart2js minification collision risk.
   static final Map<Type, Map<String?, _InstanceBuilderFactory>> _typeSingl = {};
 
+  /// Active `SintScope` containers (mounted widget scopes + active build scopes).
+  static final List<SintScopeContainer> _mountedScopes = [];
+  static final List<SintScopeContainer> _buildScopes = [];
+  static bool _hasActiveScopes = false;
+
+  static void _refreshScopeFlag() {
+    _hasActiveScopes = _mountedScopes.isNotEmpty || _buildScopes.isNotEmpty;
+  }
+
+  /// Internal hook used by `SintScope` when mounting in a widget tree or test run.
+  static void pushMountedScope(SintScopeContainer scope) {
+    _mountedScopes.add(scope);
+    _hasActiveScopes = true;
+  }
+
+  /// Internal hook used by `SintScope` when unmounting.
+  static void popMountedScope(SintScopeContainer scope) {
+    _mountedScopes.remove(scope);
+    _buildScopes.remove(scope);
+    _refreshScopeFlag();
+    scope.dispose();
+  }
+
+  /// Internal hook used by `SintScope` around subtree `build` so sibling scopes
+  /// resolve their own subtree overrides first.
+  static R runWithBuildScope<R>(
+    SintScopeContainer scope,
+    R Function() action,
+  ) {
+    _buildScopes.add(scope);
+    _hasActiveScopes = true;
+    try {
+      return action();
+    } finally {
+      _buildScopes.removeLast();
+      _refreshScopeFlag();
+    }
+  }
+
+  /// Resolves `S` directly from a specific [scope], returning `null` if [scope]
+  /// does not contain an override for `S` (and [tag]).
+  static S? findInScope<S>(SintScopeContainer scope, {String? tag}) {
+    final dep = scope._factories[S]?[tag];
+    if (dep == null) return null;
+    return _resolveScopedFactory<S>(dep);
+  }
+
+  /// Resolves `S` from the global `_typeSingl` container, bypassing active scopes.
+  static S findGlobal<S>({String? tag}) {
+    final dep = _typeSingl[S]?[tag];
+    if (dep == null) {
+      // ignore: lines_longer_than_80_chars
+      throw '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"';
+    }
+    final i = Sint._initDependencies<S>(name: tag, dep: dep);
+    return (i ?? dep.getDependency()) as S;
+  }
+
+  /// Runs [body] with temporary scoped [overrides] and disposes them when done.
+  static FutureOr<R> runScoped<R>({
+    required List<SintOverride<dynamic>> overrides,
+    required FutureOr<R> Function() body,
+  }) {
+    final container = SintScopeContainer(overrides);
+    pushMountedScope(container);
+    try {
+      final result = body();
+      if (result is Future<R>) {
+        return result.whenComplete(() => popMountedScope(container));
+      }
+      popMountedScope(container);
+      return result;
+    } catch (_) {
+      popMountedScope(container);
+      rethrow;
+    }
+  }
+
+  static _InstanceBuilderFactory? _lookupScopedFactory(Type type, String? tag) {
+    for (var i = _buildScopes.length - 1; i >= 0; i--) {
+      final match = _buildScopes[i]._factories[type]?[tag];
+      if (match != null) return match;
+    }
+    for (var i = _mountedScopes.length - 1; i >= 0; i--) {
+      final match = _mountedScopes[i]._factories[type]?[tag];
+      if (match != null) return match;
+    }
+    return null;
+  }
+
+  static S _resolveScopedFactory<S>(_InstanceBuilderFactory dep) {
+    if (!dep.isInit) {
+      dep.isInit = true;
+      dep.generation = Object();
+      final instance = dep.getDependency() as S;
+      if (instance is SintLifeCycleMixin) {
+        instance.onStart();
+      }
+      return instance;
+    }
+    return dep.getDependency() as S;
+  }
+
+  static void _ensureLegacyIndex() {
+    if (!_hasUnindexedFactories) return;
+    for (final tagMap in _typeSingl.values) {
+      for (final factory in tagMap.values) {
+        if (!factory._legacyIndexed) {
+          factory._legacyIndexed = true;
+          _singl[factory.handle] = factory;
+          _legacySingl.putIfAbsent(factory.legacyKey, () => {}).add(factory);
+        }
+      }
+    }
+    _hasUnindexedFactories = false;
+  }
+
   /// Exposes the registered dependency keys for internal use (e.g. selective cleanup).
-  static Iterable<String> get registeredKeys => _singl.values.map((factory) =>
-      _legacySingl[factory.legacyKey]!.length == 1
-          ? factory.legacyKey
-          : factory.handle);
+  static Iterable<String> get registeredKeys {
+    _ensureLegacyIndex();
+    return _singl.values.map((factory) =>
+        _legacySingl[factory.legacyKey]!.length == 1
+            ? factory.legacyKey
+            : factory.handle);
+  }
 
   /// Resolves the actual registered type, including disambiguated handles.
   static Type? registeredTypeForKey(String key) =>
@@ -68,6 +278,7 @@ extension InjectionExtension on SintInterface {
       );
 
   static _InstanceBuilderFactory? _factoryForKey(String key) {
+    _ensureLegacyIndex();
     // A Dart type name cannot begin with '@', so handles cannot be confused
     // with the historical type.toString() + tag format.
     if (key.startsWith('@sint/')) return _singl[key];
@@ -86,23 +297,33 @@ extension InjectionExtension on SintInterface {
       tags!.remove(factory.tag);
       if (tags.isEmpty) _typeSingl.remove(factory.registeredType);
     }
-    _singl.remove(factory.handle);
-    final legacy = _legacySingl[factory.legacyKey];
-    legacy?.remove(factory);
-    if (legacy?.isEmpty ?? false) _legacySingl.remove(factory.legacyKey);
+    if (factory._legacyIndexed) {
+      factory._legacyIndexed = false;
+      _singl.remove(factory._handle);
+      final key = factory._legacyKey;
+      if (key != null) {
+        final legacy = _legacySingl[key];
+        legacy?.remove(factory);
+        if (legacy?.isEmpty ?? false) _legacySingl.remove(key);
+      }
+    }
   }
 
+  /// Registers [dependency] as a singleton in SINT's container.
   ///
+  /// Subclasses of [SintService] default to `permanent: true` unless
+  /// [permanent] is explicitly provided.
   S put<S>(
     S dependency, {
     String? tag,
-    bool permanent = false,
+    bool? permanent,
   }) {
     _insert(
-        isSingleton: true,
-        name: tag,
-        permanent: permanent,
-        builder: (() => dependency));
+      isSingleton: true,
+      name: tag,
+      permanent: permanent ?? (dependency is SintService),
+      builder: (() => dependency),
+    );
     return find<S>(tag: tag);
   }
 
@@ -132,12 +353,13 @@ extension InjectionExtension on SintInterface {
     InstanceBuilderCallback<S> builder, {
     String? tag,
     bool fenix = false,
-    bool permanent = false,
+    bool? permanent,
   }) {
     _insert(
       isSingleton: true,
       name: tag,
-      permanent: permanent,
+      permanent:
+          permanent ?? (builder is InstanceBuilderCallback<SintService>),
       builder: builder,
       fenix: fenix,
     );
@@ -190,13 +412,13 @@ extension InjectionExtension on SintInterface {
   Future<S> putAsync<S>(
     Future<S> Function() asyncBuilder, {
     String? tag,
-    bool permanent = false,
+    bool? permanent,
   }) async {
     final instance = await asyncBuilder();
     return put<S>(instance, tag: tag, permanent: permanent);
   }
 
-  /// Injects the Instance [S] builder into the `_singleton` HashMap.
+  /// Injects the Instance [S] builder into the `_typeSingl` HashMap.
   void _insert<S>({
     required InstanceBuilderCallback<S> builder,
     bool? isSingleton,
@@ -204,15 +426,16 @@ extension InjectionExtension on SintInterface {
     bool fenix = false,
     bool permanent = false,
   }) {
-    final key = _getKey(S, name);
-
-    final existing = _typeSingl[S]?[name];
-    if (existing != null) {
-      if (!existing.isDirty) {
-        return;
-      } else {
+    var tagMap = _typeSingl[S];
+    if (tagMap != null) {
+      final existing = tagMap[name];
+      if (existing != null) {
+        if (!existing.isDirty) {
+          return;
+        }
         // Its route still owns the old generation until route disposal.
         _unregister(existing);
+        tagMap = _typeSingl[S];
       }
     }
     final factory = _InstanceBuilderFactory<S>(
@@ -222,12 +445,10 @@ extension InjectionExtension on SintInterface {
       isInit: false,
       fenix: fenix,
       tag: name,
-      handle: '@sint/${_nextHandle++}',
-      legacyKey: key,
     );
-    _typeSingl.putIfAbsent(S, () => {})[name] = factory;
-    _singl[factory.handle] = factory;
-    _legacySingl.putIfAbsent(key, () => {}).add(factory);
+    (tagMap ?? (_typeSingl[S] = <String?, _InstanceBuilderFactory>{}))[name] =
+        factory;
+    _hasUnindexedFactories = true;
   }
 
   /// Initializes the dependencies for a Class Instance [S] (or tag),
@@ -286,7 +507,10 @@ extension InjectionExtension on SintInterface {
     if (key != null) {
       dep = _factoryForKey(key);
     } else {
-      dep = _typeSingl[S]?[tag];
+      if (_hasActiveScopes) {
+        dep = _lookupScopedFactory(S, tag);
+      }
+      dep ??= _typeSingl[S]?[tag];
     }
     if (dep == null) {
       final logKey = key ?? _getKey(S, tag);
@@ -324,6 +548,10 @@ extension InjectionExtension on SintInterface {
   }
 
   S putOrFind<S>(InstanceBuilderCallback<S> dep, {String? tag}) {
+    if (_hasActiveScopes) {
+      final scoped = _lookupScopedFactory(S, tag);
+      if (scoped != null) return _resolveScopedFactory<S>(scoped);
+    }
     final factory = _typeSingl[S]?[tag];
     if (factory != null) {
       return find<S>(tag: tag);
@@ -338,6 +566,12 @@ extension InjectionExtension on SintInterface {
   /// If the registered type <[S]> (or [tag]) is a Controller,
   /// it will initialize it's lifecycle.
   S find<S>({String? tag}) {
+    if (_hasActiveScopes) {
+      final scoped = _lookupScopedFactory(S, tag);
+      if (scoped != null) {
+        return _resolveScopedFactory<S>(scoped);
+      }
+    }
     final dep = _typeSingl[S]?[tag];
     if (dep == null) {
       // ignore: lines_longer_than_80_chars
@@ -351,22 +585,26 @@ extension InjectionExtension on SintInterface {
     return (i ?? dep.getDependency()) as S;
   }
 
-  /// The findOrNull method will return the instance if it is registered;
-  /// otherwise, it will return null.
+  /// Returns the registered instance if available, or `null` in a single `O(1)` lookup.
   S? findOrNull<S>({String? tag}) {
-    if (isRegistered<S>(tag: tag)) {
-      return find<S>(tag: tag);
+    if (_hasActiveScopes) {
+      final scoped = _lookupScopedFactory(S, tag);
+      if (scoped != null) {
+        return _resolveScopedFactory<S>(scoped);
+      }
     }
-    return null;
+    final dep = _typeSingl[S]?[tag];
+    if (dep == null) return null;
+    final i = _initDependencies<S>(name: tag, dep: dep);
+    return (i ?? dep.getDependency()) as S;
   }
 
   /// Replace a parent instance of a class in dependency management
   /// with a [child] instance
   /// - [tag] optional, if you use a [tag] to register the Instance.
   void replace<P>(P child, {String? tag}) {
-    final info = getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
     final factory = _typeSingl[P]?[tag];
+    final permanent = factory?.permanent ?? (child is SintService);
     if (factory != null) {
       _deleteFactory(factory, force: permanent, keepFactory: false);
     }
@@ -382,9 +620,8 @@ extension InjectionExtension on SintInterface {
   /// the parent instance was permanent
   void lazyReplace<P>(InstanceBuilderCallback<P> builder,
       {String? tag, bool? fenix}) {
-    final info = getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
     final factory = _typeSingl[P]?[tag];
+    final permanent = factory?.permanent ?? false;
     if (factory != null) {
       _deleteFactory(factory, force: permanent, keepFactory: false);
     }
@@ -393,18 +630,9 @@ extension InjectionExtension on SintInterface {
 
   /// Generates the key based on [type] (and optionally a [name])
   /// to register an Instance Builder in the hashmap.
-  String _getKey(Type type, String? name) {
-    return name == null ? type.toString() : type.toString() + name;
+  static String _getKey(Type type, String? name) {
+    return name == null ? type.toString() : '${type.toString()}$name';
   }
-
-  /// Delete registered Class Instance [S] (or [tag]) and, closes any open
-  /// controllers `DisposableInterface`, cleans up the memory
-  ///
-  /// /// Deletes the Instance<[S]>, cleaning the memory.
-  //  ///
-  //  /// - [tag] Optional "tag" used to register the Instance
-  //  /// - [key] For internal usage, is the processed key used to register
-  //  ///   the Instance. **don't use** it unless you know what you are doing.
 
   /// Deletes the Instance<[S]>, cleaning the memory and closes any open
   /// controllers (`DisposableInterface`).
@@ -456,19 +684,25 @@ extension InjectionExtension on SintInterface {
     return true;
   }
 
+  static List<_InstanceBuilderFactory> _allFactories() => <
+      _InstanceBuilderFactory>[
+        for (final tagMap in _typeSingl.values) ...tagMap.values,
+      ];
+
   /// Delete all registered Class Instances and, closes any open
   /// controllers `DisposableInterface`, cleans up the memory
   ///
   /// - [force] Will delete the Instances even if marked as `permanent`.
   void deleteAll({bool force = false}) {
-    final factories = _singl.values.toList();
+    final factories = _allFactories();
     for (final factory in factories) {
       _deleteFactory(factory, force: force);
     }
   }
 
   void reloadAll({bool force = false}) {
-    for (final factory in _singl.values.toList()) {
+    final factories = _allFactories();
+    for (final factory in factories) {
       _reloadFactory(factory, force: force);
     }
   }
@@ -511,8 +745,12 @@ extension InjectionExtension on SintInterface {
 
   /// Check if a Class Instance<[S]> (or [tag]) is registered in memory.
   /// - [tag] is optional, if you used a [tag] to register the Instance.
-  bool isRegistered<S>({String? tag}) =>
-      _typeSingl[S]?.containsKey(tag) ?? false;
+  bool isRegistered<S>({String? tag}) {
+    if (_hasActiveScopes && _lookupScopedFactory(S, tag) != null) {
+      return true;
+    }
+    return _typeSingl[S]?.containsKey(tag) ?? false;
+  }
 
   /// Checks if a lazy factory callback `Sint.lazyPut()` that returns an
   /// Instance<[S]> is registered in memory.
@@ -538,9 +776,16 @@ extension InjectionExtension on SintInterface {
   ///
   bool resetInstance({bool clearRouteBindings = true}) {
     if (clearRouteBindings) RouterReportManager.instance.clearRouteKeys();
+    for (final scope in List<SintScopeContainer>.of(_mountedScopes)) {
+      scope.dispose();
+    }
+    _mountedScopes.clear();
+    _buildScopes.clear();
+    _hasActiveScopes = false;
     _typeSingl.clear();
     InjectionExtension._singl.clear();
     _legacySingl.clear();
+    _hasUnindexedFactories = false;
     return true;
   }
 }
@@ -574,8 +819,13 @@ class _InstanceBuilderFactory<S> {
   /// Distinguishes successive initializations of a retained fenix factory.
   Object? generation;
 
-  final String handle;
-  final String legacyKey;
+  String? _handle;
+  String? _legacyKey;
+  bool _legacyIndexed = false;
+
+  String get handle => _handle ??= '@sint/${InjectionExtension._nextHandle++}';
+  String get legacyKey =>
+      _legacyKey ??= InjectionExtension._getKey(S, tag);
 
   bool isDirty = false;
 
@@ -588,15 +838,15 @@ class _InstanceBuilderFactory<S> {
     required this.isInit,
     required this.fenix,
     required this.tag,
-    required this.handle,
-    required this.legacyKey,
   });
 
   void _showInitLog() {
-    if (tag == null) {
-      Sint.log('Instance "$S" has been created');
-    } else {
-      Sint.log('Instance "$S" has been created with tag "$tag"');
+    if (Sint.isLogEnable) {
+      if (tag == null) {
+        Sint.log('Instance "$S" has been created');
+      } else {
+        Sint.log('Instance "$S" has been created with tag "$tag"');
+      }
     }
   }
 

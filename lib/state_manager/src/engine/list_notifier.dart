@@ -117,7 +117,23 @@ class ListNotifier extends Listenable {
     final updaters = _updaters;
     if (updaters == null) return;
     if (_notificationDepth == 0) {
-      updaters.remove(entry);
+      if (updaters.isNotEmpty && identical(updaters.last, entry)) {
+        updaters.removeLast();
+        if (updaters.length == _removedListeners && _removedListeners > 0) {
+          updaters.clear();
+          _removedListeners = 0;
+        }
+        return;
+      }
+      _removedListeners++;
+      if (_removedListeners == updaters.length) {
+        updaters.clear();
+        _removedListeners = 0;
+      } else if (_removedListeners * 2 >= updaters.length &&
+          _removedListeners >= 4) {
+        updaters.removeWhere((item) => !item.active);
+        _removedListeners = 0;
+      }
     } else {
       // Keep indexes stable until every nested notification has finished.
       _removedListeners++;
@@ -125,11 +141,13 @@ class ListNotifier extends Listenable {
   }
 
   @protected
+  @pragma('vm:prefer-inline')
   void refresh() {
     _notifyUpdate();
   }
 
   @protected
+  @pragma('vm:prefer-inline')
   void reportRead() {
     Notifier.instance.read(this);
   }
@@ -139,9 +157,10 @@ class ListNotifier extends Listenable {
     Notifier.instance.add(disposer);
   }
 
+  @pragma('vm:prefer-inline')
   void _notifyUpdate() {
     final list = _updaters;
-    if (list == null || list.isEmpty) return;
+    if (list == null || list.length <= _removedListeners) return;
     if (_batchDepth > 0) {
       if (!_queuedInBatch) {
         _queuedInBatch = true;
@@ -154,14 +173,15 @@ class ListNotifier extends Listenable {
 
   void _dispatchNotifications() {
     final list = _updaters;
-    if (list == null || list.isEmpty) return;
+    if (list == null || list.length <= _removedListeners) return;
     // No allocation on the notification path. Additions are deferred to the
     // next notification; removals take effect immediately without shifting
     // the indexes of callbacks still waiting to run.
     final length = list.length;
     _notificationDepth++;
     try {
-      for (var i = 0; i < length && !isDisposed; i++) {
+      for (var i = 0; i < length; i++) {
+        if (_updaters == null) break;
         final entry = list[i];
         if (entry.active) {
           entry.callback();
@@ -170,12 +190,20 @@ class ListNotifier extends Listenable {
     } finally {
       _notificationDepth--;
       if (_notificationDepth == 0 && _removedListeners > 0) {
-        _updaters?.removeWhere((entry) => !entry.active);
+        final current = _updaters;
+        if (current != null) {
+          if (_removedListeners == current.length) {
+            current.clear();
+          } else {
+            current.removeWhere((entry) => !entry.active);
+          }
+        }
         _removedListeners = 0;
       }
     }
   }
 
+  @pragma('vm:prefer-inline')
   bool get isDisposed => _updaters == null;
 
   int get listenersLength {

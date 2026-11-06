@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:sint/core/src/domain/models/rx_computed.dart';
 import 'package:sint/core/src/domain/models/rx_interface.dart';
 import 'package:sint/injection/src/lifecycle.dart';
+import 'package:sint/state_manager/src/domain/rx_future.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
 import 'package:sint/state_manager/src/sint_listenable.dart';
 
@@ -15,8 +16,8 @@ import 'list_notifier.dart';
 /// when the controller's state changes.
 ///
 /// Includes reactive **workers** (`ever`, `everSync`, `once`, `debounce`,
-/// `interval`), scoped **`computed`**, and **`autoDispose`** helpers that
-/// automatically clean up when the controller is disposed.
+/// `interval`), scoped **`computed`**, **`rxFuture`**, and **`autoDispose`**
+/// helpers that automatically clean up when the controller is disposed.
 ///
 /// Example:
 /// ```dart
@@ -27,7 +28,7 @@ import 'list_notifier.dart';
 ///   @override
 ///   void onInit() {
 ///     super.onInit();
-///     everSync(count, (val) => print('Count changed synchronously to $val'));
+///     ever(count, (val) => print('Count changed synchronously to $val'));
 ///     debounce(count, (val) => saveToDb(val));
 ///   }
 ///
@@ -53,6 +54,23 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
     final signal = Computed<T>(compute);
     _syncDisposers.add(signal.dispose);
     return signal;
+  }
+
+  /// Creates an [RxFuture] scoped to this controller (`Loading` -> `Success` /
+  /// `Empty` / `Error` with stale-while-revalidate and race cancellation) and
+  /// automatically disposes it in [onClose].
+  RxFuture<T> rxFuture<T>(
+    Future<T> Function() loader, {
+    bool immediate = true,
+    bool Function(T data)? isEmpty,
+  }) {
+    final resource = RxFuture<T>(
+      loader,
+      immediate: immediate,
+      isEmpty: isEmpty,
+    );
+    _syncDisposers.add(resource.close);
+    return resource;
   }
 
   /// Registers [resource] (`RxInterface`, [ListNotifier], [Computed],
@@ -99,12 +117,20 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
   }
 
   /// Calls [callback] every time [rx] changes.
+  ///
+  /// Uses SINT's synchronous, zero-Stream [ListNotifier] engine when [rx] is a
+  /// [SintListenable] (`Rx`, `Computed`), avoiding `StreamController.broadcast`
+  /// allocations and coalescing cleanly inside `Sint.batch`.
   /// Auto-cancels on controller disposal.
   ///
   /// ```dart
   /// ever(name, (val) => print('Name changed: $val'));
   /// ```
   void ever<T>(RxInterface<T> rx, void Function(T) callback) {
+    if (rx is SintListenable<T>) {
+      everSync<T>(rx, callback);
+      return;
+    }
     _workers.add(rx.listen(callback));
   }
 
@@ -114,6 +140,17 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
   /// once(isLoggedIn, (val) => analytics.trackFirstLogin());
   /// ```
   void once<T>(RxInterface<T> rx, void Function(T) callback) {
+    if (rx is SintListenable<T>) {
+      late Disposer disposer;
+      disposer = rx.addListener(() {
+        if (isDisposed || rx.isDisposed) return;
+        disposer();
+        _syncDisposers.remove(disposer);
+        callback(rx.peek);
+      });
+      _syncDisposers.add(disposer);
+      return;
+    }
     late StreamSubscription<T> sub;
     sub = rx.listen((val) {
       callback(val);
@@ -136,17 +173,33 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
     Duration duration = const Duration(milliseconds: 400),
   }) {
     Timer? timer;
-    _workers.add(rx.listen((val) {
+    void schedule(T val) {
       if (timer != null) {
         _timers.remove(timer);
         timer!.cancel();
       }
-      timer = Timer(duration, () {
-        _timers.remove(timer);
-        callback(val);
+      late Timer nextTimer;
+      nextTimer = Timer(duration, () {
+        _timers.remove(nextTimer);
+        if (!isDisposed) {
+          callback(val);
+        }
       });
-      _timers.add(timer!);
-    }));
+      timer = nextTimer;
+      _timers.add(nextTimer);
+    }
+
+    if (rx is SintListenable<T>) {
+      final disposer = rx.addListener(() {
+        if (!isDisposed && !rx.isDisposed) {
+          schedule(rx.peek);
+        }
+      });
+      _syncDisposers.add(disposer);
+      return;
+    }
+
+    _workers.add(rx.listen(schedule));
   }
 
   /// Calls [callback] at most once per [duration], ignoring
@@ -161,19 +214,30 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
     void Function(T) callback, {
     Duration duration = const Duration(seconds: 1),
   }) {
-    bool canCall = true;
-    _workers.add(rx.listen((val) {
-      if (canCall) {
-        canCall = false;
-        callback(val);
-        late Timer timer;
-        timer = Timer(duration, () {
-          _timers.remove(timer);
-          canCall = true;
-        });
-        _timers.add(timer);
-      }
-    }));
+    var canCall = true;
+    void handle(T val) {
+      if (!canCall || isDisposed) return;
+      canCall = false;
+      callback(val);
+      late Timer timer;
+      timer = Timer(duration, () {
+        _timers.remove(timer);
+        canCall = true;
+      });
+      _timers.add(timer);
+    }
+
+    if (rx is SintListenable<T>) {
+      final disposer = rx.addListener(() {
+        if (!isDisposed && !rx.isDisposed) {
+          handle(rx.peek);
+        }
+      });
+      _syncDisposers.add(disposer);
+      return;
+    }
+
+    _workers.add(rx.listen(handle));
   }
 
   // ─── End Workers ──────────────────────────────────────────

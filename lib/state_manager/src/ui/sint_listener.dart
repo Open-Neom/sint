@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:sint/core/src/domain/models/rx_interface.dart';
+import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
+import 'package:sint/state_manager/src/sint_listenable.dart';
 
 /// Listens to an [Rx] value and calls [listener] on every change
 /// **without rebuilding** the widget tree.
@@ -54,6 +56,7 @@ class SintListener<T> extends StatefulWidget {
 
 class _SintListenerState<T> extends State<SintListener<T>> {
   StreamSubscription<T>? _sub;
+  Disposer? _disposer;
 
   @override
   void initState() {
@@ -62,21 +65,37 @@ class _SintListenerState<T> extends State<SintListener<T>> {
   }
 
   void _subscribe() {
-    _sub = widget.rx.listen((value) => widget.listener(value));
+    final rx = widget.rx;
+    if (rx is SintListenable<T>) {
+      _disposer = rx.addListener(() {
+        if (mounted && !rx.isDisposed) {
+          widget.listener(rx.peek);
+        }
+      });
+      return;
+    }
+    _sub = rx.listen((value) => widget.listener(value));
+  }
+
+  void _unsubscribe() {
+    _disposer?.call();
+    _disposer = null;
+    _sub?.cancel();
+    _sub = null;
   }
 
   @override
   void didUpdateWidget(covariant SintListener<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.rx, widget.rx)) {
-      _sub?.cancel();
+      _unsubscribe();
       _subscribe();
     }
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _unsubscribe();
     super.dispose();
   }
 

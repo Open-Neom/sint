@@ -234,6 +234,7 @@ class SintCupertinoApp extends StatelessWidget {
         routingCallback: routingCallback,
         scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
         smartManagement: smartManagement,
+        initialBinding: initialBinding,
         transitionDuration: transitionDuration,
         translations: translations,
         translationsKeys: translationsKeys,

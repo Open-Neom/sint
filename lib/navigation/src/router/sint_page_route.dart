@@ -101,14 +101,18 @@ class SintPageRoute<T> extends PageRoute<T>
 
     if (bindingsToBind != null && bindingsToBind.isNotEmpty) {
       if (bindingsToBind is List<BindingsInterface>) {
+        final collectedBinds = <Bind>[];
         for (final item in bindingsToBind) {
           final dep = item.dependencies();
           if (dep is List<Bind>) {
-            _child = Binds(
-              binds: dep,
-              child: _middlewareRunner.runOnPageBuilt(pageToBuild()),
-            );
+            collectedBinds.addAll(dep);
           }
+        }
+        if (collectedBinds.isNotEmpty) {
+          _child = Binds(
+            binds: collectedBinds,
+            child: _middlewareRunner.runOnPageBuilt(pageToBuild()),
+          );
         }
       } else if (bindingsToBind is List<Bind>) {
         _child = Binds(

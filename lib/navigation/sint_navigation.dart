@@ -33,6 +33,7 @@ export 'src/domain/models/config_data.dart';
 export 'src/domain/models/path_decoded.dart';
 export 'src/domain/models/route_data.dart';
 export 'src/domain/models/routing.dart';
+export 'src/domain/models/sint_route.dart';
 export 'src/domain/models/sint_snackbar_style.dart';
 
 // Domain - Typedefs

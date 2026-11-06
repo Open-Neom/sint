@@ -6,6 +6,7 @@ export 'src/domain/mixins/rx_ticket_provider_mixin.dart';
 
 // Domain - Models & Typedefs
 export 'src/domain/notify_data.dart';
+export 'src/domain/rx_future.dart';
 export 'src/domain/sint_status.dart';
 export 'src/domain/typedefs/state_typedefs.dart';
 
@@ -23,3 +24,4 @@ export 'src/sint_listenable.dart';
 export 'src/ui/obx_reactive_element.dart';
 export 'src/ui/obx_widget.dart';
 export 'src/ui/sint_listener.dart';
+export 'src/ui/sint_view.dart';

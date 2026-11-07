@@ -1,5 +1,9 @@
 # Changelog - sint
 
+## [2.1.1] - 2026-11-07
+
+- Add official `pub.dev` discovery `topics`, `repository`, `issue_tracker`, `documentation`, and `@Open-Neom` GitHub Sponsors `funding` metadata, plus production showcase links in `README.md`.
+
 ## [2.1.0] - 2026-11-07
 
 ### Pillar I — Contract-First Dependency Injection, Multi-Implementation Resolution & Scoped Overrides

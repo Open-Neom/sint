@@ -7,7 +7,7 @@ issue_tracker: https://github.com/Open-Neom/sint/issues
 documentation: https://github.com/Open-Neom/sint#readme
 funding:
   - https://github.com/sponsors/Open-Neom
-  - https://github.com/sponsors/cs-emmanuel
+  - https://github.com/sponsors/emmanuel-montoya
 topics:
   - state-management
   - dependency-injection

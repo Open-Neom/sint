@@ -2,6 +2,18 @@ name: sint
 description: SINT (State, Injection, Navigation, Translation) - The Four Pillars of High-Fidelity Flutter Infrastructure.
 version: 2.1.0
 homepage: https://github.com/Open-Neom/sint
+repository: https://github.com/Open-Neom/sint
+issue_tracker: https://github.com/Open-Neom/sint/issues
+documentation: https://github.com/Open-Neom/sint#readme
+funding:
+  - https://github.com/sponsors/Open-Neom
+  - https://github.com/sponsors/cs-emmanuel
+topics:
+  - state-management
+  - dependency-injection
+  - navigation
+  - localization
+  - clean-architecture
 
 environment:
   sdk: ^3.13.0

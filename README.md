@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://pub.dev/packages/sint"><img src="https://img.shields.io/pub/v/sint.svg?label=sint&color=blue" alt="pub package"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"/></a>
+  <a href="https://github.com/sponsors/Open-Neom"><img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors" alt="GitHub Sponsors"/></a>
 </p>
 
 <div align="center">
@@ -166,6 +167,16 @@ Building an equivalent 4-pillar feature (Reactive State + Derived Value + Scoped
 - **Standalone Material / Cupertino Migration**: [MIGRATION_DESIGN_SYSTEMS.md](MIGRATION_DESIGN_SYSTEMS.md)
 - **Benchmarks & Methodology**: [test/benchmarks/README.md](test/benchmarks/README.md) · [performance/README.md](performance/README.md)
 - **Release History & Roadmap**: [CHANGELOG.md](CHANGELOG.md) · [ROADMAP.md](ROADMAP.md)
+
+---
+
+## Supporting SINT
+
+SINT is MIT-licensed and battle-tested in production across the [Open Neom](https://github.com/Open-Neom) modular ecosystem (`30+` Clean Architecture packages powering live apps including [EMXI](https://emxi-9c5b5.web.app), [Gigmeout](https://gig-me-out.web.app), [Cyberneom](https://cyberneom-edd2d.web.app), and [Itzli](https://itzli-app.web.app)).
+
+If SINT saves engineering time for you or your team, consider supporting ongoing development through [**GitHub Sponsors**](https://github.com/sponsors/Open-Neom):
+- **Supporters** help keep `sint` zero-bloat, benchmarked, and aligned with upcoming Flutter releases.
+- **Organization Sponsors** receive priority issue triage and logo placement in this README.
 
 ---
 

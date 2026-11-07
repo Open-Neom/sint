@@ -11,6 +11,7 @@ import 'package:sint/translation/sint_translation.dart';
 import 'package:sint/navigation/src/router/sint_page.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
+import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 
 /// A SINT application using Material widgets bundled with the Flutter SDK.
@@ -86,6 +87,7 @@ class SintMaterialApp extends StatelessWidget {
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
   final List<SintPage>? sintPages;
+  final List<SintMiddleware> globalMiddlewares;
   final SintPage? unknownRoute;
   final RouteInformationProvider? routeInformationProvider;
   final RouteInformationParser<Object>? routeInformationParser;
@@ -145,6 +147,7 @@ class SintMaterialApp extends StatelessWidget {
     this.routingCallback,
     this.defaultTransition,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.opaqueRoute,
     this.enableLog = kDebugMode,
     this.logWriterCallback,
@@ -222,6 +225,7 @@ class SintMaterialApp extends StatelessWidget {
     this.transitionDuration,
     this.defaultGlobalState,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.navigatorObservers,
     this.unknownRoute,
     this.snackBarStyle,
@@ -247,6 +251,7 @@ class SintMaterialApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        globalMiddlewares: globalMiddlewares,
         // ignore: deprecated_member_use_from_same_package
         home: home,
         initialRoute: initialRoute,

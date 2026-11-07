@@ -1,5 +1,39 @@
 # Changelog - sint
 
+## [2.1.0] - 2026-11-07
+
+### Pillar I — Contract-First Dependency Injection, Multi-Implementation Resolution & Scoped Overrides
+- **Contract-First Registration (`Bind.contract`, `Bind.putContract`, `Sint.contract`, `Sint.putContract`) & Multi-Interface Aliasing (`aliases:`)**: Bind a single `_InstanceBuilderFactory` simultaneously under an abstract service contract `S` and its concrete implementation `I extends S` (plus optional `aliases: [InterfaceA, InterfaceB]`), sharing one instance, one `fenix` lifecycle, and one root `Bind` widget without bridge closures (`() => Sint.find<Controller>()`).
+- **Multi-Implementation Contract Resolution (`Sint.findAt<S>(index)`, `Sint.findAll<S>()`, `isDefault:`)**: Register multiple implementations of the same core service contract and resolve them from consumer modules by default (`isDefault: true` or first registered), by `tag`, or by deterministic registration index (`findAt` / `findAll`) without importing concrete implementation packages.
+- **`SintService` (`permanent: true` by default)**: Dedicated base class for long-lived infrastructure services (`GetxService` retained as a `@Deprecated` migration alias).
+- **Scoped Dependency Overrides (`SintScope`, `SintScope.run`, `SintOverride`)**: Override dependencies cleanly within a widget subtree or headless unit test (`SintScope.run`), automatically restoring parent bindings and disposing scoped instances on exit.
+- **Imperative `Bindings` & `BindingsBuilder` Support**: Full support for `Bindings` (`void dependencies()`) and inline `BindingsBuilder` on `initialBinding` and `SintPage(binding:)`.
+
+### Pillar S — Zero-Stream Workers, `ValueListenable` Interop, Sealed `SintStatus` & `RxFuture`
+- **Native `ValueListenable<T>` Interoperability**: `Rx<T>` / `SintListenable<T>` and `Computed<T>` implement Flutter's `ValueListenable<T>` out of the box; external `ValueListenable` / `ValueNotifier` instances integrate directly inside `Obx` and `Computed` via `.rxValue` and `.toRx()` with automatic conditional-branch pruning.
+- **Zero-Stream Synchronous Workers**: `ever`, `once`, `debounce`, and `interval` in `SintController` now dispatch over synchronous `ListNotifier` pointers without allocating `StreamController`s, coalescing multiple synchronous mutations cleanly inside `Sint.batch`.
+- **Sealed `SintStatus<T>` & Stale-While-Revalidate `RxFuture<T>`**: Exhaustive Dart 3 `switch` pattern matching (`LoadingStatus`, `SuccessStatus`, `ErrorStatus`, `EmptyStatus`, `CustomStatus`), `SintStatus.refreshing(previousData)`, `RxFuture.reload()`, `RxFuture.revalidate()`, `RxFuture.guard()`, and automatic protection against stale out-of-order async responses.
+- **`SintView<T>`**: Typed `StatelessWidget` controller accessor (`GetView<T>` retained as `@Deprecated` alias).
+
+### Pillar N — Global Route Middlewares, Typed `SintRoute` & Router Hot-Path Optimizations
+- **`globalMiddlewares` on `SintApp`, `SintMaterialApp`, and `SintCupertinoApp`**: Register cross-cutting `SintMiddleware` guards once at the application root without cloning every `SintPage` across modular route tables.
+- **Typed Route Descriptors (`SintRoute<TArgs, TResult>`)**: Compile-time typed route arguments, `pathParams`, `queryParams`, and navigation result futures (`route.to(...)`, `route.off(...)`, `route.page(...)`).
+- **Allocation-Free Segment Extraction & `SintTestMode` Query Helpers**: Faster URI segment scanning in `RouteParser` plus `SintTestMode.setTestQueryParameters` / `SintTestMode.queryParam` auto-cleared by `Sint.reset()`.
+
+### Pillar T — $O(1)$ Pre-Resolved Locale Cache, Single-Pass Interpolation & Lazy Bundles
+- **Pre-Resolved Locale Dictionary Cache (`IntlHost`)**: `.tr` resolves active and fallback dictionaries in $O(1)$ without per-frame locale string concatenation or regional map scans, automatically invalidating when `Sint.translations`, `locale`, or `fallbackLocale` mutate.
+- **Single-Pass `.trParams` & `.trArgs` Interpolation + Automatic `_zero` / `_other` Plurals**: Single-pass `StringBuffer` token scanner eliminates intermediate `String` allocations on Web/mobile and prevents sequential `@param` replacement collisions.
+- **Lazy Locale Loaders & Missing-Key Hook**: Added `Sint.registerLazyTranslations`, `Sint.ensureLocaleLoaded`, and `Sint.onMissingTranslationKey`.
+
+### Verified Production Impact (`RootBinding` Contract-First Upgrade on Modular Super-App)
+
+| Metric (50+ Module Production Host) | Legacy 2-Line Bridge | SINT 2.1 (`Bind.contract`) | Improvement |
+| --- | ---: | ---: | --- |
+| Root `Binds` Flutter `Element`s (Web) | `240` (`252` ancestor depth) | **`142` (`154` ancestor depth)** | **−40.8% (`−98` root `Element`s)** |
+| Cold Root `Binds` Mount Median | `1,300.0 µs` (`1.30 ms`) | **`789.7 µs` (`0.79 ms`)** | **1.65× faster (−39.3%)** |
+| Root `Binds` Rebuild Median | `630.0 µs` | **`480.1 µs`** | **1.31× faster (−23.8%)** |
+| 45-Pair Registration + 1st `Sint.find<Service>()` | `597.51 µs` | **`331.25 µs`** | **1.80× faster (−44.6%)** |
+
 ## [2.0.2] - 2026-10-20
 
 ### Dependencies & Compatibility (160/160 Pub Points)

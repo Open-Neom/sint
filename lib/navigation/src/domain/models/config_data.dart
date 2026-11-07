@@ -6,6 +6,7 @@ import 'package:sint/core/src/domain/typedefs/core_typedefs.dart';
 import 'package:sint/core/src/domain/enums/smart_management.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
+import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
 import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/router/index.dart';
@@ -34,6 +35,7 @@ class ConfigData {
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
   final List<SintPage>? sintPages;
+  final List<SintMiddleware> globalMiddlewares;
   final SintPage? unknownRoute;
   final RouteInformationProvider? routeInformationProvider;
   final RouteInformationParser<Object>? routeInformationParser;
@@ -94,6 +96,7 @@ class ConfigData {
     required this.transitionDuration,
     required this.defaultGlobalState,
     required this.sintPages,
+    this.globalMiddlewares = const [],
     required this.unknownRoute,
     required this.routeInformationProvider,
     required this.routeInformationParser,
@@ -152,6 +155,7 @@ class ConfigData {
     Duration? transitionDuration,
     bool? defaultGlobalState,
     List<SintPage>? pages,
+    List<SintMiddleware>? globalMiddlewares,
     SintPage? unknownPage,
     RouteInformationProvider? routeInformationProvider,
     RouteInformationParser<Object>? routeInformationParser,
@@ -206,6 +210,7 @@ class ConfigData {
       transitionDuration: transitionDuration ?? this.transitionDuration,
       defaultGlobalState: defaultGlobalState ?? this.defaultGlobalState,
       sintPages: pages ?? sintPages,
+      globalMiddlewares: globalMiddlewares ?? this.globalMiddlewares,
       unknownRoute: unknownPage ?? unknownRoute,
       routeInformationProvider:
           routeInformationProvider ?? this.routeInformationProvider,
@@ -294,6 +299,7 @@ class ConfigData {
         other.transitionDuration == transitionDuration &&
         other.defaultGlobalState == defaultGlobalState &&
         listEquals(other.sintPages, sintPages) &&
+        listEquals(other.globalMiddlewares, globalMiddlewares) &&
         other.unknownRoute == unknownRoute &&
         other.routeInformationProvider == routeInformationProvider &&
         other.routeInformationParser == routeInformationParser &&
@@ -352,6 +358,7 @@ class ConfigData {
         transitionDuration.hashCode ^
         defaultGlobalState.hashCode ^
         sintPages.hashCode ^
+        globalMiddlewares.hashCode ^
         unknownRoute.hashCode ^
         routeInformationProvider.hashCode ^
         routeInformationParser.hashCode ^

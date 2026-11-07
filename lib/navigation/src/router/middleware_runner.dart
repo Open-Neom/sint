@@ -5,12 +5,36 @@ import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/index.dart';
 
 class MiddlewareRunner {
-  MiddlewareRunner(List<SintMiddleware>? middlewares)
-      : _middlewares = middlewares != null
-            ? sortByPriority(middlewares)
-            : const [];
+  MiddlewareRunner(
+    List<SintMiddleware>? middlewares, {
+    List<SintMiddleware> globalMiddlewares = const [],
+  }) : _middlewares = _buildSorted(globalMiddlewares, middlewares);
 
   final List<SintMiddleware> _middlewares;
+
+  /// Combines [globalMiddlewares] and route-local [middlewares] without
+  /// allocating an intermediate list when either side is empty.
+  static List<SintMiddleware> combine(
+    List<SintMiddleware> globalMiddlewares,
+    List<SintMiddleware>? middlewares,
+  ) {
+    if (globalMiddlewares.isEmpty) {
+      return middlewares ?? const <SintMiddleware>[];
+    }
+    if (middlewares == null || middlewares.isEmpty) {
+      return globalMiddlewares;
+    }
+    return <SintMiddleware>[...globalMiddlewares, ...middlewares];
+  }
+
+  static List<SintMiddleware> _buildSorted(
+    List<SintMiddleware> globalMiddlewares,
+    List<SintMiddleware>? middlewares,
+  ) {
+    final merged = combine(globalMiddlewares, middlewares);
+    if (merged.isEmpty) return const <SintMiddleware>[];
+    return sortByPriority(merged);
+  }
 
   /// Stable sort by [SintMiddleware.priority]: among equal priorities the
   /// original declaration order is preserved (Dart's List.sort is NOT

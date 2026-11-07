@@ -22,18 +22,24 @@ SINT se enfoca estrictamente en cuatro pilares fundamentales — sin clientes HT
 
 | Pilar | APIs Principales | Guía |
 | --- | --- | --- |
-| **S — State** | `SintController`, `Obx`, `.obs`, `Sint.computed`, `Sint.batch`, `Sint.untrack`, `everSync` | [Documentación de Estado](state_management.md) |
-| **I — Injection** | `Sint.put`, `Sint.lazyPut`, `Sint.putAsync`, `Sint.find`, `Bind`, `SmartManagement` | [Documentación de Inyección](injection_management.md) |
-| **N — Navigation** | `SintApp`, `SintPage`, `SintRouterOutlet`, `Sint.toNamed`, `Sint.back`, `pathParams`, `queryParams` | [Documentación de Navegación](navigation_management.md) |
-| **T — Translation** | `.tr`, `.trParams`, `Translations`, `Sint.updateLocale`, `Sint.loadTranslations`, `translateEndpoints` | [Documentación de Traducción](translation_management.md) |
+| **S — State** | `SintController`, `Obx`, `.obs`, `Sint.computed`, `Sint.batch`, `RxFuture`, `SintStatus`, `SintView` | [Documentación de Estado](state_management.md) |
+| **I — Injection** | `Bind.contract`, `Bind.putContract`, `Sint.put`, `Sint.lazyPut`, `Sint.find`, `Sint.findAll`, `SintScope`, `SintService` | [Documentación de Inyección](injection_management.md) |
+| **N — Navigation** | `SintApp`, `SintPage`, `SintRoute`, `SintRouterOutlet`, `globalMiddlewares`, `Sint.toNamed`, `pathParams`, `queryParams` | [Documentación de Navegación](navigation_management.md) |
+| **T — Translation** | `.tr`, `.trParams`, `Translations`, `Sint.updateLocale`, `Sint.registerLazyTranslations`, `translateEndpoints` | [Documentación de Traducción](translation_management.md) |
 
 ---
 
-## Novedades en 2.0.0
+## Novedades en 2.1.0
 
-- **Sistemas de Diseño Independientes (`SintApp`)**: Soporte nativo para los paquetes independientes `material_ui` y `cupertino_ui` de Flutter 3.47+ (`Flutter >=3.44.0 / Dart >=3.12.0`), manteniendo `SintMaterialApp` y `SintCupertinoApp` para proyectos con el SDK clásico. Ver [MIGRATION_DESIGN_SYSTEMS.md](../../MIGRATION_DESIGN_SYSTEMS.md).
-- **Motor SOTA de Signals (`Obx` $O(1)$ + `batch` + `computed` + `untrack`)**: Lleva la tríada moderna de Signals (inspirada en **SolidJS**, **Preact Signals** y **Angular Signals**) a Flutter — reconciliación incremental $O(1)$ en `Obx` con poda de ramas condicionales, `Sint.batch` sin asignaciones, `Sint.computed`, `Sint.untrack` / `rx.peek`, y `everSync` / `autoDispose` acoplados al controlador.
-- **Router con Trie de Prefijos Multinivel**: Indexa todos los segmentos literales iniciales y reutiliza plantillas `PathDecoded` compiladas (**97.8× más rápido** en 1,000 rutas con prefijo compartido: `250.48 µs → 2.56 µs/op`).
+- **Inyección Contract-First (`Bind.contract` / `Bind.putContract` / `aliases:`)**: Registra el contrato abstracto `S` y su controlador concreto `I extends S` sobre una única fábrica compartida — eliminando los puentes de 2 líneas `() => Sint.find<Controller>()` en arquitecturas modulares Clean Architecture (**−40.8% `Element`s raíz**, **1.65× más rápido en montaje en frío**, **1.80× más rápido en 1ra resolución**), además de `Sint.findAt<S>(index)`, `Sint.findAll<S>()`, `SintScope` y `SintService`.
+- **Workers Zero-Stream, Interop `ValueListenable` y `RxFuture<T>`**: `Rx` y `Computed` implementan `ValueListenable<T>` nativamente (y consumen `ValueNotifier`s externos vía `.rxValue`), `ever`/`once`/`debounce`/`interval` despachan síncronamente sin `StreamController`, y `SintStatus<T>` sellado + `RxFuture<T>` soportan *stale-while-revalidate*.
+- **Middlewares Globales y `SintRoute<TArgs, TResult>` Tipado**: Declara guardas transversales una sola vez con `globalMiddlewares` en `SintApp` / `SintMaterialApp` / `SintCupertinoApp`, y navega con argumentos y resultados tipados en compilación mediante `SintRoute`.
+- **Caché $O(1)$ de Diccionarios y `.trParams` en Una Pasada**: Cero concatenaciones de locale por frame en `IntlHost`, interpolación `StringBuffer` en una sola pasada, plurales automáticos `_zero`/`_other` y `Sint.registerLazyTranslations`.
+
+### Destacados de 2.0.0
+- **Sistemas de Diseño Independientes (`SintApp`)**: Soporte nativo para `material_ui` y `cupertino_ui` de Flutter 3.47+ (`Flutter >=3.47.0 / Dart ^3.13.0`), manteniendo `SintMaterialApp` y `SintCupertinoApp`. Ver [MIGRATION_DESIGN_SYSTEMS.md](../../MIGRATION_DESIGN_SYSTEMS.md).
+- **Motor SOTA de Signals (`Obx` $O(1)$ + `batch` + `computed` + `untrack`)**: Reconciliación incremental $O(1)$ en `Obx` con poda de ramas condicionales, `Sint.batch` sin asignaciones, `Sint.computed` y `Sint.untrack` / `rx.peek`.
+- **Router con Trie de Prefijos Multinivel**: **97.8× más rápido** en 1,000 rutas con prefijo compartido (`250.48 µs → 2.56 µs/op`).
 - **Navegación Anidada (`SintRouterOutlet`)**: Outlets declarativos e `IndexedRouteBuilder` sincronizados con el historial imperativo.
 
 ---
@@ -42,7 +48,7 @@ SINT se enfoca estrictamente en cuatro pilares fundamentales — sin clientes HT
 
 ```yaml
 dependencies:
-  sint: ^2.0.0
+  sint: ^2.1.0
 ```
 
 ```dart
@@ -131,7 +137,7 @@ Implementando una funcionalidad equivalente de 4 pilares (Estado Reactivo + Valo
 
 ## Migración desde GetX
 
-1. Reemplaza `get:` por `sint: ^2.0.0` en tu `pubspec.yaml`.
+1. Reemplaza `get:` por `sint: ^2.1.0` en tu `pubspec.yaml`.
 2. Reemplaza `import 'package:get/get.dart';` por `import 'package:sint/sint.dart';`.
 3. **Compatibilidad directa en `2.x`**: Tus llamadas existentes a `Get.`, `GetxController`, `GetMaterialApp`, `GetPage`, `GetBuilder` y `GetRouterOutlet` siguen compilando mediante alias `@Deprecated`, permitiéndote migrar gradualmente a símbolos `Sint*` antes de `3.0.0`.
 

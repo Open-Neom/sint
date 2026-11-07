@@ -9,6 +9,7 @@ import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
+import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/models/config_data.dart';
 import 'package:sint/navigation/src/domain/models/routing.dart';
 import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
@@ -96,6 +97,7 @@ class SintApp extends StatelessWidget {
     this.transitionDuration,
     this.defaultGlobalState,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.unknownRoute,
     this.snackBarStyle,
     this.translateEndpoints = false,
@@ -164,6 +166,7 @@ class SintApp extends StatelessWidget {
     this.transitionDuration,
     this.defaultGlobalState,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.unknownRoute,
     this.snackBarStyle,
     this.translateEndpoints = false,
@@ -222,6 +225,7 @@ class SintApp extends StatelessWidget {
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
   final List<SintPage>? sintPages;
+  final List<SintMiddleware> globalMiddlewares;
   final SintPage? unknownRoute;
   final SintSnackBarStyle? snackBarStyle;
   final bool translateEndpoints;
@@ -267,6 +271,7 @@ class SintApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        globalMiddlewares: globalMiddlewares,
         // ignore: deprecated_member_use_from_same_package
         home: null,
         initialRoute: initialRoute,

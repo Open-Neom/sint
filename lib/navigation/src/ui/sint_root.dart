@@ -196,6 +196,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
           ];
       final newDelegate = SintDelegate.createDelegate(
         pages: resolvedPages,
+        globalMiddlewares: config.globalMiddlewares,
         initialRoute: config.initialRoute ?? resolvedPages.first.name,
         notFoundRoute: config.unknownRoute,
         navigatorKey: config.navigatorKey,

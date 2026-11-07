@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
+import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/router/page_settings.dart';
 import 'package:sint/navigation/src/router/middleware_runner.dart';
 import 'package:sint/navigation/src/router/route_parser.dart';
@@ -26,6 +27,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   factory SintDelegate.createDelegate({
     SintPage<dynamic>? notFoundRoute,
     List<SintPage> pages = const [],
+    List<SintMiddleware> globalMiddlewares = const [],
     List<NavigatorObserver>? navigatorObservers,
     TransitionDelegate<dynamic>? transitionDelegate,
     PopMode backButtonPopMode = PopMode.history,
@@ -36,6 +38,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }) {
     return SintDelegate(
       notFoundRoute: notFoundRoute,
+      globalMiddlewares: globalMiddlewares,
       navigatorObservers: navigatorObservers,
       transitionDelegate: transitionDelegate,
       backButtonPopMode: backButtonPopMode,
@@ -47,6 +50,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   }
 
   final List<RouteDecoder> _activePages = <RouteDecoder>[];
+  final List<SintMiddleware> globalMiddlewares;
   late final _routeObserver = _SintStackObserver(this);
   final PopMode backButtonPopMode;
   final PreventDuplicateHandlingMode preventDuplicateHandlingMode;
@@ -136,6 +140,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   SintDelegate({
     SintPage? notFoundRoute,
+    this.globalMiddlewares = const [],
     this.navigatorObservers,
     this.transitionDelegate,
     this.backButtonPopMode = PopMode.history,
@@ -187,13 +192,20 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
           'exceeded the maximum middleware redirect depth (5). '
           'Check your middlewares for cyclic redirects.';
     }
-    // Both middleware pipelines honor `priority` with a stable sort (1.5.0).
-    final middlewares = MiddlewareRunner.sortByPriority(
-      config.currentTreeBranch.last.middlewares,
+    // Both middleware pipelines honor `priority` with a stable sort (1.5.0),
+    // merging app-level globalMiddlewares with route-local middlewares without
+    // cloning SintPage entries at startup (2.1.0).
+    final routeMiddlewares = config.currentTreeBranch.isNotEmpty
+        ? config.currentTreeBranch.last.middlewares
+        : const <SintMiddleware>[];
+    final combined = MiddlewareRunner.combine(
+      globalMiddlewares,
+      routeMiddlewares,
     );
-    if (middlewares.isEmpty) {
+    if (combined.isEmpty) {
       return config;
     }
+    final middlewares = MiddlewareRunner.sortByPriority(combined);
     var iterator = config;
     for (var item in middlewares) {
       var redirectRes = await item.redirectDelegate(iterator);

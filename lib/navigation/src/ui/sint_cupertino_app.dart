@@ -8,6 +8,7 @@ import 'package:sint/translation/sint_translation.dart';
 import 'package:sint/navigation/src/router/sint_page.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
+import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/domain/models/config_data.dart';
 
@@ -68,6 +69,7 @@ class SintCupertinoApp extends StatelessWidget {
   final Duration? transitionDuration;
   final bool? defaultGlobalState;
   final List<SintPage>? sintPages;
+  final List<SintMiddleware> globalMiddlewares;
   final SintPage? unknownRoute;
   final RouteInformationProvider? routeInformationProvider;
   final RouteInformationParser<Object>? routeInformationParser;
@@ -128,6 +130,7 @@ class SintCupertinoApp extends StatelessWidget {
     this.defaultTransition,
     this.onReady,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.opaqueRoute,
     this.enableLog = kDebugMode,
     this.logWriterCallback,
@@ -195,6 +198,7 @@ class SintCupertinoApp extends StatelessWidget {
     this.transitionDuration,
     this.defaultGlobalState,
     this.sintPages,
+    this.globalMiddlewares = const [],
     this.navigatorObservers,
     this.unknownRoute,
   })  : navigatorKey = null,
@@ -218,6 +222,7 @@ class SintCupertinoApp extends StatelessWidget {
         enableLog: enableLog,
         fallbackLocale: fallbackLocale,
         sintPages: sintPages,
+        globalMiddlewares: globalMiddlewares,
         // ignore: deprecated_member_use_from_same_package
         home: home,
         initialRoute: initialRoute,

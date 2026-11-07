@@ -297,6 +297,17 @@ extension InjectionExtension on SintInterface {
       tags!.remove(factory.tag);
       if (tags.isEmpty) _typeSingl.remove(factory.registeredType);
     }
+    final extras = factory._extraBindings;
+    if (extras != null) {
+      for (final (aliasType, aliasTag) in extras) {
+        final aliasTags = _typeSingl[aliasType];
+        if (identical(aliasTags?[aliasTag], factory)) {
+          aliasTags!.remove(aliasTag);
+          if (aliasTags.isEmpty) _typeSingl.remove(aliasType);
+        }
+      }
+      extras.clear();
+    }
     if (factory._legacyIndexed) {
       factory._legacyIndexed = false;
       _singl.remove(factory._handle);
@@ -309,22 +320,79 @@ extension InjectionExtension on SintInterface {
     }
   }
 
+  static void _bindExtraSlot(
+    _InstanceBuilderFactory factory,
+    Type type,
+    String? slotTag, {
+    bool overwrite = false,
+  }) {
+    if (type == factory.registeredType && slotTag == factory.tag) return;
+    var tagMap = _typeSingl[type];
+    if (tagMap != null) {
+      final existing = tagMap[slotTag];
+      if (existing != null) {
+        if (identical(existing, factory)) return;
+        if (!overwrite && !existing.isDirty) return;
+      }
+    }
+    (tagMap ?? (_typeSingl[type] = <String?, _InstanceBuilderFactory>{}))[
+        slotTag] = factory;
+    factory._addExtraBinding(type, slotTag);
+  }
+
   /// Registers [dependency] as a singleton in SINT's container.
   ///
   /// Subclasses of [SintService] default to `permanent: true` unless
-  /// [permanent] is explicitly provided.
+  /// [permanent] is explicitly provided. Optional [aliases] bind additional
+  /// interface or controller [Type] keys to the exact same factory and
+  /// lifecycle generation without creating bridge closures.
   S put<S>(
     S dependency, {
     String? tag,
     bool? permanent,
+    List<Type>? aliases,
   }) {
     _insert(
       isSingleton: true,
       name: tag,
       permanent: permanent ?? (dependency is SintService),
       builder: (() => dependency),
+      aliases: aliases,
     );
     return find<S>(tag: tag);
+  }
+
+  /// Eager contract-first registration: registers [dependency] primarily under
+  /// the service/interface contract [S], while also aliasing concrete [I] for
+  /// intra-module consumers.
+  ///
+  /// When [tag] is provided, the first registered contract for [S] (or one with
+  /// `isDefault: true`) also serves untagged `Sint.find<S>()` by default.
+  I putContract<S, I extends S>(
+    I dependency, {
+    String? tag,
+    bool? permanent,
+    bool? isDefault,
+    List<Type>? aliases,
+  }) {
+    final bindAsDefault =
+        tag != null && (isDefault ?? (_typeSingl[S]?[null] == null));
+    final factory = _insert<S>(
+      isSingleton: true,
+      name: tag,
+      permanent: permanent ?? (dependency is SintService),
+      builder: () => dependency,
+      aliases: <Type>[
+        if (I != S) I,
+        ...?aliases,
+      ],
+      bindUntaggedDefault: bindAsDefault,
+      overwriteDefault: isDefault == true,
+    );
+    if (factory != null && I != S && tag != null && _typeSingl[I]?[null] == null) {
+      _bindExtraSlot(factory, I, null);
+    }
+    return find<S>(tag: tag) as I;
   }
 
   /// Creates a new Instance<S> lazily from the `<S>builder()` callback.
@@ -354,6 +422,7 @@ extension InjectionExtension on SintInterface {
     String? tag,
     bool fenix = false,
     bool? permanent,
+    List<Type>? aliases,
   }) {
     _insert(
       isSingleton: true,
@@ -362,7 +431,47 @@ extension InjectionExtension on SintInterface {
           permanent ?? (builder is InstanceBuilderCallback<SintService>),
       builder: builder,
       fenix: fenix,
+      aliases: aliases,
     );
+  }
+
+  /// Lazy contract-first registration (`lazyPut` with [S] service contract
+  /// first and concrete controller/implementation [I] second).
+  ///
+  /// - External modules (which only import core service contracts) resolve via:
+  ///   - `Sint.find<S>()` for the default implementation (when there is only
+  ///     one, the first registered, or whichever passed `isDefault: true`),
+  ///   - `Sint.find<S>(tag: 'id')` by identifier, or
+  ///   - `Sint.findAt<S>(index)` / `Sint.findAll<S>()` by registration order.
+  /// - Intra-module UI inside the owning package can also resolve `Sint.find<I>()`
+  ///   from the exact same shared singleton factory.
+  void contract<S, I extends S>(
+    InstanceBuilderCallback<I> builder, {
+    String? tag,
+    bool fenix = false,
+    bool? permanent,
+    bool? isDefault,
+    List<Type>? aliases,
+  }) {
+    final bindAsDefault =
+        tag != null && (isDefault ?? (_typeSingl[S]?[null] == null));
+    final factory = _insert<S>(
+      isSingleton: true,
+      name: tag,
+      permanent:
+          permanent ?? (builder is InstanceBuilderCallback<SintService>),
+      builder: builder,
+      fenix: fenix,
+      aliases: <Type>[
+        if (I != S) I,
+        ...?aliases,
+      ],
+      bindUntaggedDefault: bindAsDefault,
+      overwriteDefault: isDefault == true,
+    );
+    if (factory != null && I != S && tag != null && _typeSingl[I]?[null] == null) {
+      _bindExtraSlot(factory, I, null);
+    }
   }
 
   /// Creates a new Class Instance [S] from the builder callback[S].
@@ -413,25 +522,29 @@ extension InjectionExtension on SintInterface {
     Future<S> Function() asyncBuilder, {
     String? tag,
     bool? permanent,
+    List<Type>? aliases,
   }) async {
     final instance = await asyncBuilder();
-    return put<S>(instance, tag: tag, permanent: permanent);
+    return put<S>(instance, tag: tag, permanent: permanent, aliases: aliases);
   }
 
   /// Injects the Instance [S] builder into the `_typeSingl` HashMap.
-  void _insert<S>({
+  _InstanceBuilderFactory<S>? _insert<S>({
     required InstanceBuilderCallback<S> builder,
     bool? isSingleton,
     String? name,
     bool fenix = false,
     bool permanent = false,
+    List<Type>? aliases,
+    bool bindUntaggedDefault = false,
+    bool overwriteDefault = false,
   }) {
     var tagMap = _typeSingl[S];
     if (tagMap != null) {
       final existing = tagMap[name];
       if (existing != null) {
         if (!existing.isDirty) {
-          return;
+          return null;
         }
         // Its route still owns the old generation until route disposal.
         _unregister(existing);
@@ -448,7 +561,19 @@ extension InjectionExtension on SintInterface {
     );
     (tagMap ?? (_typeSingl[S] = <String?, _InstanceBuilderFactory>{}))[name] =
         factory;
+    if (bindUntaggedDefault && name != null) {
+      _bindExtraSlot(factory, S, null, overwrite: overwriteDefault);
+    }
+    if (aliases != null) {
+      for (final alias in aliases) {
+        _bindExtraSlot(factory, alias, name);
+        if (bindUntaggedDefault && name != null) {
+          _bindExtraSlot(factory, alias, null, overwrite: overwriteDefault);
+        }
+      }
+    }
     _hasUnindexedFactories = true;
+    return factory;
   }
 
   /// Initializes the dependencies for a Class Instance [S] (or tag),
@@ -599,6 +724,60 @@ extension InjectionExtension on SintInterface {
     return (i ?? dep.getDependency()) as S;
   }
 
+  static List<_InstanceBuilderFactory> _orderedFactoriesForType(Type type) {
+    final tagMap = _typeSingl[type];
+    if (tagMap == null || tagMap.isEmpty) {
+      return const <_InstanceBuilderFactory>[];
+    }
+    final seen = Set<_InstanceBuilderFactory>.identity();
+    final ordered = <_InstanceBuilderFactory>[];
+    for (final entry in tagMap.entries) {
+      // Skip synthetic untagged default pointers on the first pass so explicit
+      // registration order is preserved even when a later entry sets isDefault.
+      if (entry.key == null && entry.value.tag != null) continue;
+      if (seen.add(entry.value)) {
+        ordered.add(entry.value);
+      }
+    }
+    final defaultEntry = tagMap[null];
+    if (defaultEntry != null && seen.add(defaultEntry)) {
+      ordered.add(defaultEntry);
+    }
+    return ordered;
+  }
+
+  /// Resolves all unique implementations registered under [S] in exact
+  /// registration order, allowing modules that only import a core service
+  /// interface to iterate or select implementations without importing concrete
+  /// controllers.
+  List<S> findAll<S>() {
+    final factories = _orderedFactoriesForType(S);
+    if (factories.isEmpty) return <S>[];
+    return <S>[
+      for (final dep in factories)
+        (_initDependencies<S>(name: dep.tag, dep: dep) ?? dep.getDependency())
+            as S,
+    ];
+  }
+
+  /// Resolves the implementation of [S] at registration [index] (`0`-based),
+  /// enabling order-based selection using only the service contract [S].
+  S findAt<S>(int index) {
+    final factories = _orderedFactoriesForType(S);
+    if (index < 0 || index >= factories.length) {
+      throw RangeError.range(
+        index,
+        0,
+        factories.length - 1,
+        'index',
+        'Out of range for registered "$S" implementations (${factories.length} found)',
+      );
+    }
+    final dep = factories[index];
+    final i = _initDependencies<S>(name: dep.tag, dep: dep);
+    return (i ?? dep.getDependency()) as S;
+  }
+
   /// Replace a parent instance of a class in dependency management
   /// with a [child] instance
   /// - [tag] optional, if you use a [tag] to register the Instance.
@@ -684,10 +863,13 @@ extension InjectionExtension on SintInterface {
     return true;
   }
 
-  static List<_InstanceBuilderFactory> _allFactories() => <
-      _InstanceBuilderFactory>[
-        for (final tagMap in _typeSingl.values) ...tagMap.values,
-      ];
+  static List<_InstanceBuilderFactory> _allFactories() {
+    final seen = Set<_InstanceBuilderFactory>.identity();
+    for (final tagMap in _typeSingl.values) {
+      seen.addAll(tagMap.values);
+    }
+    return seen.toList(growable: false);
+  }
 
   /// Delete all registered Class Instances and, closes any open
   /// controllers `DisposableInterface`, cleans up the memory
@@ -822,6 +1004,11 @@ class _InstanceBuilderFactory<S> {
   String? _handle;
   String? _legacyKey;
   bool _legacyIndexed = false;
+  List<(Type, String?)>? _extraBindings;
+
+  void _addExtraBinding(Type type, String? slotTag) {
+    (_extraBindings ??= <(Type, String?)>[]).add((type, slotTag));
+  }
 
   String get handle => _handle ??= '@sint/${InjectionExtension._nextHandle++}';
   String get legacyKey =>

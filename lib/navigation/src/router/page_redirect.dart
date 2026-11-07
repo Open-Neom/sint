@@ -31,6 +31,7 @@ class PageRedirect {
       }
     }
     final r = (isUnknown ? (unk ?? rou) : rou);
+    final global = context.delegate.globalMiddlewares;
 
     return SintPageRoute<T>(
       page: r.page,
@@ -56,7 +57,7 @@ class PageRedirect {
       transition: r.transition,
       popGesture: r.popGesture,
       fullscreenDialog: r.fullscreenDialog,
-      middlewares: r.middlewares,
+      middlewares: MiddlewareRunner.combine(global, r.middlewares),
     );
   }
 
@@ -65,7 +66,8 @@ class PageRedirect {
     if (settings == null && route != null) {
       settings = route;
     }
-    final match = context.delegate.matchRoute(settings!.name!);
+    final delegate = context.delegate;
+    final match = delegate.matchRoute(settings!.name!);
 
     // No Match found
     if (match.route == null) {
@@ -73,12 +75,17 @@ class PageRedirect {
       return false;
     }
 
+    final combinedMiddlewares = MiddlewareRunner.combine(
+      delegate.globalMiddlewares,
+      match.route!.middlewares,
+    );
+
     // No middlewares found return match.
-    if (match.route!.middlewares.isEmpty) {
+    if (combinedMiddlewares.isEmpty) {
       return false;
     }
 
-    final runner = MiddlewareRunner(match.route!.middlewares);
+    final runner = MiddlewareRunner(combinedMiddlewares);
     route = runner.runOnPageCalled(match.route);
     addPageParameter(route!);
 

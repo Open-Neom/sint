@@ -63,6 +63,45 @@ class _OrderArgs {
   final int quantity;
 }
 
+abstract class _PaymentGatewayService {
+  String get gatewayId;
+}
+
+class _StripeGatewayController extends SintController
+    implements _PaymentGatewayService {
+  @override
+  String get gatewayId => 'stripe';
+}
+
+class _WooGatewayController extends SintController
+    implements _PaymentGatewayService {
+  @override
+  String get gatewayId => 'woo';
+}
+
+class _PaypalGatewayController extends SintController
+    implements _PaymentGatewayService {
+  @override
+  String get gatewayId => 'paypal';
+}
+
+class _GuestGuardMiddleware extends SintMiddleware {
+  _GuestGuardMiddleware({required this.isAuthenticated}) : super(priority: -100);
+
+  final bool Function() isAuthenticated;
+  final List<String?> visited = <String?>[];
+
+  @override
+  FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) {
+    final path = route.pageSettings?.name ?? route.route?.name;
+    visited.add(path);
+    if (!isAuthenticated() && path == '/secret') {
+      return RouteDecoder.fromRoute('/login');
+    }
+    return route;
+  }
+}
+
 const _orderRoute = SintRoute<_OrderArgs, String>('/orders/:orderId');
 
 void main() {
@@ -351,6 +390,67 @@ void main() {
       // ignore: deprecated_member_use_from_same_package
       expect(const _CounterView(), isA<GetView<_CounterController>>());
     });
+
+    test(
+        'Bind.contract & aliases support Service-first default, ID/tag, and registration order',
+        () async {
+      // 1) Multi-implementation Service contract (external modules only use _PaymentGatewayService):
+      Bind.contract<_PaymentGatewayService, _StripeGatewayController>(
+        () => _StripeGatewayController(),
+        tag: 'stripe',
+        fenix: true,
+      );
+      Bind.contract<_PaymentGatewayService, _WooGatewayController>(
+        () => _WooGatewayController(),
+        tag: 'woo',
+        fenix: true,
+      );
+      Bind.contract<_PaymentGatewayService, _PaypalGatewayController>(
+        () => _PaypalGatewayController(),
+        tag: 'paypal',
+        isDefault: true, // overrides untagged default while keeping insertion order
+        fenix: true,
+      );
+
+      // Default resolution (isDefault: true -> paypal; without isDefault -> 1st registered)
+      expect(Sint.find<_PaymentGatewayService>().gatewayId, 'paypal');
+
+      // Resolution by ID/tag using ONLY the core Service interface:
+      expect(Sint.find<_PaymentGatewayService>(tag: 'stripe').gatewayId, 'stripe');
+      expect(Sint.find<_PaymentGatewayService>(tag: 'woo').gatewayId, 'woo');
+
+      // Resolution by registration order using ONLY the core Service interface:
+      expect(Sint.findAt<_PaymentGatewayService>(0).gatewayId, 'stripe');
+      expect(Sint.findAt<_PaymentGatewayService>(1).gatewayId, 'woo');
+      expect(Sint.findAt<_PaymentGatewayService>(2).gatewayId, 'paypal');
+      expect(
+        Sint.findAll<_PaymentGatewayService>().map((g) => g.gatewayId).toList(),
+        ['stripe', 'woo', 'paypal'],
+      );
+
+      // Intra-module resolution inside the owning package shares the exact singleton:
+      expect(
+        identical(
+          Sint.find<_PaymentGatewayService>(tag: 'woo'),
+          Sint.find<_WooGatewayController>(),
+        ),
+        isTrue,
+      );
+
+      // 2) Single-controller aliases on lazyPut cleans up all bound slots on delete:
+      Sint.reset();
+      Bind.lazyPut<_PaymentGatewayService>(
+        () => _StripeGatewayController(),
+        aliases: [_StripeGatewayController],
+      );
+      final viaService = Sint.find<_PaymentGatewayService>();
+      final viaController = Sint.find<_StripeGatewayController>();
+      expect(identical(viaService, viaController), isTrue);
+
+      await Bind.delete<_PaymentGatewayService>();
+      expect(Sint.isRegistered<_PaymentGatewayService>(), isFalse);
+      expect(Sint.isRegistered<_StripeGatewayController>(), isFalse);
+    });
   });
 
   group('Pillar N — SintRoute<TArgs, TResult> & SintTestMode query params', () {
@@ -414,6 +514,48 @@ void main() {
       Sint.reset();
       expect(Sint.testMode, isFalse);
       expect(SintTestMode.queryParam('sort'), isNull);
+    });
+
+    testWidgets(
+        'globalMiddlewares intercepts routes across modules without cloning SintPage',
+        (tester) async {
+      var loggedIn = false;
+      final guard = _GuestGuardMiddleware(isAuthenticated: () => loggedIn);
+
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/home',
+          globalMiddlewares: [guard],
+          sintPages: [
+            SintPage(
+              name: '/home',
+              page: () => const Text('home_page'),
+            ),
+            SintPage(
+              name: '/login',
+              page: () => const Text('login_page'),
+            ),
+            SintPage(
+              name: '/secret',
+              page: () => const Text('secret_page'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('home_page'), findsOneWidget);
+
+      // Unauthenticated navigation to /secret redirects to /login via globalMiddlewares:
+      Sint.toNamed('/secret');
+      await tester.pumpAndSettle();
+      expect(find.text('login_page'), findsOneWidget);
+
+      // Once authenticated, /secret opens directly:
+      loggedIn = true;
+      Sint.toNamed('/secret');
+      await tester.pumpAndSettle();
+      expect(find.text('secret_page'), findsOneWidget);
+      expect(guard.visited, containsAll(['/home', '/secret', '/login']));
     });
   });
 

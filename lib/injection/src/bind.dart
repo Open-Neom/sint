@@ -47,8 +47,37 @@ abstract class Bind<T> extends StatelessWidget {
       S dependency, {
         String? tag,
         bool permanent = false,
+        List<Type>? aliases,
       }) {
-    Sint.put<S>(dependency, tag: tag, permanent: permanent);
+    Sint.put<S>(
+      dependency,
+      tag: tag,
+      permanent: permanent,
+      aliases: aliases,
+    );
+    return _FactoryBind<S>(
+      autoRemove: permanent,
+      assignId: true,
+      tag: tag,
+    );
+  }
+
+  /// Eager contract-first registration: registers [dependency] primarily under
+  /// service contract [S] while also aliasing [I] for intra-module consumers.
+  static Bind putContract<S, I extends S>(
+      I dependency, {
+        String? tag,
+        bool permanent = false,
+        bool? isDefault,
+        List<Type>? aliases,
+      }) {
+    Sint.putContract<S, I>(
+      dependency,
+      tag: tag,
+      permanent: permanent,
+      isDefault: isDefault,
+      aliases: aliases,
+    );
     return _FactoryBind<S>(
       autoRemove: permanent,
       assignId: true,
@@ -60,10 +89,48 @@ abstract class Bind<T> extends StatelessWidget {
       InstanceBuilderCallback<S> builder, {
         String? tag,
         bool fenix = false,
+        List<Type>? aliases,
         VoidCallback? onInit,
         VoidCallback? onClose,
       }) {
-    Sint.lazyPut<S>(builder, tag: tag, fenix: fenix);
+    Sint.lazyPut<S>(builder, tag: tag, fenix: fenix, aliases: aliases);
+    return _FactoryBind<S>(
+      tag: tag,
+      initState: (_) {
+        onInit?.call();
+      },
+      dispose: (_) {
+        onClose?.call();
+      },
+    );
+  }
+
+  /// Lazy contract-first registration (`lazyPut` with service [S] first and
+  /// concrete implementation [I] second).
+  ///
+  /// - External modules resolve via `Sint.find<S>()` (default),
+  ///   `Sint.find<S>(tag: 'id')` (by ID), or `Sint.findAt<S>(index)` /
+  ///   `Sint.findAll<S>()` (by registration order).
+  /// - Intra-module screens inside the owning package can also resolve
+  ///   `Sint.find<I>()` from the exact same shared factory.
+  static Bind contract<S, I extends S>(
+      InstanceBuilderCallback<I> builder, {
+        String? tag,
+        bool fenix = false,
+        bool? permanent,
+        bool? isDefault,
+        List<Type>? aliases,
+        VoidCallback? onInit,
+        VoidCallback? onClose,
+      }) {
+    Sint.contract<S, I>(
+      builder,
+      tag: tag,
+      fenix: fenix,
+      permanent: permanent,
+      isDefault: isDefault,
+      aliases: aliases,
+    );
     return _FactoryBind<S>(
       tag: tag,
       initState: (_) {
@@ -95,6 +162,12 @@ abstract class Bind<T> extends StatelessWidget {
   }
 
   static S find<S>({String? tag}) => Sint.find<S>(tag: tag);
+
+  static S? findOrNull<S>({String? tag}) => Sint.findOrNull<S>(tag: tag);
+
+  static List<S> findAll<S>() => Sint.findAll<S>();
+
+  static S findAt<S>(int index) => Sint.findAt<S>(index);
 
   static Future<bool> delete<S>({String? tag, bool force = false}) async =>
       Sint.delete<S>(tag: tag, force: force);

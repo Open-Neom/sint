@@ -105,7 +105,7 @@ mixin RxObjectMixin<T> on SintListenable<T> {
 
   /// Returns a [StreamSubscription] similar to [listen], but with the
   /// added benefit that it primes the stream with the current [value], rather
-  /// than waiting for the next [value]. This should not be called in [onInit]
+  /// than waiting for the next [value]. This should not be called in `onInit`
   /// or anywhere else during the build process.
   StreamSubscription<T> listenAndPump(void Function(T event) onData,
       {Function? onError, void Function()? onDone, bool? cancelOnError}) {
@@ -116,7 +116,7 @@ mixin RxObjectMixin<T> on SintListenable<T> {
       cancelOnError: cancelOnError,
     );
 
-    subject.add(value);
+    subject.add(peek);
 
     return subscription;
   }
@@ -182,8 +182,7 @@ abstract class RxImpl<T> extends SintListenable<T> with RxObjectMixin<T> {
   /// print( person );
   /// ```
   void update(T Function(T? val) fn) {
-    value = fn(value);
-    // subject.add(value);
+    trigger(fn(peek));
   }
 
   /// Following certain practices on Rx data, we might want to react to certain
@@ -212,12 +211,12 @@ abstract class RxImpl<T> extends SintListenable<T> with RxObjectMixin<T> {
   /// ```
   ///
   void trigger(T v) {
-    var firstRebuild = this.firstRebuild;
-    value = v;
-    // If it's not the first rebuild, the listeners have been called already
-    // So we won't call them again.
-    if (!firstRebuild && !sentToStream) {
-      subject.add(v);
+    if (isDisposed) return;
+    firstRebuild = false;
+    if (peek != v) {
+      value = v;
+    } else {
+      refresh();
     }
   }
 }

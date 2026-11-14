@@ -28,8 +28,12 @@ sealed class SintStatus<T> with Equality {
   factory SintStatus.refreshing(T previousData) =>
       LoadingStatus<T>(previousData);
 
-  factory SintStatus.error(Object message, {T? previousData}) =>
-      ErrorStatus<T, Object>(message, previousData);
+  factory SintStatus.error(
+    Object message, {
+    T? previousData,
+    StackTrace? stackTrace,
+  }) =>
+      ErrorStatus<T, Object>(message, previousData, stackTrace);
 
   factory SintStatus.empty() => EmptyStatus<T>();
 
@@ -115,6 +119,12 @@ sealed class SintStatus<T> with Equality {
         ErrorStatus(:final error) => error,
         _ => null,
       };
+
+  /// Returns the captured [StackTrace] if [isError], otherwise `null`.
+  StackTrace? get stackTraceOrNull => switch (this) {
+        ErrorStatus(:final stackTrace) => stackTrace,
+        _ => null,
+      };
 }
 
 class CustomStatus<T> extends SintStatus<T> {
@@ -145,8 +155,9 @@ class SuccessStatus<T> extends SintStatus<T> {
 class ErrorStatus<T, S> extends SintStatus<T> {
   final S? error;
   final T? previousData;
+  final StackTrace? stackTrace;
 
-  const ErrorStatus([this.error, this.previousData]);
+  const ErrorStatus([this.error, this.previousData, this.stackTrace]);
 
   @override
   List get props => [error, previousData];

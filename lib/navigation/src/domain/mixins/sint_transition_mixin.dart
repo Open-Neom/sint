@@ -127,7 +127,7 @@ Cannot read the previousTitle for a route that has not yet been installed''',
       Sint.defaultPopGesture ??
       (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS);
 
-  /// Returns a [CupertinoFullscreenDialogTransition] if [route] is a full
+  /// Returns a [CupertinoFullscreenDialogTransition] if `route` is a full
   /// screen dialog, otherwise a [CupertinoPageTransition] is returned.
   ///
   /// Used by [CupertinoPageRoute.buildTransitions].
@@ -162,7 +162,7 @@ Cannot read the previousTitle for a route that has not yet been installed''',
     if (route.fullscreenDialog && route.transition == null) {
       return CupertinoFullscreenDialogTransition(
         primaryRouteAnimation: hasCurve
-            ? CurvedAnimation(parent: animation, curve: finalCurve)
+            ? animation.drive(CurveTween(curve: finalCurve))
             : animation,
         secondaryRouteAnimation: secondaryAnimation,
         linearTransition: linearTransition,
@@ -192,9 +192,9 @@ Cannot read the previousTitle for a route that has not yet been installed''',
         );
       }
 
-      /// Apply the curve by default...
+      /// Apply the curve by default without allocating a leaked CurvedAnimation.
       final iosAnimation = animation;
-      animation = CurvedAnimation(parent: animation, curve: finalCurve);
+      animation = animation.drive(CurveTween(curve: finalCurve));
 
       switch (route.transition ?? Sint.defaultTransition) {
         case Transition.leftToRight:
@@ -402,7 +402,7 @@ Cannot read the previousTitle for a route that has not yet been installed''',
         case Transition.size:
           return SizeTransitions().buildTransitions(
               context,
-              route.curve!,
+              null,
               route.alignment,
               animation,
               secondaryAnimation,
@@ -540,13 +540,13 @@ Cannot read the previousTitle for a route that has not yet been installed''',
   // gesture is detected. The returned controller handles all of the subsequent
   // drag events.
   /// True if an iOS-style back swipe pop gesture is currently
-  /// underway for [route].
+  /// underway for the current modal route in [context].
   ///
-  /// This just check the route's [NavigatorState.userGestureInProgress].
+  /// This checks the route's [NavigatorState.userGestureInProgress].
   ///
   /// See also:
   ///
-  ///  * [popGestureEnabled], which returns true if a user-triggered pop gesture
+  ///  * `popGesture`, which controls whether a user-triggered pop gesture
   ///    would be allowed.
   static bool isPopGestureInProgress(BuildContext context) {
     final route = ModalRoute.of(context)!;

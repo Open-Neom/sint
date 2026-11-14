@@ -34,18 +34,15 @@ extension OverlayExtension on SintInterface {
     overlayState.insert(overlayEntryOpacity);
     overlayState.insert(overlayEntryLoader);
 
-    T data;
-
     try {
-      data = await asyncFunction();
-    } on Exception catch (_) {
-      overlayEntryLoader.remove();
-      overlayEntryOpacity.remove();
-      rethrow;
+      return await asyncFunction();
+    } finally {
+      if (overlayEntryLoader.mounted) {
+        overlayEntryLoader.remove();
+      }
+      if (overlayEntryOpacity.mounted) {
+        overlayEntryOpacity.remove();
+      }
     }
-
-    overlayEntryLoader.remove();
-    overlayEntryOpacity.remove();
-    return data;
   }
 }

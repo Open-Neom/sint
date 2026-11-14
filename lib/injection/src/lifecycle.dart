@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:sint/core/src/sint_engine.dart';
 
-/// The [SintLifeCycle]
+/// The [SintLifeCycleMixin]
 ///
 /// ```dart
-/// class SomeController with SintLifeCycle {
+/// class SomeController with SintLifeCycleMixin {
 ///   SomeController() {
-///     configureLifeCycle();
+///     onStart();
 ///   }
 /// }
 /// ```
@@ -16,7 +16,7 @@ mixin SintLifeCycleMixin {
   @protected
   @mustCallSuper
   void onInit() {
-    SintEngine.instance.addPostFrameCallback((_) {
+    SintEngine.schedulePostFrame((_) {
       if (!_isClosed) onReady();
     });
   }

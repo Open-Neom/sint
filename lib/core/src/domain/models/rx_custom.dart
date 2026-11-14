@@ -32,7 +32,7 @@ class Rxn<T> extends Rx<T?> {
 }
 
 extension RxT<T extends Object> on T {
-  /// Returns a `Rx` instance with [this] `T` as initial value.
+  /// Returns a `Rx` instance with `this` `T` as initial value.
   Rx<T> get obs => Rx<T>(this);
 }
 
@@ -41,6 +41,6 @@ extension RxT<T extends Object> on T {
 /// the new dart 3 features. T will be inferred by contextual type inference
 /// rather than the extension type.
 extension RxTnew on Object {
-  /// Returns a `Rx` instance with [this] `T` as initial value.
+  /// Returns a `Rx` instance with `this` `T` as initial value.
   Rx<T> obs<T>() => Rx<T>(this as T);
 }

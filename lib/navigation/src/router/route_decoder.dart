@@ -9,9 +9,14 @@ class RouteDecoder {
   final List<SintPage> currentTreeBranch;
   final PageSettings? pageSettings;
 
-  factory RouteDecoder.fromRoute(String location) {
-    var uri = Uri.parse(location);
-    final args = PageSettings(uri);
+  factory RouteDecoder.fromRoute(String location, [Object? arguments]) {
+    final uri =
+        Uri.tryParse(location) ??
+        Uri(path: location.split('?').first.split('#').first);
+    final args = PageSettings(uri, arguments);
+    if (!SintRoot.treeInitialized) {
+      return RouteDecoder(<SintPage>[], args);
+    }
     final decoder =
         (Sint.rootController.rootDelegate).matchRoute(location, arguments: args);
     decoder.route = decoder.route?.copyWith(
@@ -39,7 +44,8 @@ class RouteDecoder {
 
   List<SintPage>? get currentChildren => route?.children;
 
-  Map<String, String> get parameters => pageSettings?.params ?? {};
+  Map<String, String> get parameters =>
+      pageSettings?.params ?? route?.parameters ?? {};
 
   /// Path (segment) parameters only, e.g. `:id` in `/user/:id` (1.5.0).
   Map<String, String> get pathParams => pageSettings?.pathParams ?? {};

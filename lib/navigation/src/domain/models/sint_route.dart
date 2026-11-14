@@ -1,7 +1,10 @@
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
+import 'package:sint/navigation/src/domain/enums/prevent_duplicate_handling_mode.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/domain/interfaces/custom_transition.dart';
 import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/page_settings.dart';
@@ -47,6 +50,13 @@ class SintRoute<TArgs, TResult> {
     );
   }
 
+  /// Resolves [path] as a parsed [Uri] with [pathParams] and [queryParams].
+  Uri uri({
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) =>
+      Uri.parse(location(pathParams: pathParams, queryParams: queryParams));
+
   /// Creates a [SintPage] configured for this typed route.
   SintPage<TResult> page({
     required SintPageBuilder page,
@@ -57,9 +67,19 @@ class SintRoute<TArgs, TResult> {
     List<SintMiddleware> middlewares = const [],
     List<SintPage> children = const [],
     Transition? transition,
+    CustomTransition? customTransition,
+    Curve curve = Curves.linear,
+    Alignment? alignment,
     Duration? transitionDuration,
+    Duration? reverseTransitionDuration,
+    bool opaque = true,
+    bool maintainState = true,
+    bool? popGesture,
+    bool? participatesInRootNavigator,
     bool fullscreenDialog = false,
     bool preventDuplicates = true,
+    PreventDuplicateHandlingMode preventDuplicateHandlingMode =
+        PreventDuplicateHandlingMode.reorderRoutes,
   }) =>
       SintPage<TResult>(
         name: path,
@@ -71,9 +91,18 @@ class SintRoute<TArgs, TResult> {
         middlewares: middlewares,
         children: children,
         transition: transition,
+        customTransition: customTransition,
+        curve: curve,
+        alignment: alignment,
         transitionDuration: transitionDuration,
+        reverseTransitionDuration: reverseTransitionDuration,
+        opaque: opaque,
+        maintainState: maintainState,
+        popGesture: popGesture,
+        participatesInRootNavigator: participatesInRootNavigator,
         fullscreenDialog: fullscreenDialog,
         preventDuplicates: preventDuplicates,
+        preventDuplicateHandlingMode: preventDuplicateHandlingMode,
       );
 
   /// Pushes this route onto the navigation stack with typed [arguments].
@@ -103,6 +132,24 @@ class SintRoute<TArgs, TResult> {
       Sint.offNamed<TResult>(
         path,
         arguments: arguments,
+        id: id,
+        pathParams: pathParams,
+        queryParams: queryParams,
+      );
+
+  /// Pops the current route (returning [result] to its caller) and pushes this
+  /// typed route.
+  Future<TResult?>? offAndTo<TPopResult>({
+    TArgs? arguments,
+    TPopResult? result,
+    String? id,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) =>
+      Sint.offAndToNamed<TResult>(
+        path,
+        arguments: arguments,
+        result: result,
         id: id,
         pathParams: pathParams,
         queryParams: queryParams,

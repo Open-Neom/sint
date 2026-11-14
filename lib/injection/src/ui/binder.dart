@@ -5,7 +5,7 @@ import 'package:sint/injection/src/ui/bind_element.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
 
 class Binder<T> extends InheritedWidget {
-  /// Create an inherited widget that updates its dependents when [controller]
+  /// Create an inherited widget that updates its dependents when `controller`
   /// sends notifications.
   ///
   /// The [child] argument is required
@@ -25,6 +25,9 @@ class Binder<T> extends InheritedWidget {
     this.didChangeDependencies,
     this.didUpdateWidget,
     this.create,
+    this.onMount,
+    this.onUnmount,
+    this.ensureRegistered,
   });
 
   final InitBuilder<T>? init;
@@ -40,7 +43,10 @@ class Binder<T> extends InheritedWidget {
       dispose,
       didChangeDependencies;
   final void Function(Binder<T> oldWidget, BindElement<T> state)?
-  didUpdateWidget;
+      didUpdateWidget;
+  final VoidCallback? onMount;
+  final VoidCallback? onUnmount;
+  final VoidCallback? ensureRegistered;
 
   @override
   bool updateShouldNotify(Binder<T> oldWidget) {

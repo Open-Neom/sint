@@ -61,6 +61,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   }
 
   late ConfigData config;
+  List<Bind<dynamic>> _rootBinds = const <Bind<dynamic>>[];
   bool? _refreshRoutesAfterReassemble;
 
   @override
@@ -83,6 +84,10 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     Sint.clearTranslations();
     Sint.pathTranslator = null;
     config.snackBarQueue.disposeControllers();
+    for (final nestedDelegate in keys.values) {
+      nestedDelegate.clearActiveState();
+    }
+    keys.clear();
     RouterReportManager.instance.clearRouteKeys();
     RouterReportManager.dispose();
     Sint.resetInstance(clearRouteBindings: true);
@@ -172,7 +177,13 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     Sint.smartManagement = config.smartManagement;
     Sint.isLogEnable = config.enableLog ?? kDebugMode;
     Sint.log = config.logWriterCallback ?? defaultLogWriterCallback;
-    config.initialBinding?.dependencies();
+    final dynamic initialDeps = config.initialBinding?.dependencies();
+    if (config.binds.isNotEmpty || initialDeps is List<Bind>) {
+      _rootBinds = <Bind<dynamic>>[
+        ...config.binds,
+        if (initialDeps is List<Bind>) ...initialDeps,
+      ];
+    }
 
     // ignore: deprecated_member_use_from_same_package
     if (config.routerDelegate == null &&
@@ -426,6 +437,12 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_rootBinds.isNotEmpty) {
+      return Binds(
+        binds: _rootBinds,
+        child: widget.child,
+      );
+    }
     return widget.child;
   }
 

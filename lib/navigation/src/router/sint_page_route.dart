@@ -13,7 +13,7 @@ class SintPageRoute<T> extends PageRoute<T>
     with SintPageRouteTransitionMixin<T>, PageRouteReportMixin {
   /// Creates a page route for use in an iOS designed app.
   ///
-  /// The [builder], [maintainState], and [fullscreenDialog] arguments must not
+  /// The [page], [maintainState], and [fullscreenDialog] arguments must not
   /// be null.
   SintPageRoute({
     super.settings,
@@ -92,37 +92,43 @@ class SintPageRoute<T> extends PageRoute<T>
   Widget _getChild() {
     if (_child != null) return _child!;
 
-    final localBinds = [...?binds];
+    final localBinds = <Bind>[...?binds];
+    final collectedBinds = <Bind>[];
 
-    final bindingsToBind = _middlewareRunner
-        .runOnBindingsStart(bindings.isNotEmpty ? bindings : localBinds);
-
-    final pageToBuild = _middlewareRunner.runOnPageBuildStart(page)!;
-
-    if (bindingsToBind != null && bindingsToBind.isNotEmpty) {
-      if (bindingsToBind is List<BindingsInterface>) {
-        final collectedBinds = <Bind>[];
+    if (bindings.isNotEmpty || localBinds.isEmpty) {
+      final bindingsToBind = _middlewareRunner.runOnBindingsStart(
+        <BindingsInterface>[...bindings],
+      );
+      if (bindingsToBind != null) {
         for (final item in bindingsToBind) {
           final dep = item.dependencies();
           if (dep is List<Bind>) {
             collectedBinds.addAll(dep);
           }
         }
-        if (collectedBinds.isNotEmpty) {
-          _child = Binds(
-            binds: collectedBinds,
-            child: _middlewareRunner.runOnPageBuilt(pageToBuild()),
-          );
-        }
-      } else if (bindingsToBind is List<Bind>) {
-        _child = Binds(
-          binds: bindingsToBind,
-          child: _middlewareRunner.runOnPageBuilt(pageToBuild()),
-        );
       }
     }
 
-    return _child ??= _middlewareRunner.runOnPageBuilt(pageToBuild());
+    if (localBinds.isNotEmpty) {
+      final resolvedLocal = _middlewareRunner.runOnBindingsStart(localBinds);
+      if (resolvedLocal != null) {
+        collectedBinds.addAll(resolvedLocal);
+      }
+    }
+
+    final pageToBuild = _middlewareRunner.runOnPageBuildStart(page)!;
+    final builtPage = _middlewareRunner.runOnPageBuilt(pageToBuild());
+
+    if (collectedBinds.isNotEmpty) {
+      _child = Binds(
+        binds: collectedBinds,
+        child: builtPage,
+      );
+    } else {
+      _child = builtPage;
+    }
+
+    return _child!;
   }
 
   @override

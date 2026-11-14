@@ -18,6 +18,16 @@ class PathTranslator {
 
   PathTranslator._(this._forwardMaps, this._reverseMap);
 
+  static const Set<String> _reservedProtoSegments = <String>{
+    '__proto__',
+    'constructor',
+    'prototype',
+  };
+
+  static final RegExp _disallowedSegmentChars = RegExp(
+    r'[\x00-\x20\x7F-\x9F\u0085\u061C\u200B-\u200F\u2028-\u202E\u2060\u2066-\u2069\uFEFF/\\?#:%]+',
+  );
+
   /// Builds a [PathTranslator] from SINT's loaded translations and the
   /// static route segments extracted from registered [SintPage] names.
   ///
@@ -30,6 +40,9 @@ class PathTranslator {
   }) {
     final forwardMaps = <String, Map<String, String>>{};
     final reverseMap = <String, String>{};
+    final canonicalNormalized = <String>{
+      for (final seg in routeSegments) _removeDiacritics(seg.toLowerCase()).trim(),
+    };
 
     for (final localeEntry in translations.entries) {
       // Handle both 'es' and 'es_MX' style keys.
@@ -41,12 +54,24 @@ class PathTranslator {
         final value = localeEntry.value[segment];
         if (value == null) continue;
 
-        final normalized = _removeDiacritics(value.toLowerCase());
-        if (normalized.contains(' ')) continue; // Multi-word: can't be URL segment.
+        final normalized = _removeDiacritics(value.toLowerCase()).trim();
+        if (normalized.isEmpty ||
+            normalized == '.' ||
+            normalized == '..' ||
+            _reservedProtoSegments.contains(normalized) ||
+            _reservedProtoSegments.contains(segment) ||
+            _disallowedSegmentChars.hasMatch(normalized)) {
+          continue; // Multi-word, control/Bidi, reserved key, or separator: can't be URL segment.
+        }
         if (normalized == segment) continue; // Same as canonical: no-op.
 
         localeMap[segment] = normalized;
-        reverseMap[normalized] = segment;
+        // Never overwrite a registered canonical route segment in reverseMap
+        // (e.g. French 'cat' -> 'chat' must not hijack canonical '/chat').
+        if (!canonicalNormalized.contains(normalized) &&
+            !routeSegments.contains(normalized)) {
+          reverseMap[normalized] = segment;
+        }
       }
 
       if (localeMap.isNotEmpty) {
@@ -65,8 +90,9 @@ class PathTranslator {
   static Set<String> extractSegments(List<dynamic> routes) {
     final segments = <String>{};
     for (final route in routes) {
-      final name = (route as dynamic).name as String;
-      for (final seg in name.split('/')) {
+      final rawName = (route as dynamic)?.name;
+      if (rawName is! String || rawName.isEmpty) continue;
+      for (final seg in rawName.split('/')) {
         if (seg.isEmpty) continue;
         if (seg.startsWith(':')) continue; // Skip parameters.
         segments.add(seg);
@@ -77,6 +103,14 @@ class PathTranslator {
 
   // ─── Public API ───────────────────────────────────────────────
 
+  static int _suffixSplitIndex(String path) {
+    final qIndex = path.indexOf('?');
+    final hIndex = path.indexOf('#');
+    if (qIndex == -1) return hIndex;
+    if (hIndex == -1) return qIndex;
+    return qIndex < hIndex ? qIndex : hIndex;
+  }
+
   /// Canonicalizes a localized URL path to canonical English.
   ///
   /// `/libro/abc123` → `/book/abc123`
@@ -85,15 +119,15 @@ class PathTranslator {
   String canonicalizePath(String path) {
     if (path.isEmpty || path == '/') return path;
 
-    final qIndex = path.indexOf('?');
-    final purePath = qIndex > -1 ? path.substring(0, qIndex) : path;
-    final query = qIndex > -1 ? path.substring(qIndex) : '';
+    final sIndex = _suffixSplitIndex(path);
+    final purePath = sIndex > -1 ? path.substring(0, sIndex) : path;
+    final suffix = sIndex > -1 ? path.substring(sIndex) : '';
 
     final segments = purePath.split('/');
     var changed = false;
     for (var i = 0; i < segments.length; i++) {
       final seg = segments[i];
-      if (seg.isEmpty) continue;
+      if (seg.isEmpty || _reservedProtoSegments.contains(seg)) continue;
       final canonical = _reverseMap[seg];
       if (canonical != null) {
         segments[i] = canonical;
@@ -101,7 +135,7 @@ class PathTranslator {
       }
     }
     if (!changed) return path;
-    return segments.join('/') + query;
+    return segments.join('/') + suffix;
   }
 
   /// Localizes a canonical English path to the given language code.
@@ -110,20 +144,22 @@ class PathTranslator {
   /// `/book/abc123` → `/book/abc123`  (for `'en'`, no-op)
   String localizePath(String path, String languageCode) {
     if (path.isEmpty || path == '/') return path;
-    if (languageCode == 'en') return path;
+    if (languageCode == 'en' || _reservedProtoSegments.contains(languageCode)) {
+      return path;
+    }
 
     final localMap = _forwardMaps[languageCode];
     if (localMap == null) return path;
 
-    final qIndex = path.indexOf('?');
-    final purePath = qIndex > -1 ? path.substring(0, qIndex) : path;
-    final query = qIndex > -1 ? path.substring(qIndex) : '';
+    final sIndex = _suffixSplitIndex(path);
+    final purePath = sIndex > -1 ? path.substring(0, sIndex) : path;
+    final suffix = sIndex > -1 ? path.substring(sIndex) : '';
 
     final segments = purePath.split('/');
     var changed = false;
     for (var i = 0; i < segments.length; i++) {
       final seg = segments[i];
-      if (seg.isEmpty) continue;
+      if (seg.isEmpty || _reservedProtoSegments.contains(seg)) continue;
       final localized = localMap[seg];
       if (localized != null) {
         segments[i] = localized;
@@ -131,7 +167,7 @@ class PathTranslator {
       }
     }
     if (!changed) return path;
-    return segments.join('/') + query;
+    return segments.join('/') + suffix;
   }
 
   // ─── Diacritics ───────────────────────────────────────────────

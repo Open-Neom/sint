@@ -16,6 +16,7 @@ class SnackbarController {
   final key = GlobalKey<SintSnackBarState>();
 
   static bool get isSnackbarBeingShown =>
+      SintRoot.treeInitialized &&
       SintRootState.controller.config.snackBarQueue.isJobInProgress;
 
   late Animation<double> _filterBlurAnimation;
@@ -24,9 +25,9 @@ class SnackbarController {
   final SintSnackBar snackbar;
   final _transitionCompleter = Completer();
 
-  late SnackbarStatusCallback? _snackbarStatus;
-  late final Alignment? _initialAlignment;
-  late final Alignment? _endAlignment;
+  SnackbarStatusCallback? _snackbarStatus;
+  Alignment? _initialAlignment;
+  Alignment? _endAlignment;
 
   bool _wasDismissedBySwipe = false;
 
@@ -42,6 +43,8 @@ class SnackbarController {
   ///
   /// The animation itself is exposed by the [animation] property.
   late final AnimationController controller;
+  bool _hasController = false;
+  bool _isDisposed = false;
 
   SnackbarStatus? _currentStatus;
 
@@ -97,21 +100,31 @@ class SnackbarController {
   bool _isTesting = false;
 
   void _configureOverlay() {
-    _isTesting = Sint.overlayContext == null;
-    _overlayState = _isTesting ? OverlayState() : Sint.key.currentState?.overlay;
+    if (_isDisposed) return;
+    final resolvedOverlay = Sint.key.currentState?.overlay;
+    _isTesting = Sint.overlayContext == null ||
+        resolvedOverlay == null ||
+        !resolvedOverlay.mounted;
+    if (_isTesting) {
+      _currentStatus = SnackbarStatus.closed;
+      _snackbarStatus?.call(_currentStatus);
+      if (!_transitionCompleter.isCompleted) {
+        _transitionCompleter.complete();
+      }
+      return;
+    }
+    _overlayState = resolvedOverlay;
     _overlayEntries.clear();
     _overlayEntries.addAll(_createOverlayEntries(_getBodyWidget()));
-    if (!_isTesting) {
-      _overlayState!.insertAll(_overlayEntries);
-    }
+    _overlayState!.insertAll(_overlayEntries);
 
     _configureSnackBarDisplay();
   }
 
   void _configureSnackBarDisplay() {
-    assert(!_transitionCompleter.isCompleted,
-        'Cannot configure a snackbar after disposing it.');
+    if (_isDisposed || _transitionCompleter.isCompleted) return;
     controller = _createAnimationController();
+    _hasController = true;
     _configureAlignment(snackbar.snackPosition);
     _snackbarStatus = snackbar.snackbarStatus;
     _filterBlurAnimation = _createBlurFilterAnimation();
@@ -320,15 +333,22 @@ class SnackbarController {
   }
 
   void _removeEntry() {
-    assert(
-      !_transitionCompleter.isCompleted,
-      'Cannot remove entry from a disposed snackbar',
-    );
+    if (_isDisposed || _transitionCompleter.isCompleted) return;
 
     _cancelTimer();
 
+    if (!_hasController) {
+      removeOverlay();
+      return;
+    }
+
     if (_wasDismissedBySwipe) {
-      Timer(const Duration(milliseconds: 200), controller.reset);
+      _timer = Timer(const Duration(milliseconds: 200), () {
+        if (!_isDisposed && _hasController) {
+          controller.reset();
+        }
+        removeOverlay();
+      });
       _wasDismissedBySwipe = false;
     } else {
       controller.reverse();
@@ -336,18 +356,24 @@ class SnackbarController {
   }
 
   void removeOverlay() {
+    if (_isDisposed) return;
+    _isDisposed = true;
     _cancelTimer();
     if (!_isTesting) {
       for (var element in _overlayEntries) {
-        element.remove();
+        if (element.mounted) {
+          element.remove();
+        }
       }
     }
 
-    assert(!_transitionCompleter.isCompleted,
-        'Cannot remove overlay from a disposed snackbar');
-    controller.dispose();
+    if (_hasController) {
+      controller.dispose();
+    }
     _overlayEntries.clear();
-    _transitionCompleter.complete();
+    if (!_transitionCompleter.isCompleted) {
+      _transitionCompleter.complete();
+    }
   }
 
   Future<void> showOverlay() {
@@ -356,10 +382,12 @@ class SnackbarController {
   }
 
   static Future<void> cancelAllSnackbars() async {
+    if (!SintRoot.treeInitialized) return;
     await SintRootState.controller.config.snackBarQueue.cancelAllJobs();
   }
 
   static Future<void> closeCurrentSnackbar() async {
+    if (!SintRoot.treeInitialized) return;
     await SintRootState.controller.config.snackBarQueue.closeCurrentJob();
   }
 }

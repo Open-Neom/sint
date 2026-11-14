@@ -82,15 +82,17 @@ class RouteTemplate {
           cursor++;
         }
       }
-      final wildcard = cursor < source.length && source[cursor] == '*';
-      if (wildcard) cursor++;
+      final isStar = cursor < source.length && source[cursor] == '*';
+      final isPlus =
+          !isStar && cursor < source.length && source[cursor] == '+';
+      if (isStar || isPlus) cursor++;
       tokens.add(RouteTemplateToken.parameter(
         source: source.substring(start, cursor),
         name: name,
         prefix: prefix,
         pattern: pattern,
         optional: optional,
-        wildcard: wildcard,
+        wildcard: isStar || isPlus,
       ));
       literalStart = cursor;
     }

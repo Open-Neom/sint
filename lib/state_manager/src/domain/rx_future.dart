@@ -52,8 +52,12 @@ class RxFuture<T> extends Rx<SintStatus<T>> {
         return SintStatus<T>.empty();
       }
       return SintStatus<T>.success(result);
-    } catch (error) {
-      return SintStatus<T>.error(error, previousData: previousData);
+    } catch (error, stackTrace) {
+      return SintStatus<T>.error(
+        error,
+        previousData: previousData,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -67,8 +71,8 @@ class RxFuture<T> extends Rx<SintStatus<T>> {
     return reload(keepPreviousData: keepPreviousData);
   }
 
-  /// Reloads while preserving the latest [dataOrNull] inside [LoadingStatus]
-  /// (`isRefreshing == true`) for stale-while-revalidate UIs.
+  /// Reloads while preserving the latest [SintStatus.dataOrNull] inside
+  /// [LoadingStatus] (`isRefreshing == true`) for stale-while-revalidate UIs.
   Future<SintStatus<T>> revalidate() => reload(keepPreviousData: true);
 
   /// Executes the loader and updates [value] to the resulting [SintStatus].
@@ -91,9 +95,13 @@ class RxFuture<T> extends Rx<SintStatus<T>> {
           : SintStatus<T>.success(result);
       value = next;
       return next;
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (isDisposed || currentRequestId != _requestId) return peek;
-      final next = SintStatus<T>.error(error, previousData: retained);
+      final next = SintStatus<T>.error(
+        error,
+        previousData: retained,
+        stackTrace: stackTrace,
+      );
       value = next;
       return next;
     }

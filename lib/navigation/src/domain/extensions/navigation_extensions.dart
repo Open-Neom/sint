@@ -111,16 +111,13 @@ extension NavigationExtension on SintInterface {
         Map<String, String>? queryParams,
       }) {
 
-    if (pathParams != null || queryParams != null) {
+    if (pathParams != null || queryParams != null || parameters != null) {
       // Route-template URL building (1.5.0): substitute `:param` segments
       // and append the query string with correct per-segment encoding.
       page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
         ...?parameters,
         ...?queryParams,
       });
-    } else if (parameters != null) {
-      final uri = Uri(path: page, queryParameters: parameters);
-      page = uri.toString();
     }
 
     return searchDelegate(id).toNamed(
@@ -144,9 +141,6 @@ extension NavigationExtension on SintInterface {
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
   ///
-  /// By default, SINT will prevent you from push a route that you already in,
-  /// if you want to push anyway, set [preventDuplicates] to false
-  ///
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? offNamed<T>(
       String page, {
@@ -157,14 +151,11 @@ extension NavigationExtension on SintInterface {
         Map<String, String>? queryParams,
       }) {
 
-    if (pathParams != null || queryParams != null) {
+    if (pathParams != null || queryParams != null || parameters != null) {
       page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
         ...?parameters,
         ...?queryParams,
       });
-    } else if (parameters != null) {
-      final uri = Uri(path: page, queryParameters: parameters);
-      page = uri.toString();
     }
     return searchDelegate(id).offNamed(
       page,
@@ -215,10 +206,14 @@ extension NavigationExtension on SintInterface {
         String? id,
         dynamic arguments,
         Map<String, String>? parameters,
+        Map<String, String>? pathParams,
+        Map<String, String>? queryParams,
       }) {
-    if (parameters != null) {
-      final uri = Uri(path: page, queryParameters: parameters);
-      page = uri.toString();
+    if (pathParams != null || queryParams != null || parameters != null) {
+      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
+        ...?parameters,
+        ...?queryParams,
+      });
     }
 
     return searchDelegate(id).offNamedUntil<T>(
@@ -247,10 +242,14 @@ extension NavigationExtension on SintInterface {
         String? id,
         dynamic result,
         Map<String, String>? parameters,
+        Map<String, String>? pathParams,
+        Map<String, String>? queryParams,
       }) {
-    if (parameters != null) {
-      final uri = Uri(path: page, queryParameters: parameters);
-      page = uri.toString();
+    if (pathParams != null || queryParams != null || parameters != null) {
+      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
+        ...?parameters,
+        ...?queryParams,
+      });
     }
     return searchDelegate(id).backAndtoNamed(
       page,
@@ -261,7 +260,7 @@ extension NavigationExtension on SintInterface {
 
   /// **Navigation.removeRoute()** shortcut.<br><br>
   ///
-  /// Remove a specific [route] from the stack
+  /// Remove a specific [name] route from the stack
   ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
@@ -272,18 +271,11 @@ extension NavigationExtension on SintInterface {
   /// **Navigation.pushNamedAndRemoveUntil()** shortcut.<br><br>
   ///
   /// Push a named `page` and pop several pages in the stack
-  /// until [predicate] returns true. [predicate] is optional
   ///
   /// It has the advantage of not needing context, so you can
   /// call from your business logic.
   ///
   /// You can send any type of value to the other route in the [arguments].
-  ///
-  /// [predicate] can be used like this:
-  /// `Sint.until((route) => Sint.currentRoute == '/home')`so when you get to home page,
-  /// or also like
-  /// `Sint.until((route) => !Sint.isDialogOpen())`, to make sure the dialog
-  /// is closed
   ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
@@ -297,16 +289,13 @@ extension NavigationExtension on SintInterface {
         Map<String, String>? pathParams,
         Map<String, String>? queryParams,
       }) {
-    if (pathParams != null || queryParams != null) {
+    if (pathParams != null || queryParams != null || parameters != null) {
       newRouteName = resolveRoutePath(newRouteName,
           pathParams: pathParams,
           queryParams: {
             ...?parameters,
             ...?queryParams,
           });
-    } else if (parameters != null) {
-      final uri = Uri(path: newRouteName, queryParameters: parameters);
-      newRouteName = uri.toString();
     }
 
     return searchDelegate(id).offAllNamed<T>(
@@ -319,18 +308,16 @@ extension NavigationExtension on SintInterface {
 
   /// Returns true if a Snackbar, Dialog or BottomSheet is currently OPEN
   bool get isOverlaysOpen =>
-      (isSnackbarOpen || isDialogOpen! || isBottomSheetOpen!);
+      isSnackbarOpen ||
+      (isDialogOpen ?? false) ||
+      (isBottomSheetOpen ?? false);
 
   /// Returns true if there is no Snackbar, Dialog or BottomSheet open
-  bool get isOverlaysClosed =>
-      (!isSnackbarOpen && !isDialogOpen! && !isBottomSheetOpen!);
+  bool get isOverlaysClosed => !isOverlaysOpen;
 
   /// **Navigation.popUntil()** shortcut.<br><br>
   ///
-  /// Pop the current page, snackbar, dialog or bottomsheet in the stack
-  ///
-  /// if your set [closeOverlays] to true, Sint.back() will close the
-  /// currently open snackbar/dialog/bottomsheet AND the current page
+  /// Pop the current page in the stack.
   ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
@@ -409,10 +396,11 @@ extension NavigationExtension on SintInterface {
   }
 
   void closeAllDialogsAndBottomSheets(
-      String? id,
-      ) {
-    // It can not be divided, because dialogs and bottomsheets can not be consecutive
-    while ((isDialogOpen! && isBottomSheetOpen!)) {
+    String? id,
+  ) {
+    // Dialogs and bottomsheets may be interleaved on the navigator stack.
+    while (((isDialogOpen ?? false) || (isBottomSheetOpen ?? false)) &&
+        searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
       closeOverlay(id: id);
     }
   }
@@ -420,7 +408,8 @@ extension NavigationExtension on SintInterface {
   void closeAllDialogs({
     String? id,
   }) {
-    while ((isDialogOpen!)) {
+    while ((isDialogOpen ?? false) &&
+        searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
       closeOverlay(id: id);
     }
   }
@@ -470,7 +459,8 @@ extension NavigationExtension on SintInterface {
   void closeAllBottomSheets({
     String? id,
   }) {
-    while ((isBottomSheetOpen!)) {
+    while ((isBottomSheetOpen ?? false) &&
+        searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
       searchDelegate(id).navigatorKey.currentState?.pop();
     }
   }
@@ -480,9 +470,7 @@ extension NavigationExtension on SintInterface {
     closeAllSnackbars();
   }
 
-  /// **Navigation.popUntil()** (with predicate) shortcut .<br><br>
-  ///
-  /// Close as many router as defined by [times]
+  /// Closes open snackbars, dialogs, and/or bottomsheets.
   ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
@@ -559,7 +547,7 @@ extension NavigationExtension on SintInterface {
     }
     return searchDelegate(id).off(
       page,
-      opaque: opaque ?? true,
+      opaque: opaque ?? defaultOpaqueRoute,
       transition: transition,
       curve: curve,
       popGesture: popGesture,
@@ -614,9 +602,6 @@ extension NavigationExtension on SintInterface {
   /// you can set [popGesture] to true
   ///
   /// If you're using the [BindingsInterface] api, you must define it here
-  ///
-  /// By default, SINT will prevent you from push a route that you already in,
-  /// if you want to push anyway, set [preventDuplicates] to false
   Future<T?>? offAll<T>(
       Widget Function() page, {
         bool Function(SintPage<dynamic>)? predicate,
@@ -637,10 +622,10 @@ extension NavigationExtension on SintInterface {
     return searchDelegate(id).offAll<T>(
       page,
       predicate: predicate,
-      opaque: opaque ?? true,
+      opaque: opaque ?? defaultOpaqueRoute,
       popGesture: popGesture,
       id: id,
-      //  routeName routeName,
+      routeName: routeName,
       arguments: arguments,
       bindings: bindings,
       fullscreenDialog: fullscreenDialog,
@@ -732,10 +717,21 @@ extension NavigationExtension on SintInterface {
 
   // ─── End Web-Aware Navigation ────────────────────────────
 
+  /// Switches the active `Sint.locale` (loading any deferred lazy translation
+  /// bundles first), notifies reactive `.tr` / `Sint.locale` observers in `O(1)`
+  /// (`Obx` and `Computed`), and updates the root app/router without triggering
+  /// a full debug tree reassemble (`performReassemble`).
   Future<void> updateLocale(Locale l) async {
     await Sint.ensureLocaleLoaded(l);
     Sint.locale = l;
-    await forceAppUpdate();
+    if (SintRoot.treeInitialized) {
+      final root = rootController;
+      root.update();
+      final delegate = root.config.routerDelegate;
+      if (delegate is SintDelegate) {
+        delegate.notifyLocaleChanged();
+      }
+    }
   }
 
   /// As a rule, Flutter knows which widget to update,
@@ -862,8 +858,10 @@ extension NavigationExtension on SintInterface {
 
   /// give access to current Overlay Context
   BuildContext? get overlayContext {
+    final overlayState = key.currentState?.overlay;
+    if (overlayState == null || !overlayState.mounted) return null;
     BuildContext? overlay;
-    key.currentState?.overlay?.context.visitChildElements((element) {
+    overlayState.context.visitChildElements((element) {
       overlay = element;
     });
     return overlay;
@@ -976,7 +974,8 @@ extension NavigationExtension on SintInterface {
   Transition? get defaultTransition => _getxController.defaultTransition;
 
   Duration get defaultTransitionDuration {
-    return _getxController.defaultTransitionDuration;
+    return _getxController.transitionDuration ??
+        _getxController.defaultTransitionDuration;
   }
 
   Curve get defaultTransitionCurve => _getxController.defaultTransitionCurve;

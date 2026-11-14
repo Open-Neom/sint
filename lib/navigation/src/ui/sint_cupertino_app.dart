@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -214,7 +216,8 @@ class SintCupertinoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return SintRoot(
       config: ConfigData(
-        backButtonDispatcher: backButtonDispatcher,
+        backButtonDispatcher:
+            routerConfig?.backButtonDispatcher ?? backButtonDispatcher,
         binds: binds,
         customTransition: customTransition,
         defaultGlobalState: defaultGlobalState,
@@ -233,11 +236,13 @@ class SintCupertinoApp extends StatelessWidget {
         onDispose: onDispose,
         onInit: onInit,
         onReady: onReady,
-        routeInformationParser: routeInformationParser,
-        routeInformationProvider: routeInformationProvider,
-        routerDelegate: routerDelegate,
+        routeInformationParser:
+            routerConfig?.routeInformationParser ?? routeInformationParser,
+        routeInformationProvider:
+            routerConfig?.routeInformationProvider ?? routeInformationProvider,
+        routerDelegate: routerConfig?.routerDelegate ?? routerDelegate,
         routingCallback: routingCallback,
-        scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
+        scaffoldMessengerKey: null,
         smartManagement: smartManagement,
         initialBinding: initialBinding,
         transitionDuration: transitionDuration,
@@ -245,15 +250,21 @@ class SintCupertinoApp extends StatelessWidget {
         translationsKeys: translationsKeys,
         unknownRoute: unknownRoute,
         defaultPopGesture: popGesture,
+        defaultOpaqueRoute: opaqueRoute ?? true,
       ),
       child: Builder(builder: (context) {
         final controller = SintRoot.of(context);
         return CupertinoApp.router(
-          routerDelegate: controller.config.routerDelegate,
-          routeInformationParser: controller.config.routeInformationParser,
-          backButtonDispatcher: backButtonDispatcher,
-          routeInformationProvider: routeInformationProvider,
           routerConfig: routerConfig,
+          routerDelegate:
+              routerConfig == null ? controller.config.routerDelegate : null,
+          routeInformationParser: routerConfig == null
+              ? controller.config.routeInformationParser
+              : null,
+          backButtonDispatcher:
+              routerConfig == null ? backButtonDispatcher : null,
+          routeInformationProvider:
+              routerConfig == null ? routeInformationProvider : null,
           key: controller.config.unikey,
           builder: (context, child) => Directionality(
             textDirection: textDirection ??
@@ -279,7 +290,19 @@ class SintCupertinoApp extends StatelessWidget {
           showSemanticsDebugger: showSemanticsDebugger,
           debugShowCheckedModeBanner: debugShowCheckedModeBanner,
           shortcuts: shortcuts,
-          scrollBehavior: scrollBehavior,
+          actions: actions,
+          scrollBehavior:
+              scrollBehavior ??
+              (kIsWeb
+                  ? const CupertinoScrollBehavior().copyWith(
+                      scrollbars: true,
+                      dragDevices: {
+                        ui.PointerDeviceKind.touch,
+                        ui.PointerDeviceKind.mouse,
+                        ui.PointerDeviceKind.trackpad,
+                      },
+                    )
+                  : null),
         );
       }),
     );

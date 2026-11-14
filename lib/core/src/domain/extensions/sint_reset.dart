@@ -7,6 +7,9 @@ extension SintReset on SintInterface {
   void reset({bool clearRouteBindings = true}) {
     Sint.resetInstance(clearRouteBindings: clearRouteBindings);
     Sint.clearTranslations();
+    Sint.locale = null;
+    Sint.fallbackLocale = null;
+    Sint.pathTranslator = null;
     SintTestMode.reset();
   }
 }

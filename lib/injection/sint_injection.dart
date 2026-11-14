@@ -11,4 +11,5 @@ export 'src/domain/models/instance_info.dart';
 export 'src/domain/typedefs/injection_typedefs.dart';
 export 'src/ui/bind_element.dart';
 export 'src/ui/binder.dart';
+export 'src/ui/multi_binder.dart';
 export 'src/ui/sint_scope.dart';

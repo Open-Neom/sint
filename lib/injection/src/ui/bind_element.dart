@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/ui/binder.dart';
+import 'package:sint/injection/src/ui/sint_scope.dart';
 import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
 import 'package:sint/state_manager/sint_state_manager.dart';
 import 'package:sint/injection/src/lifecycle.dart';
@@ -11,9 +12,7 @@ import 'package:sint/injection/src/domain/models/route_dependency.dart';
 /// The BindElement is responsible for injecting dependencies into the widget
 /// tree so that they can be observed
 class BindElement<T> extends InheritedElement {
-  BindElement(Binder<T> super.widget) {
-    initState();
-  }
+  BindElement(Binder<T> super.widget);
 
   final disposers = <Disposer>[];
 
@@ -22,9 +21,29 @@ class BindElement<T> extends InheritedElement {
   T? _controller;
   RouteDependency? _ownedDependency;
 
+  @override
+  void mount(Element? parent, Object? newSlot) {
+    if (InjectionExtension.hasActiveScopes) {
+      final scopes = parent == null
+          ? const <SintScopeContainer>[]
+          : SintScope.ancestorContainersOf(parent);
+      InjectionExtension.runWithWidgetBuildScopes<void>(scopes, initState);
+    } else {
+      initState();
+    }
+    super.mount(parent, newSlot);
+  }
+
   T get controller {
     if (_controller == null) {
-      _controller = _controllerBuilder?.call();
+      if (InjectionExtension.hasActiveScopes) {
+        _controller = InjectionExtension.runWithWidgetBuildScopes<T?>(
+          SintScope.ancestorContainersOf(this),
+          () => _controllerBuilder?.call(),
+        );
+      } else {
+        _controller = _controllerBuilder?.call();
+      }
       _subscribeToController();
       if (_controller == null) {
         throw BindError(controller: T, tag: widget.tag);
@@ -40,14 +59,18 @@ class BindElement<T> extends InheritedElement {
 
   bool? _isCreator = false;
   bool? _needStart = false;
-  bool _wasStarted = false;
   VoidCallback? _remove;
   Object? _filter;
 
   void initState() {
+    widget.onMount?.call();
     widget.initState?.call(this);
 
     var isRegistered = Sint.isRegistered<T>(tag: widget.tag);
+    if (!isRegistered && widget.ensureRegistered != null) {
+      widget.ensureRegistered!();
+      isRegistered = Sint.isRegistered<T>(tag: widget.tag);
+    }
 
     if (widget.global) {
       if (isRegistered) {
@@ -78,14 +101,21 @@ class BindElement<T> extends InheritedElement {
         if (!isRegistered) {
           _ownedDependency = Sint.captureInstanceLifecycle<T>(tag: widget.tag);
         }
-      } else {
+        _isCreator = true;
+        _needStart = true;
+      } else if (widget.init != null) {
         _controllerBuilder = widget.init;
+        _isCreator = true;
+        _needStart = true;
+      } else if (isRegistered) {
+        _controllerBuilder = () => Sint.find<T>(tag: widget.tag);
+        _ownedDependency = Sint.captureInstanceLifecycle<T>(tag: widget.tag);
+        _isCreator = true;
+        _needStart = false;
+      } else {
+        _isCreator = true;
+        _needStart = true;
       }
-      _controllerBuilder =
-          (widget.create != null ? () => widget.create!.call(this) : null) ??
-              widget.init;
-      _isCreator = true;
-      _needStart = true;
     }
   }
 
@@ -96,13 +126,12 @@ class BindElement<T> extends InheritedElement {
     if (widget.filter != null) {
       _filter = widget.filter!(_controller as T);
     }
-    final filter = _filter != null ? _filterUpdate : _getUpdate;
+    final filter = widget.filter != null ? _filterUpdate : _getUpdate;
     final localController = _controller;
 
     if (_needStart == true && localController is SintLifeCycleMixin) {
       localController.onStart();
       _needStart = false;
-      _wasStarted = true;
     }
 
     if (localController is SintController) {
@@ -122,6 +151,7 @@ class BindElement<T> extends InheritedElement {
   }
 
   void _getUpdate() {
+    if (!mounted) return;
     _dirty = true;
     markNeedsBuild();
   }
@@ -135,6 +165,7 @@ class BindElement<T> extends InheritedElement {
   }
 
   void _dispose() {
+    widget.onUnmount?.call();
     widget.dispose?.call(this);
     if (_isCreator! || widget.assignId) {
       if (widget.autoRemove) {
@@ -170,13 +201,14 @@ class BindElement<T> extends InheritedElement {
 
   @override
   void update(Binder<T> newWidget) {
-    final oldNotifier = widget.id;
-    final newNotifier = newWidget.id;
-    if (oldNotifier != newNotifier && _wasStarted) {
+    final oldWidget = widget;
+    super.update(newWidget);
+    if (_controller != null &&
+        (oldWidget.id != newWidget.id ||
+            oldWidget.filter != newWidget.filter)) {
       _subscribeToController();
     }
-    widget.didUpdateWidget?.call(widget, this);
-    super.update(newWidget);
+    newWidget.didUpdateWidget?.call(oldWidget, this);
   }
 
   @override

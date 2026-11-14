@@ -1,6 +1,6 @@
 # SINT Roadmap
 
-> **Current Release (`2.0.0` — 2026-10-17):** Ships the Next-Gen Reactive & Routing Engine (`O(1)` incremental `Obx` subscription reconciliation, synchronous `Sint.batch`, memoized `Sint.computed`, unified `RxMap`/`RxSet` semantics, and the Multi-Level Literal Prefix Trie router with **98× faster** shared-prefix matching) alongside adaptive `SintApp` for Flutter 3.47+ standalone `material_ui` and `cupertino_ui` packages (`Flutter >=3.44.0 / Dart >=3.12.0`).
+> **Current Release (`2.2.0` — 2026-11-13):** Ships Single-Element `MultiBinder` ($O(1)$ widget-tree depth for `Binds`), zero-allocation single-slot `Obx`/`Computed` tracking, reactive `.tr` with zero-reassemble `Sint.updateLocale`, unified Navigator 2.0 `SintMiddleware` guards across all stack operations, async contract DI (`Sint.putContractAsync`), sibling `SintScope` isolation, and [`llms.txt`](llms.txt)—building on `2.1.0` Contract-First DI (`Bind.contract`, `SintScope`, `RxFuture`, `SintRoute`) and `2.0.0`'s Signals + Multi-Level Trie Router (`Flutter >=3.47.0 / Dart ^3.13.0`).
 
 ---
 

@@ -28,20 +28,20 @@ class RxSet<E> extends SintListenable<Set<E>>
   }
 
   /// Special override to push() element(s) in a reactive way
-  /// inside the List,
+  /// inside the Set.
   RxSet<E> operator +(Set<E> val) {
     addAll(val);
     return this;
   }
 
   void update(void Function(Iterable<E>? value) fn) {
-    fn(value);
+    fn(peek);
     refresh();
   }
 
   @override
   bool add(E value) {
-    final hasAdded = this.value.add(value);
+    final hasAdded = peek.add(value);
     if (hasAdded) {
       refresh();
     }
@@ -60,13 +60,19 @@ class RxSet<E> extends SintListenable<Set<E>>
   int get length => value.length;
 
   @override
+  bool get isEmpty => value.isEmpty;
+
+  @override
+  bool get isNotEmpty => value.isNotEmpty;
+
+  @override
   E? lookup(Object? element) {
     return value.lookup(element);
   }
 
   @override
   bool remove(Object? value) {
-    var hasRemoved = this.value.remove(value);
+    final hasRemoved = peek.remove(value);
     if (hasRemoved) {
       refresh();
     }
@@ -80,7 +86,8 @@ class RxSet<E> extends SintListenable<Set<E>>
 
   @override
   void addAll(Iterable<E> elements) {
-    final target = value;
+    final target = peek;
+    if (identical(this, elements) || identical(target, elements)) return;
     final prevLength = target.length;
     target.addAll(elements);
     if (target.length != prevLength) {
@@ -90,41 +97,68 @@ class RxSet<E> extends SintListenable<Set<E>>
 
   @override
   void clear() {
-    if (value.isNotEmpty) {
-      value.clear();
+    final target = peek;
+    if (target.isNotEmpty) {
+      target.clear();
       refresh();
     }
   }
 
   @override
   void removeAll(Iterable<Object?> elements) {
-    final prevLength = value.length;
-    value.removeAll(elements);
-    if (value.length != prevLength) {
+    final target = peek;
+    if (target.isEmpty) return;
+    if (identical(this, elements) || identical(target, elements)) {
+      target.clear();
+      refresh();
+      return;
+    }
+    final prevLength = target.length;
+    target.removeAll(elements);
+    if (target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
+  void removeWhere(bool Function(E element) test) {
+    final target = peek;
+    final prevLength = target.length;
+    target.removeWhere(test);
+    if (target.length != prevLength) {
       refresh();
     }
   }
 
   @override
   void retainAll(Iterable<Object?> elements) {
-    final prevLength = value.length;
-    value.retainAll(elements);
-    if (value.length != prevLength) {
+    final target = peek;
+    if (target.isEmpty ||
+        identical(this, elements) ||
+        identical(target, elements)) {
+      return;
+    }
+    final prevLength = target.length;
+    target.retainAll(elements);
+    if (target.length != prevLength) {
       refresh();
     }
   }
 
   @override
   void retainWhere(bool Function(E) test) {
-    final prevLength = value.length;
-    value.retainWhere(test);
-    if (value.length != prevLength) {
+    final target = peek;
+    final prevLength = target.length;
+    target.retainWhere(test);
+    if (target.length != prevLength) {
       refresh();
     }
   }
 
-  void _assign(E item) {
-    final target = value;
+  /// Replaces all existing items with [item], triggering [refresh] only if
+  /// the set contents actually change.
+  void assign(E item) {
+    final target = peek;
     if (target.length == 1 && target.contains(item)) return;
     target
       ..clear()
@@ -132,8 +166,10 @@ class RxSet<E> extends SintListenable<Set<E>>
     refresh();
   }
 
-  void _assignAll(Iterable<E> items) {
-    final target = value;
+  /// Replaces all existing items with [items], triggering [refresh] only if
+  /// the set contents actually change.
+  void assignAll(Iterable<E> items) {
+    final target = peek;
     if (identical(this, items) || identical(target, items)) return;
     final nextItems = Set<E>.of(items);
     if (target.length == nextItems.length && target.containsAll(nextItems)) {
@@ -166,7 +202,7 @@ extension SetExtension<E> on Set<E> {
   /// Replaces all existing items of this set with [item].
   void assign(E item) {
     if (this is RxSet<E>) {
-      (this as RxSet<E>)._assign(item);
+      (this as RxSet<E>).assign(item);
     } else {
       clear();
       add(item);
@@ -176,7 +212,7 @@ extension SetExtension<E> on Set<E> {
   /// Replaces all existing items of this set with [items].
   void assignAll(Iterable<E> items) {
     if (this is RxSet<E>) {
-      (this as RxSet<E>)._assignAll(items);
+      (this as RxSet<E>).assignAll(items);
     } else {
       if (identical(this, items)) return;
       final nextItems = List<E>.of(items);

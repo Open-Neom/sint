@@ -11,33 +11,88 @@ import 'package:sint/navigation/src/router/router_report_manager.dart';
 /// Describes a scoped dependency override supplied to `SintScope`.
 class SintOverride<S> {
   SintOverride._({
-    required this._builder,
-    required this._isLazy,
+    required InstanceBuilderCallback<S> builder,
+    required bool isLazy,
     this.tag,
-  });
+    this.aliases,
+    this.bindUntaggedDefault = false,
+  }) :
+        // ignore: prefer_initializing_formals
+        _builder = builder,
+        // ignore: prefer_initializing_formals
+        _isLazy = isLazy;
 
-  /// Overrides `T` (and optional [tag]) with an eager [instance] within a `SintScope`.
-  static SintOverride<T> value<T>(T instance, {String? tag}) =>
+  /// Overrides `T` (and optional [tag] / [aliases]) with an eager [instance]
+  /// within a `SintScope`.
+  static SintOverride<T> value<T>(
+    T instance, {
+    String? tag,
+    List<Type>? aliases,
+  }) =>
       SintOverride<T>._(
         builder: () => instance,
         isLazy: false,
         tag: tag,
+        aliases: aliases,
       );
 
-  /// Overrides `T` (and optional [tag]) with a lazy [builder] within a `SintScope`.
+  /// Overrides `T` (and optional [tag] / [aliases]) with a lazy [builder]
+  /// within a `SintScope`.
   static SintOverride<T> lazy<T>(
     InstanceBuilderCallback<T> builder, {
     String? tag,
+    List<Type>? aliases,
   }) =>
       SintOverride<T>._(
         builder: builder,
         isLazy: true,
         tag: tag,
+        aliases: aliases,
+      );
+
+  /// Lazy contract-first scoped override: binds both service contract [S] and
+  /// concrete implementation [I] to the same scoped singleton within `SintScope`.
+  static SintOverride<S> contract<S, I extends S>(
+    InstanceBuilderCallback<I> builder, {
+    String? tag,
+    bool isDefault = false,
+    List<Type>? aliases,
+  }) =>
+      SintOverride<S>._(
+        builder: builder,
+        isLazy: true,
+        tag: tag,
+        bindUntaggedDefault: tag != null && isDefault,
+        aliases: <Type>[
+          if (I != S) I,
+          ...?aliases,
+        ],
+      );
+
+  /// Eager contract-first scoped override: binds [instance] under both service
+  /// contract [S] and concrete implementation [I] within `SintScope`.
+  static SintOverride<S> contractValue<S, I extends S>(
+    I instance, {
+    String? tag,
+    bool isDefault = false,
+    List<Type>? aliases,
+  }) =>
+      SintOverride<S>._(
+        builder: () => instance,
+        isLazy: false,
+        tag: tag,
+        bindUntaggedDefault: tag != null && isDefault,
+        aliases: <Type>[
+          if (I != S) I,
+          ...?aliases,
+        ],
       );
 
   final InstanceBuilderCallback<S> _builder;
   final bool _isLazy;
   final String? tag;
+  final List<Type>? aliases;
+  final bool bindUntaggedDefault;
 
   Type get overrideType => S;
 
@@ -66,9 +121,26 @@ class SintOverride<S> {
 class SintScopeContainer {
   SintScopeContainer(Iterable<SintOverride<dynamic>> overrides) {
     for (final override in overrides) {
-      (_factories[override.overrideType] ??=
-          <String?, _InstanceBuilderFactory>{})[override.tag] =
-          override._createFactory();
+      final factory = override._createFactory();
+      final primaryMap = (_factories[override.overrideType] ??=
+          <String?, _InstanceBuilderFactory>{});
+      primaryMap[override.tag] = factory;
+      if (override.tag != null &&
+          (override.bindUntaggedDefault || !primaryMap.containsKey(null))) {
+        primaryMap[null] = factory;
+      }
+      final extraTypes = override.aliases;
+      if (extraTypes != null) {
+        for (final alias in extraTypes) {
+          final aliasMap =
+              (_factories[alias] ??= <String?, _InstanceBuilderFactory>{});
+          aliasMap[override.tag] = factory;
+          if (override.tag != null &&
+              (override.bindUntaggedDefault || !aliasMap.containsKey(null))) {
+            aliasMap[null] = factory;
+          }
+        }
+      }
     }
   }
 
@@ -78,8 +150,10 @@ class SintScopeContainer {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    final visited = Set<_InstanceBuilderFactory>.identity();
     for (final tagMap in _factories.values) {
       for (final factory in tagMap.values) {
+        if (!visited.add(factory)) continue;
         final instance = factory.dependency;
         factory.dependency = null;
         factory.isInit = false;
@@ -108,16 +182,25 @@ extension InjectionExtension on SintInterface {
   /// overhead and dart2js minification collision risk.
   static final Map<Type, Map<String?, _InstanceBuilderFactory>> _typeSingl = {};
 
-  /// Active `SintScope` containers (mounted widget scopes + active build scopes).
+  /// Active `SintScope` containers (mounted widget scopes + imperative `SintScope.run` + build scopes).
   static final List<SintScopeContainer> _mountedScopes = [];
-  static final List<SintScopeContainer> _buildScopes = [];
+  static final List<(SintScopeContainer, int)> _imperativeScopes = [];
+  static final List<(SintScopeContainer, int)> _buildScopes = [];
+  static final List<String> _resolutionStack = [];
+  static int _scopeEpoch = 0;
+  static int _widgetBuildScopeDepth = 0;
   static bool _hasActiveScopes = false;
 
+  /// Fast `O(1)` check indicating whether at least one `SintScope` is active.
+  static bool get hasActiveScopes => _hasActiveScopes;
+
   static void _refreshScopeFlag() {
-    _hasActiveScopes = _mountedScopes.isNotEmpty || _buildScopes.isNotEmpty;
+    _hasActiveScopes = _mountedScopes.isNotEmpty ||
+        _imperativeScopes.isNotEmpty ||
+        _buildScopes.isNotEmpty;
   }
 
-  /// Internal hook used by `SintScope` when mounting in a widget tree or test run.
+  /// Internal hook used by `SintScope` when mounting in a widget tree.
   static void pushMountedScope(SintScopeContainer scope) {
     _mountedScopes.add(scope);
     _hasActiveScopes = true;
@@ -126,7 +209,8 @@ extension InjectionExtension on SintInterface {
   /// Internal hook used by `SintScope` when unmounting.
   static void popMountedScope(SintScopeContainer scope) {
     _mountedScopes.remove(scope);
-    _buildScopes.remove(scope);
+    _imperativeScopes.removeWhere((entry) => identical(entry.$1, scope));
+    _buildScopes.removeWhere((entry) => identical(entry.$1, scope));
     _refreshScopeFlag();
     scope.dispose();
   }
@@ -137,12 +221,37 @@ extension InjectionExtension on SintInterface {
     SintScopeContainer scope,
     R Function() action,
   ) {
-    _buildScopes.add(scope);
+    _buildScopes.add((scope, ++_scopeEpoch));
     _hasActiveScopes = true;
     try {
       return action();
     } finally {
       _buildScopes.removeLast();
+      _refreshScopeFlag();
+    }
+  }
+
+  /// Pushes the exact ordered chain of ancestor widget [scopes] (outermost to
+  /// innermost, or empty when a widget has no ancestor `SintScope`) around
+  /// [action] so side-by-side sibling `SintScope`s and unscoped siblings isolate
+  /// cleanly without `BuildContext` boilerplate.
+  static R runWithWidgetBuildScopes<R>(
+    List<SintScopeContainer> scopes,
+    R Function() action,
+  ) {
+    final prevLen = _buildScopes.length;
+    if (scopes.isNotEmpty) {
+      for (final scope in scopes) {
+        _buildScopes.add((scope, ++_scopeEpoch));
+      }
+    }
+    _widgetBuildScopeDepth++;
+    _refreshScopeFlag();
+    try {
+      return action();
+    } finally {
+      _widgetBuildScopeDepth--;
+      _buildScopes.length = prevLen;
       _refreshScopeFlag();
     }
   }
@@ -172,7 +281,8 @@ extension InjectionExtension on SintInterface {
     required FutureOr<R> Function() body,
   }) {
     final container = SintScopeContainer(overrides);
-    pushMountedScope(container);
+    _imperativeScopes.add((container, ++_scopeEpoch));
+    _hasActiveScopes = true;
     try {
       final result = body();
       if (result is Future<R>) {
@@ -187,26 +297,70 @@ extension InjectionExtension on SintInterface {
   }
 
   static _InstanceBuilderFactory? _lookupScopedFactory(Type type, String? tag) {
+    _InstanceBuilderFactory? buildMatch;
+    var buildEpoch = -1;
     for (var i = _buildScopes.length - 1; i >= 0; i--) {
-      final match = _buildScopes[i]._factories[type]?[tag];
-      if (match != null) return match;
+      final entry = _buildScopes[i];
+      final match = entry.$1._factories[type]?[tag];
+      if (match != null) {
+        buildMatch = match;
+        buildEpoch = entry.$2;
+        break;
+      }
     }
-    for (var i = _mountedScopes.length - 1; i >= 0; i--) {
-      final match = _mountedScopes[i]._factories[type]?[tag];
-      if (match != null) return match;
+
+    _InstanceBuilderFactory? impMatch;
+    var impEpoch = -1;
+    for (var i = _imperativeScopes.length - 1; i >= 0; i--) {
+      final entry = _imperativeScopes[i];
+      final match = entry.$1._factories[type]?[tag];
+      if (match != null) {
+        impMatch = match;
+        impEpoch = entry.$2;
+        break;
+      }
+    }
+
+    if (buildMatch != null || impMatch != null) {
+      return impEpoch > buildEpoch ? impMatch : buildMatch;
+    }
+
+    if (_widgetBuildScopeDepth == 0) {
+      for (var i = _mountedScopes.length - 1; i >= 0; i--) {
+        final match = _mountedScopes[i]._factories[type]?[tag];
+        if (match != null) return match;
+      }
     }
     return null;
   }
 
   static S _resolveScopedFactory<S>(_InstanceBuilderFactory dep) {
+    if (dep._isBuilding) {
+      throw StateError(
+        'Circular dependency detected while resolving "${dep.legacyKey}": '
+        '${_resolutionStack.join(' -> ')} -> ${dep.legacyKey}',
+      );
+    }
     if (!dep.isInit) {
       dep.isInit = true;
-      dep.generation = Object();
-      final instance = dep.getDependency() as S;
-      if (instance is SintLifeCycleMixin) {
-        instance.onStart();
+      final generation = dep.generation ??= Object();
+      dep._isBuilding = true;
+      _resolutionStack.add(dep.legacyKey);
+      try {
+        final instance = dep.getDependency() as S;
+        if (instance is SintLifeCycleMixin) {
+          instance.onStart();
+        }
+        return instance;
+      } catch (_) {
+        if (identical(dep.generation, generation)) {
+          dep.isInit = false;
+        }
+        rethrow;
+      } finally {
+        dep._isBuilding = false;
+        _resolutionStack.removeLast();
       }
-      return instance;
     }
     return dep.getDependency() as S;
   }
@@ -431,6 +585,7 @@ extension InjectionExtension on SintInterface {
           permanent ?? (builder is InstanceBuilderCallback<SintService>),
       builder: builder,
       fenix: fenix,
+      isLazyFactory: true,
       aliases: aliases,
     );
   }
@@ -462,6 +617,7 @@ extension InjectionExtension on SintInterface {
           permanent ?? (builder is InstanceBuilderCallback<SintService>),
       builder: builder,
       fenix: fenix,
+      isLazyFactory: true,
       aliases: <Type>[
         if (I != S) I,
         ...?aliases,
@@ -528,6 +684,26 @@ extension InjectionExtension on SintInterface {
     return put<S>(instance, tag: tag, permanent: permanent, aliases: aliases);
   }
 
+  /// Asynchronous contract-first registration: awaits [asyncBuilder] and binds
+  /// the resulting [I] primarily under service contract [S] while also aliasing
+  /// concrete [I] for intra-module consumers.
+  Future<I> putContractAsync<S, I extends S>(
+    Future<I> Function() asyncBuilder, {
+    String? tag,
+    bool? permanent,
+    bool? isDefault,
+    List<Type>? aliases,
+  }) async {
+    final instance = await asyncBuilder();
+    return putContract<S, I>(
+      instance,
+      tag: tag,
+      permanent: permanent,
+      isDefault: isDefault,
+      aliases: aliases,
+    );
+  }
+
   /// Injects the Instance [S] builder into the `_typeSingl` HashMap.
   _InstanceBuilderFactory<S>? _insert<S>({
     required InstanceBuilderCallback<S> builder,
@@ -535,6 +711,7 @@ extension InjectionExtension on SintInterface {
     String? name,
     bool fenix = false,
     bool permanent = false,
+    bool isLazyFactory = false,
     List<Type>? aliases,
     bool bindUntaggedDefault = false,
     bool overwriteDefault = false,
@@ -557,6 +734,7 @@ extension InjectionExtension on SintInterface {
       permanent: permanent,
       isInit: false,
       fenix: fenix,
+      isLazyFactory: isLazyFactory,
       tag: name,
     );
     (tagMap ?? (_typeSingl[S] = <String?, _InstanceBuilderFactory>{}))[name] =
@@ -587,15 +765,22 @@ extension InjectionExtension on SintInterface {
   /// work properly.
   S? _initDependencies<S>(
       {String? name, required _InstanceBuilderFactory dep}) {
+    if (dep._isBuilding) {
+      throw StateError(
+        'Circular dependency detected while resolving "${dep.legacyKey}": '
+        '${_resolutionStack.join(' -> ')} -> ${dep.legacyKey}',
+      );
+    }
     if (dep.isInit) {
       return null;
     }
     final isSingleton = dep.isSingleton ?? false;
-    final generation = Object();
+    final generation = isSingleton ? (dep.generation ??= Object()) : Object();
     if (isSingleton) {
       dep.isInit = true;
-      dep.generation = generation;
     }
+    dep._isBuilding = true;
+    _resolutionStack.add(dep.legacyKey);
     try {
       final i = _startController<S>(tag: name, factory: dep);
       if (isSingleton && identical(dep.generation, generation)) {
@@ -609,9 +794,11 @@ extension InjectionExtension on SintInterface {
     } catch (_) {
       if (identical(dep.generation, generation)) {
         dep.isInit = false;
-        dep.generation = null;
       }
       rethrow;
+    } finally {
+      dep._isBuilding = false;
+      _resolutionStack.removeLast();
     }
   }
 
@@ -686,7 +873,7 @@ extension InjectionExtension on SintInterface {
   }
 
   /// Finds the registered type <[S]> (or [tag])
-  /// In case of using Sint.[create] to register a type <[S]> or [tag],
+  /// In case of using `Sint.spawn` to register a type <[S]> or [tag],
   /// it will create an instance each time you call [find].
   /// If the registered type <[S]> (or [tag]) is a Controller,
   /// it will initialize it's lifecycle.
@@ -724,39 +911,111 @@ extension InjectionExtension on SintInterface {
     return (i ?? dep.getDependency()) as S;
   }
 
-  static List<_InstanceBuilderFactory> _orderedFactoriesForType(Type type) {
+  static List<(_InstanceBuilderFactory, bool)> _orderedFactoriesForType(
+    Type type,
+  ) {
+    Map<String?, (_InstanceBuilderFactory, bool)>? mergedByTag;
+    if (_hasActiveScopes) {
+      mergedByTag = <String?, (_InstanceBuilderFactory, bool)>{};
+      final globalMap = _typeSingl[type];
+      if (globalMap != null) {
+        for (final entry in globalMap.entries) {
+          if (entry.key == null && entry.value.tag != null) continue;
+          mergedByTag[entry.key] = (entry.value, false);
+        }
+        final globalDefault = globalMap[null];
+        if (globalDefault != null && !mergedByTag.containsKey(globalDefault.tag)) {
+          mergedByTag[null] = (globalDefault, false);
+        }
+      }
+      if (_widgetBuildScopeDepth == 0) {
+        for (var i = 0; i < _mountedScopes.length; i++) {
+          final scopedMap = _mountedScopes[i]._factories[type];
+          if (scopedMap == null) continue;
+          for (final entry in scopedMap.entries) {
+            if (entry.key == null && entry.value.tag != null) continue;
+            mergedByTag[entry.key] = (entry.value, true);
+          }
+        }
+      }
+      if (_imperativeScopes.isNotEmpty && _buildScopes.isNotEmpty) {
+        final combined = <(SintScopeContainer, int)>[
+          ..._imperativeScopes,
+          ..._buildScopes,
+        ]..sort((a, b) => a.$2.compareTo(b.$2));
+        for (final entry in combined) {
+          final scopedMap = entry.$1._factories[type];
+          if (scopedMap == null) continue;
+          for (final item in scopedMap.entries) {
+            if (item.key == null && item.value.tag != null) continue;
+            mergedByTag[item.key] = (item.value, true);
+          }
+        }
+      } else {
+        for (var i = 0; i < _imperativeScopes.length; i++) {
+          final scopedMap = _imperativeScopes[i].$1._factories[type];
+          if (scopedMap == null) continue;
+          for (final entry in scopedMap.entries) {
+            if (entry.key == null && entry.value.tag != null) continue;
+            mergedByTag[entry.key] = (entry.value, true);
+          }
+        }
+        for (var i = 0; i < _buildScopes.length; i++) {
+          final scopedMap = _buildScopes[i].$1._factories[type];
+          if (scopedMap == null) continue;
+          for (final entry in scopedMap.entries) {
+            if (entry.key == null && entry.value.tag != null) continue;
+            mergedByTag[entry.key] = (entry.value, true);
+          }
+        }
+      }
+      if (mergedByTag.isEmpty) {
+        return const <(_InstanceBuilderFactory, bool)>[];
+      }
+      final seen = Set<_InstanceBuilderFactory>.identity();
+      final ordered = <(_InstanceBuilderFactory, bool)>[];
+      for (final value in mergedByTag.values) {
+        if (seen.add(value.$1)) {
+          ordered.add(value);
+        }
+      }
+      return ordered;
+    }
+
     final tagMap = _typeSingl[type];
     if (tagMap == null || tagMap.isEmpty) {
-      return const <_InstanceBuilderFactory>[];
+      return const <(_InstanceBuilderFactory, bool)>[];
     }
     final seen = Set<_InstanceBuilderFactory>.identity();
-    final ordered = <_InstanceBuilderFactory>[];
+    final ordered = <(_InstanceBuilderFactory, bool)>[];
     for (final entry in tagMap.entries) {
       // Skip synthetic untagged default pointers on the first pass so explicit
       // registration order is preserved even when a later entry sets isDefault.
       if (entry.key == null && entry.value.tag != null) continue;
       if (seen.add(entry.value)) {
-        ordered.add(entry.value);
+        ordered.add((entry.value, false));
       }
     }
     final defaultEntry = tagMap[null];
     if (defaultEntry != null && seen.add(defaultEntry)) {
-      ordered.add(defaultEntry);
+      ordered.add((defaultEntry, false));
     }
     return ordered;
   }
 
   /// Resolves all unique implementations registered under [S] in exact
-  /// registration order, allowing modules that only import a core service
-  /// interface to iterate or select implementations without importing concrete
-  /// controllers.
+  /// registration order (honoring active `SintScope` overrides), allowing
+  /// modules that only import a core service interface to iterate or select
+  /// implementations without importing concrete controllers.
   List<S> findAll<S>() {
     final factories = _orderedFactoriesForType(S);
     if (factories.isEmpty) return <S>[];
     return <S>[
-      for (final dep in factories)
-        (_initDependencies<S>(name: dep.tag, dep: dep) ?? dep.getDependency())
-            as S,
+      for (final (dep, isScoped) in factories)
+        isScoped
+            ? _resolveScopedFactory<S>(dep)
+            : (_initDependencies<S>(name: dep.tag, dep: dep) ??
+                dep.getDependency()) as S,
     ];
   }
 
@@ -773,7 +1032,10 @@ extension InjectionExtension on SintInterface {
         'Out of range for registered "$S" implementations (${factories.length} found)',
       );
     }
-    final dep = factories[index];
+    final (dep, isScoped) = factories[index];
+    if (isScoped) {
+      return _resolveScopedFactory<S>(dep);
+    }
     final i = _initDependencies<S>(name: dep.tag, dep: dep);
     return (i ?? dep.getDependency()) as S;
   }
@@ -853,7 +1115,11 @@ extension InjectionExtension on SintInterface {
     factory.isInit = false;
     factory.isDirty = false;
     factory.generation = null;
-    if (!keepFactory || !factory.fenix || !active) _unregister(factory);
+    final retainFactory = keepFactory &&
+        (factory.fenix ||
+            (factory.isLazyFactory &&
+                Sint.smartManagement == SmartManagement.keepFactory));
+    if (!retainFactory || !active) _unregister(factory);
     if (i is SintLifeCycleMixin) {
       i.onDelete();
       if (Sint.isLogEnable) {
@@ -938,15 +1204,13 @@ extension InjectionExtension on SintInterface {
   /// Instance<[S]> is registered in memory.
   /// - [tag] is optional, if you used a [tag] to register the lazy Instance.
   bool isPrepared<S>({String? tag}) {
-    final builder = _getDependency<S>(tag: tag);
+    final builder = (_hasActiveScopes ? _lookupScopedFactory(S, tag) : null) ??
+        _typeSingl[S]?[tag];
     if (builder == null) {
       return false;
     }
 
-    if (!builder.isInit) {
-      return true;
-    }
-    return false;
+    return !builder.isInit;
   }
 
   /// Clears all registered instances (and/or tags).
@@ -961,8 +1225,15 @@ extension InjectionExtension on SintInterface {
     for (final scope in List<SintScopeContainer>.of(_mountedScopes)) {
       scope.dispose();
     }
+    for (final entry in List<(SintScopeContainer, int)>.of(_imperativeScopes)) {
+      entry.$1.dispose();
+    }
     _mountedScopes.clear();
+    _imperativeScopes.clear();
     _buildScopes.clear();
+    _resolutionStack.clear();
+    _scopeEpoch = 0;
+    _widgetBuildScopeDepth = 0;
     _hasActiveScopes = false;
     _typeSingl.clear();
     InjectionExtension._singl.clear();
@@ -985,6 +1256,10 @@ class _InstanceBuilderFactory<S> {
   /// Instance manager will recreate a new instance of S
   bool fenix;
 
+  /// Whether this factory was registered lazily (`lazyPut` / `contract`) and
+  /// can recreate fresh instances under [SmartManagement.keepFactory].
+  final bool isLazyFactory;
+
   /// Stores the actual object instance when [isSingleton]=true.
   S? dependency;
 
@@ -997,9 +1272,10 @@ class _InstanceBuilderFactory<S> {
   bool permanent = false;
 
   bool isInit = false;
+  bool _isBuilding = false;
 
   /// Distinguishes successive initializations of a retained fenix factory.
-  Object? generation;
+  Object? generation = Object();
 
   String? _handle;
   String? _legacyKey;
@@ -1025,6 +1301,7 @@ class _InstanceBuilderFactory<S> {
     required this.isInit,
     required this.fenix,
     required this.tag,
+    this.isLazyFactory = false,
   });
 
   void _showInitLog() {

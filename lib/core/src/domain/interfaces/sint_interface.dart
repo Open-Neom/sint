@@ -19,10 +19,14 @@ abstract class SintInterface {
   /// outermost batch completes.
   T batch<T>(T Function() action) => ListNotifier.batch(action);
 
-  /// Creates a memoized derived reactive value ([Computed]) that automatically
-  /// tracks upstream `Rx` reads and only notifies listeners when its computed
-  /// result changes (`!=`).
-  Computed<T> computed<T>(T Function() compute) => Computed<T>(compute);
+  /// Creates a memoized, glitch-free derived reactive value ([Computed]) that
+  /// automatically tracks upstream `Rx` reads and only notifies listeners when
+  /// its computed result changes (`!=`).
+  ///
+  /// Set [lazy] to `true` to defer recomputation while no `Obx`, worker, or
+  /// listener is attached until [Computed.value] or [Computed.peek] is read.
+  Computed<T> computed<T>(T Function() compute, {bool lazy = false}) =>
+      Computed<T>(compute, lazy: lazy);
 
   /// Executes [fn] without tracking any reactive `Rx` or [Computed] reads in
   /// the enclosing `Obx`, `ObxValue`, or [Computed] scope.

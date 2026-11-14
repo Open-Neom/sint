@@ -289,6 +289,6 @@ class RxnString extends Rx<String?> implements Comparable<String>, Pattern {
 }
 
 extension StringExtension on String {
-  /// Returns a `RxString` with [this] `String` as initial value.
+  /// Returns a `RxString` with `this` `String` as initial value.
   RxString get obs => RxString(this);
 }

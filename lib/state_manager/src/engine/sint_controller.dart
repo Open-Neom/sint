@@ -48,10 +48,12 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
   /// timer would fire its callback on an already-disposed controller.
   final List<Timer> _timers = [];
 
-  /// Creates a memoized [Computed] signal scoped to this controller and
-  /// automatically disposes its upstream subscriptions in [onClose].
-  Computed<T> computed<T>(T Function() compute) {
-    final signal = Computed<T>(compute);
+  /// Creates a memoized, glitch-free [Computed] signal scoped to this
+  /// controller and automatically disposes its upstream subscriptions in [onClose].
+  ///
+  /// Set [lazy] to `true` to defer recomputation while unobserved until read.
+  Computed<T> computed<T>(T Function() compute, {bool lazy = false}) {
+    final signal = Computed<T>(compute, lazy: lazy);
     _syncDisposers.add(signal.dispose);
     return signal;
   }
@@ -132,6 +134,54 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
       return;
     }
     _workers.add(rx.listen(callback));
+  }
+
+  /// Calls [callback] whenever any reactive value in [listeners] changes.
+  ///
+  /// Uses SINT's synchronous, zero-Stream [ListNotifier] engine for every
+  /// [SintListenable] (`Rx`, `Computed`) in [listeners] and automatically
+  /// cleans up all subscriptions when [onClose] runs.
+  ///
+  /// ```dart
+  /// everAll([firstName, lastName], (_) {
+  ///   fullName.value = '${firstName.peek} ${lastName.peek}';
+  /// });
+  /// ```
+  Disposer everAll(
+    List<RxInterface<dynamic>> listeners,
+    void Function(dynamic) callback,
+  ) {
+    final localDisposers = <Disposer>[];
+    final localSubs = <StreamSubscription<dynamic>>[];
+    for (final rx in listeners) {
+      if (rx is SintListenable) {
+        final disposer = rx.addListener(() {
+          if (!isDisposed && !rx.isDisposed) {
+            callback(rx.peek);
+          }
+        });
+        _syncDisposers.add(disposer);
+        localDisposers.add(disposer);
+      } else {
+        final sub = rx.listen((val) {
+          if (!isDisposed) {
+            callback(val);
+          }
+        });
+        _workers.add(sub);
+        localSubs.add(sub);
+      }
+    }
+    return () {
+      for (final disposer in localDisposers) {
+        disposer();
+        _syncDisposers.remove(disposer);
+      }
+      for (final sub in localSubs) {
+        sub.cancel();
+        _workers.remove(sub);
+      }
+    };
   }
 
   /// Calls [callback] only the **first** time [rx] changes, then cancels.

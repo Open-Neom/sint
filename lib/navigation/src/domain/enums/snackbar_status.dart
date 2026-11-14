@@ -1,11 +1,10 @@
-/// Indicates Status of snackbar
-/// [SnackbarStatus.OPEN] Snack is fully open, [SnackbarStatus.CLOSED] Snackbar
-/// has closed,
-/// [SnackbarStatus.OPENING] Starts with the opening animation and ends
-/// with the full
-/// snackbar display, [SnackbarStatus.CLOSING] Starts with the closing animation
-/// and ends
-/// with the full snackbar dispose
+/// Indicates status of snackbar:
+/// [SnackbarStatus.open] Snack is fully open,
+/// [SnackbarStatus.closed] Snackbar has closed,
+/// [SnackbarStatus.opening] Starts with the opening animation and ends
+/// with the full snackbar display,
+/// [SnackbarStatus.closing] Starts with the closing animation and ends
+/// with the full snackbar dispose.
 enum SnackbarStatus {
   open,
   closed,

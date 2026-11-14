@@ -32,8 +32,7 @@ extension RxBoolExt on Rx<bool> {
   /// Toggles the bool [value] between false and true.
   /// A shortcut for `flag.value = !flag.value;`
   void toggle() {
-    call(!value);
-    // return this;
+    value = !peek;
   }
 }
 
@@ -59,19 +58,25 @@ extension RxnBoolExt on Rx<bool?> {
     return null;
   }
 
-  bool? operator ^(bool other) => !other == value;
+  bool? operator ^(bool other) {
+    final current = value;
+    if (current != null) {
+      return !other == current;
+    }
+    return null;
+  }
 
   /// Toggles the bool [value] between false and true.
   /// A shortcut for `flag.value = !flag.value;`
   void toggle() {
-    if (value != null) {
-      call(!value!);
-      // return this;
+    final current = peek;
+    if (current != null) {
+      value = !current;
     }
   }
 }
 
 extension BoolExtension on bool {
-  /// Returns a `RxBool` with [this] `bool` as initial value.
+  /// Returns a `RxBool` with `this` `bool` as initial value.
   RxBool get obs => RxBool(this);
 }

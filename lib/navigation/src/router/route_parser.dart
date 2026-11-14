@@ -13,10 +13,11 @@ class RouteParser {
   RouteParser({
     required List<SintPage> routes,
   }) {
-    this.routes = _RouteList(routes, () {
+    this.routes = _RouteList(<SintPage>[], () {
       _indexDirty = true;
       _patternsDirty = true;
     });
+    addRoutes(routes);
   }
 
   /// Mutable registered routes. Every mutation, including replacing or
@@ -71,7 +72,10 @@ class RouteParser {
     // non-literal — the regex builder treats any ':' as a param marker,
     // so the bucket logic must agree.
     if (!segment.contains(':')) return 0;
-    if (segment.startsWith(':') && segment.endsWith('*')) return 3;
+    if (segment.startsWith(':') &&
+        (segment.endsWith('*') || segment.endsWith('+'))) {
+      return 3;
+    }
     if (segment.startsWith(':') && segment.contains('(')) return 1;
     return 2;
   }
@@ -96,7 +100,10 @@ class RouteParser {
         : null;
     final name = route.name;
     final bool hasFixedSegmentCount = isPureLiteral ||
-        (!name.contains('?') && !name.contains('*') && !name.contains('('));
+        (!name.contains('?') &&
+            !name.contains('*') &&
+            !name.contains('+') &&
+            !name.contains('('));
     return _IndexedRoute(
       order,
       route,
@@ -206,9 +213,14 @@ class RouteParser {
       cleanPath = name;
       rawQueryParams = const <String, String>{};
     } else {
-      final uri = Uri.parse(name);
-      cleanPath = uri.path;
-      rawQueryParams = uri.queryParameters;
+      final uri = Uri.tryParse(name);
+      if (uri != null) {
+        cleanPath = uri.path;
+        rawQueryParams = uri.queryParameters;
+      } else {
+        cleanPath = name.split('?').first.split('#').first;
+        rawQueryParams = const <String, String>{};
+      }
     }
 
     final segments = _extractSegments(cleanPath);
@@ -338,13 +350,14 @@ class RouteParser {
           arguments.params.addAll(rawQueryParams);
         }
       }
-      return RouteDecoder(const <SintPage>[], arguments);
+      return RouteDecoder(<SintPage>[], arguments);
     }
 
     if (matchedPages != null) {
       final lastPage = matchedPages.last;
+      final normalizedPath = matchedPaths!.last;
       final parsedParams = _parseParams(
-        cleanPath,
+        normalizedPath,
         lastPage.path,
         cachedMatch: finalDepthMatch,
       );
@@ -373,7 +386,7 @@ class RouteParser {
         }
       }
 
-      final paths = matchedPaths!;
+      final paths = matchedPaths;
       final branchLength = matchedPages.length;
       final mappedTreeBranch = List<SintPage>.generate(branchLength, (idx) {
         final page = matchedPages![idx];
@@ -415,7 +428,7 @@ class RouteParser {
 
     //route not found
     return RouteDecoder(
-      const <SintPage>[],
+      <SintPage>[],
       arguments,
     );
   }
@@ -486,11 +499,11 @@ class RouteParser {
             : page.name,
         middlewares: [...page.middlewares, ...route.middlewares],
         bindings: [
-          ...page.bindings,
           ...route.bindings,
           if (route.binding != null) route.binding!,
+          ...page.bindings,
         ],
-        binds: [...page.binds, ...route.binds],
+        binds: [...route.binds, ...page.binds],
       );
       result.add(child);
       result.addAll(_flattenPage(child));
@@ -519,11 +532,20 @@ class RouteParser {
       if (group == null) continue;
       // Path segments are decoded with decodeComponent (NOT
       // decodeQueryComponent): '+' is a literal plus in a path segment,
-      // and '%2F' decodes to '/' after the segment split.
+      // and '%2F' decodes to '/' after the segment split. Malformed '%'
+      // sequences fall back to the raw segment instead of throwing ArgumentError.
       params[key] =
-          group.contains('%') ? Uri.decodeComponent(group) : group;
+          group.contains('%') ? _safeDecodeComponent(group) : group;
     }
     return params;
+  }
+
+  static String _safeDecodeComponent(String raw) {
+    try {
+      return Uri.decodeComponent(raw);
+    } on ArgumentError {
+      return raw;
+    }
   }
 }
 

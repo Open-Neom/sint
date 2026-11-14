@@ -41,9 +41,8 @@ extension DialogExtension on SintInterface {
       transitionDuration: transitionDuration ?? defaultDialogTransitionDuration,
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: transitionCurve ?? defaultDialogTransitionCurve,
+          opacity: animation.drive(
+            CurveTween(curve: transitionCurve ?? defaultDialogTransitionCurve),
           ),
           child: child,
         );

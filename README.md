@@ -47,9 +47,15 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 
 ---
 
-## What's New in 2.1.0
+## What's New in 2.2.0
 
-- **Contract-First Dependency Injection (`Bind.contract` / `Bind.putContract` / `aliases:`)**: Bind an abstract service contract `S` and its concrete controller `I extends S` to a single shared factory—eliminating 2-line `() => Sint.find<Controller>()` bridges in modular Clean Architecture apps (**−40.8% root `Element`s**, **1.65× faster cold mount**, **1.80× faster first service resolution**), plus multi-implementation lookup via `Sint.findAt<S>(index)` and `Sint.findAll<S>()`, `SintScope` overrides, and `SintService`.
+- **Single-Element `MultiBinder` ($O(1)$ Widget Depth), Scoped DI & Circular Cycle Guard**: `Binds` collapses $N$ declarative bindings into **1 single `MultiBindElement` (`InheritedModel<Type>`)** (**−95%+ widget-tree depth** on modular `RootBinding` hosts) while keeping `Bind.of<T>(context)` (including `Bind.of<Contract>(context)`) $O(1)$ and type-granular. Adds `Sint.putContractAsync`, `SintOverride.contract` / `contractValue`, circular dependency detection (`StateError`), headless `onReady` microtask support, `SmartManagement.keepFactory` lazy preservation, and automatic sibling `SintScope` isolation across `SintView`, `Obx`, `Binder`, `MultiBinder`, and `SintBuilder`.
+- **Glitch-Free & Lazy `Computed`, Single-Slot `Obx`, `everAll` & Fast Collections**: Tri-color (`clean`/`check`/`dirty`) `Computed` eliminates diamond glitches inside and outside `Sint.batch` with optional `lazy: true` demand evaluation; 1-signal `Obx`/`Computed` track dependencies inline with **zero `Map`/`Set`/`List` allocations**; adds zero-Stream `everAll`, `SintStatus.stackTraceOrNull`, single-notification `RxList`/`RxMap` bulk mutators, and content-checked `RxMap`/`RxSet.assignAll`.
+- **Reactive `.tr`, Zero-Reassemble `Sint.updateLocale` & Deduplicated Lazy Bundles**: `.tr` is natively reactive inside `Obx` and `Sint.computed`, `Sint.updateLocale` updates active screens in $O(1)$ without `WidgetsBinding.performReassemble()`, `appendTranslations` safely clones `const` maps, and concurrent `ensureLocaleLoaded` calls share a single in-flight `Future`.
+- **Unified Navigator 2.0 Middlewares, `:param+` Routes, `package:sint/rx.dart` & `llms.txt`**: Synchronous `SintMiddleware.redirect()` and async `redirectDelegate` are enforced before stack mutations across all navigation methods (`toNamed`, `offNamed`, `offNamedUntil`, `offAndToNamed`, `offAllNamed`, `off`, `offAll`), `pathParams` strictly take precedence over query parameters, `:param+` matches multi-segment paths, `SintRoute` adds `.uri(...)` and `.offAndTo(...)`, and [`llms.txt`](llms.txt) guides AI coding assistants.
+
+### Highlights from 2.1.0
+- **Contract-First Dependency Injection (`Bind.contract` / `Bind.putContract` / `aliases:`)**: Bind an abstract service contract `S` and its concrete controller `I extends S` to a single shared factory—eliminating 2-line `() => Sint.find<Controller>()` bridges in modular Clean Architecture apps, plus multi-implementation lookup via `Sint.findAt<S>(index)` and `Sint.findAll<S>()`, `SintScope` overrides, and `SintService`.
 - **Zero-Stream Workers, `ValueListenable` Interop & `RxFuture<T>`**: `Rx` and `Computed` implement Flutter's `ValueListenable<T>` directly (and read external `ValueNotifier`s via `.rxValue`), `ever`/`once`/`debounce`/`interval` run zero-Stream synchronous callbacks, and sealed `SintStatus<T>` + `RxFuture<T>` deliver stale-while-revalidate async state.
 - **Global Middlewares & Typed `SintRoute<TArgs, TResult>`**: Apply cross-cutting guards once via `globalMiddlewares` on `SintApp` / `SintMaterialApp` / `SintCupertinoApp`, and navigate with compile-time typed arguments and results via `SintRoute`.
 - **$O(1)$ Pre-Resolved Locale Cache & Single-Pass `.trParams`**: Zero per-frame locale string allocations in `IntlHost`, single-pass `StringBuffer` parameter interpolation, automatic `_zero`/`_other` plurals, and `Sint.registerLazyTranslations`.
@@ -66,7 +72,7 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 
 ```yaml
 dependencies:
-  sint: ^2.1.0
+  sint: ^2.2.0
 ```
 
 ```dart
@@ -155,7 +161,7 @@ Building an equivalent 4-pillar feature (Reactive State + Derived Value + Scoped
 
 ## Migrating from GetX
 
-1. Replace `get:` with `sint: ^2.1.0` in `pubspec.yaml`.
+1. Replace `get:` with `sint: ^2.2.0` in `pubspec.yaml`.
 2. Replace `import 'package:get/get.dart';` with `import 'package:sint/sint.dart';`.
 3. **Zero-friction compatibility in `2.x`**: Existing `Get.`, `GetxController`, `GetMaterialApp`, `GetPage`, `GetBuilder`, and `GetRouterOutlet` calls continue to compile with `@Deprecated` notices so you can migrate to `Sint*` symbols incrementally before `3.0.0`.
 
@@ -164,6 +170,7 @@ Building an equivalent 4-pillar feature (Reactive State + Derived Value + Scoped
 ## Documentation & Resources
 
 - **Pillar Guides**: [State](documentation/en_US/state_management.md) · [Injection](documentation/en_US/injection_management.md) · [Navigation](documentation/en_US/navigation_management.md) · [Translation](documentation/en_US/translation_management.md)
+- **AI Coding Assistant Reference**: [llms.txt](llms.txt)
 - **Standalone Material / Cupertino Migration**: [MIGRATION_DESIGN_SYSTEMS.md](MIGRATION_DESIGN_SYSTEMS.md)
 - **Benchmarks & Methodology**: [test/benchmarks/README.md](test/benchmarks/README.md) · [performance/README.md](performance/README.md)
 - **Release History & Roadmap**: [CHANGELOG.md](CHANGELOG.md) · [ROADMAP.md](ROADMAP.md)

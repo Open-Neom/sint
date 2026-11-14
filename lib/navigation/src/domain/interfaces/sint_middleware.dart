@@ -42,24 +42,33 @@ abstract class SintMiddleware {
   /// {@end-tool}
   RouteSettings? redirect(String? route) => null;
 
-  /// Similar to [redirect],
-  /// This function will be called when the router delegate changes the
-  /// current route.
+  /// Similar to [redirect], invoked when the Navigator 2.0 router delegate
+  /// evaluates a route transition (supports synchronous or asynchronous guards).
   ///
-  /// The default implmentation is to navigate to
-  /// the input route, with no redirection.
+  /// By default, delegates to [redirect] so synchronous `RouteSettings? redirect(String? route)`
+  /// guards work out of the box in both Navigator 1.0 and Navigator 2.0 (`SintApp` / `SintMaterialApp`).
   ///
-  /// if this returns null, the navigation is stopped,
-  /// and no new router are pushed.
+  /// If this returns `null`, navigation is cancelled and no new route is pushed.
   /// {@tool snippet}
   /// ```dart
-  /// RouteDecoder? redirect(RouteDecoder route) {
+  /// @override
+  /// FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) async {
   ///   final authService = Sint.find<AuthService>();
-  ///   return authService.authed.value ? null : const RouteSettings(name: '/login');
+  ///   return (await authService.isLoggedIn())
+  ///       ? route
+  ///       : RouteDecoder.fromRoute('/login');
   /// }
   /// ```
   /// {@end-tool}
-  FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) => (route);
+  FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) {
+    final currentName = route.pageSettings?.name ?? route.route?.name;
+    final redirected = redirect(currentName);
+    final nextName = redirected?.name;
+    if (nextName != null && nextName.isNotEmpty && nextName != currentName) {
+      return RouteDecoder.fromRoute(nextName, redirected?.arguments);
+    }
+    return route;
+  }
 
   /// This function will be called when this Page is called
   /// you can use it to change something about the page or give it new page

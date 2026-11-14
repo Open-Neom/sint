@@ -74,6 +74,15 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   List<SintPage> get registeredRoutes => _routeTree.routes;
 
+  /// Notifies the router delegate that active locale/theme metadata changed
+  /// without forcing a debug tree reassemble (`performReassemble`).
+  void notifyLocaleChanged() {
+    notifyListeners();
+  }
+
+  /// Fast `O(1)` check for whether a literal `'/'` route is registered.
+  bool get hasRegisteredRootRoute => _routeTree.matchRoute('/').route != null;
+
   void addPages(List<SintPage> getPages) {
     _routeTree.addRoutes(getPages);
   }
@@ -98,7 +107,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       final settings = entry.pageSettings;
       if (existingRoute == null || settings == null) continue;
       final matched = _routeTree.matchRoute(
-        settings.uri.path,
+        settings.uri.toString(),
         arguments: settings,
       );
       final freshTemplate = matched.route;
@@ -157,8 +166,10 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
            initialRoute ?? (pages.isNotEmpty ? pages.first.name : '/'),
        notFoundRoute = notFoundRoute ??= SintPage(
          name: '/404',
-         page: () =>
-             const Scaffold(body: Center(child: Text('Route not found'))),
+         page: () => const ColoredBox(
+           color: Color(0xFFFFFFFF),
+           child: Center(child: Text('Route not found')),
+         ),
        ) {
     if (!showHashOnUrl && kIsWeb && !SintUrlStrategy.isSet) {
       try {
@@ -171,6 +182,14 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     addPages(pages);
     addPage(notFoundRoute);
     Sint.log('SintDelegate is created !');
+  }
+
+  /// Clears cached observer/route state without disposing ChangeNotifier
+  /// listeners while descendant widgets are still unmounting.
+  void clearActiveState() {
+    _routeObserver.clear();
+    _activePages.clear();
+    _routeTree.routes.clear();
   }
 
   @override
@@ -229,6 +248,20 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     // If the target is not the same as the source, we need
     // to run the middlewares for the new route.
     if (iterator != config) {
+      if (iterator.route == null) {
+        final targetUrl = iterator.pageSettings?.name ?? notFoundRoute.name;
+        final ps = iterator.pageSettings ?? _buildPageSettings(targetUrl);
+        final fallback = RouteDecoder([
+          notFoundRoute.copyWith(
+            name: targetUrl,
+            key: ValueKey(targetUrl),
+            completer: _activePages.isEmpty ? null : Completer(),
+            arguments: ps,
+            parameters: ps.params,
+          ),
+        ], ps);
+        return await _runMiddleware(fallback, depth + 1);
+      }
       return await _runMiddleware(iterator, depth + 1);
     }
     return iterator;
@@ -283,19 +316,13 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   /// Inspired by Spring Boot's @PathVariable annotation.
   String? get routeParam {
     final ps = currentConfiguration?.pageSettings;
-    if (ps == null) return null;
-    final allParams = ps.params;
-    if (allParams.isEmpty) return null;
-    final queryKeys = ps.query.keys.toSet();
-    for (final entry in allParams.entries) {
-      if (!queryKeys.contains(entry.key)) return entry.value;
-    }
-    return null;
+    if (ps == null || ps.pathParams.isEmpty) return null;
+    return ps.pathParams.values.first;
   }
 
   /// Named path parameter (like Spring Boot @PathVariable("bookId")).
   String? pathParam(String name) {
-    return currentConfiguration?.pageSettings?.params[name];
+    return currentConfiguration?.pageSettings?.pathParams[name];
   }
 
   /// Query parameter only (like Spring Boot @RequestParam).
@@ -439,7 +466,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
   Widget build(BuildContext context) {
     final pages = _currentVisualPages();
     if (pages.isEmpty) {
-      return ColoredBox(color: Theme.of(context).scaffoldBackgroundColor);
+      return const SizedBox.shrink();
     }
     return SintNavigator(
       key: navigatorKey,
@@ -497,6 +524,9 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route != null) {
+      if (!preventDuplicates) {
+        route.route = route.route?.copyWith(preventDuplicates: false);
+      }
       return _push<T>(route);
     } else {
       // Programmatic navigation must preserve the rejected URL just like the
@@ -531,7 +561,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
     final getPage = SintPage<T>(
       name: routeName,
-      opaque: opaque ?? true,
+      opaque: opaque ?? Sint.defaultOpaqueRoute,
       page: page,
       gestureWidth: gestureWidth,
       showCupertinoParallax: showCupertinoParallax,
@@ -541,6 +571,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       fullscreenDialog: fullscreenDialog,
       bindings: bindings,
       transitionDuration: duration ?? Sint.defaultTransitionDuration,
+      preventDuplicates: preventDuplicates,
       preventDuplicateHandlingMode: preventDuplicateHandlingMode,
     );
 
@@ -572,7 +603,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     routeName ??= _cleanRouteName("/${page.runtimeType}");
     final route = SintPage<T>(
       name: routeName,
-      opaque: opaque ?? true,
+      opaque: opaque ?? Sint.defaultOpaqueRoute,
       page: page,
       gestureWidth: gestureWidth,
       showCupertinoParallax: showCupertinoParallax,
@@ -621,6 +652,17 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     );
 
     final args = _buildPageSettings(routeName, arguments);
+    _routeTree.addRoute(route);
+    final decoder = _getRouteDecoder<T>(args);
+    if (decoder == null) {
+      _routeTree.removeRoute(route);
+      return null;
+    }
+    final resolved = await runMiddleware(decoder);
+    if (resolved == null) {
+      _routeTree.removeRoute(route);
+      return null;
+    }
 
     final newPredicate = predicate ?? (route) => false;
 
@@ -628,7 +670,16 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       _popWithResult();
     }
 
-    return _replace(args, route);
+    final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
+    if (_activePages.isEmpty) {
+      _activePages.add(resolved);
+    } else {
+      _activePages[index] = resolved;
+    }
+    notifyListeners();
+    final result = await resolved.route?.completer?.future as Future<T?>?;
+    _routeTree.removeRoute(route);
+    return result;
   }
 
   @override
@@ -652,11 +703,22 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
 
+    final resolved = await runMiddleware(route);
+    if (resolved == null) return null;
+
     while (_activePages.length > 1) {
       _popWithResult();
     }
 
-    return _replaceNamed(route);
+    final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
+    if (_activePages.isEmpty) {
+      _activePages.add(resolved);
+    } else {
+      _activePages[index] = resolved;
+    }
+    notifyListeners();
+    final result = await resolved.route?.completer?.future as Future<T?>?;
+    return result;
   }
 
   @override
@@ -670,6 +732,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
+    final resolved = await runMiddleware(route);
+    if (resolved == null) return null;
 
     final newPredicate = predicate ?? (route) => false;
 
@@ -677,7 +741,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       _popWithResult();
     }
 
-    return _push(route);
+    return _push<T>(resolved, skipMiddleware: true);
   }
 
   @override
@@ -700,8 +764,12 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
-    _popWithResult();
-    return _push<T>(route);
+    final resolved = await runMiddleware(route);
+    if (resolved == null) return null;
+    if (_activePages.isNotEmpty) {
+      _popWithResult();
+    }
+    return _push<T>(resolved, skipMiddleware: true);
   }
 
   @override
@@ -715,12 +783,14 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final route = _getRouteDecoder<T>(arguments);
 
     if (route == null) return null;
+    final resolved = await runMiddleware(route);
+    if (resolved == null) return null;
 
     while (_activePages.isNotEmpty && !predicate(_activePages.last.route!)) {
       _popWithResult();
     }
 
-    return _push<T>(route);
+    return _push<T>(resolved, skipMiddleware: true);
   }
 
   @override
@@ -729,11 +799,36 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     bool Function(SintPage) predicate, [
     Object? arguments,
   ]) async {
+    final routeName = _cleanRouteName("/${page.runtimeType}");
+    final getPage = SintPage<T>(
+      name: routeName,
+      opaque: Sint.defaultOpaqueRoute,
+      page: page,
+      popGesture: Sint.defaultPopGesture,
+      transition: Sint.defaultTransition,
+      curve: Sint.defaultTransitionCurve,
+      transitionDuration: Sint.defaultTransitionDuration,
+    );
+    _routeTree.addRoute(getPage);
+    final args = _buildPageSettings(routeName, arguments);
+    final route = _getRouteDecoder<T>(args);
+    if (route == null) {
+      _routeTree.removeRoute(getPage);
+      return null;
+    }
+    final resolved = await runMiddleware(route);
+    if (resolved == null) {
+      _routeTree.removeRoute(getPage);
+      return null;
+    }
+
     while (_activePages.isNotEmpty && !predicate(_activePages.last.route!)) {
       _popWithResult();
     }
 
-    return to<T>(page, arguments: arguments);
+    final result = await _push<T>(resolved, skipMiddleware: true);
+    _routeTree.removeRoute(getPage);
+    return result;
   }
 
   @override
@@ -765,8 +860,12 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<R>(args);
     if (route == null) return null;
-    _popWithResult<T>(result);
-    return _push<R>(route);
+    final resolved = await runMiddleware(route);
+    if (resolved == null) return null;
+    if (_activePages.isNotEmpty) {
+      _popWithResult<T>(result);
+    }
+    return _push<R>(resolved, skipMiddleware: true);
   }
 
   /// Removes router according to [PopMode]
@@ -803,23 +902,27 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
     _routeTree.addRoute(page);
 
-    final activePage = _getRouteDecoder(arguments);
+    final activePage = _getRouteDecoder<T>(arguments);
+    if (activePage == null) {
+      _routeTree.removeRoute(page);
+      return null;
+    }
+    final resolved = await runMiddleware(activePage);
+    if (resolved == null) {
+      _routeTree.removeRoute(page);
+      return null;
+    }
 
-    _activePages[index] = activePage!;
+    if (_activePages.isEmpty) {
+      _activePages.add(resolved);
+    } else {
+      _activePages[index] = resolved;
+    }
 
     notifyListeners();
-    final result = await activePage.route?.completer?.future as Future<T?>?;
+    final result = await resolved.route?.completer?.future as Future<T?>?;
     _routeTree.removeRoute(page);
 
-    return result;
-  }
-
-  Future<T?> _replaceNamed<T>(RouteDecoder activePage) async {
-    final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
-    _activePages[index] = activePage;
-
-    notifyListeners();
-    final result = await activePage.route?.completer?.future as Future<T?>?;
     return result;
   }
 
@@ -845,10 +948,15 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
 
   @protected
   RouteDecoder? _getRouteDecoder<T>(PageSettings arguments) {
-    var page = arguments.uri.path;
+    var page = arguments.uri.toString();
     final parameters = arguments.params;
     if (parameters.isNotEmpty) {
-      final uri = Uri(path: page, queryParameters: parameters);
+      final uri = arguments.uri.replace(
+        queryParameters: {
+          ...arguments.uri.queryParameters,
+          ...parameters,
+        },
+      );
       page = uri.toString();
     }
 
@@ -864,11 +972,15 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     RouteDecoder decoder,
     PageSettings arguments,
   ) {
-    final parameters = arguments.params.isEmpty
-        ? arguments.query
-        : arguments.params;
-    arguments.params.addAll(arguments.query);
-    if (decoder.parameters.isEmpty) {
+    final parameters = <String, String>{
+      ...arguments.query,
+      ...arguments.params,
+      ...arguments.pathParams,
+    };
+    arguments.params
+      ..clear()
+      ..addAll(parameters);
+    if (decoder.parameters.isEmpty && parameters.isNotEmpty) {
       decoder.parameters.addAll(parameters);
     }
 
@@ -882,20 +994,31 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     return decoder;
   }
 
-  Future<T?> _push<T>(RouteDecoder decoder, {bool rebuildStack = true}) async {
-    var res = await runMiddleware(decoder);
+  Future<T?> _push<T>(
+    RouteDecoder decoder, {
+    bool rebuildStack = true,
+    bool skipMiddleware = false,
+  }) async {
+    var res = skipMiddleware ? decoder : await runMiddleware(decoder);
     if (res == null) return null;
 
+    final shouldPreventDuplicates = res.route?.preventDuplicates ?? true;
     final preventDuplicateHandlingMode =
         res.route?.preventDuplicateHandlingMode ??
         PreventDuplicateHandlingMode.reorderRoutes;
 
-    final onStackPage = _activePages.firstWhereOrNull(
-      (element) => element.route?.key == res.route?.key,
-    );
+    final onStackPage = shouldPreventDuplicates
+        ? _activePages.firstWhereOrNull(
+            (element) => element.route?.key == res.route?.key,
+          )
+        : null;
 
     /// There are no duplicate router in the stack
     if (onStackPage == null) {
+      if (!shouldPreventDuplicates &&
+          _activePages.any((element) => element.route?.key == res.route?.key)) {
+        res.route = res.route?.copyWith(key: UniqueKey());
+      }
       _activePages.add(res);
     } else {
       /// There are duplicate router, reorder
@@ -920,7 +1043,8 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       notifyListeners();
     }
 
-    return decoder.route?.completer?.future as Future<T?>?;
+    return (res.route?.completer ?? decoder.route?.completer)?.future
+        as Future<T?>?;
   }
 
   @override

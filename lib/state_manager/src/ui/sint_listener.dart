@@ -74,7 +74,11 @@ class _SintListenerState<T> extends State<SintListener<T>> {
       });
       return;
     }
-    _sub = rx.listen((value) => widget.listener(value));
+    _sub = rx.listen((value) {
+      if (mounted) {
+        widget.listener(value);
+      }
+    });
   }
 
   void _unsubscribe() {

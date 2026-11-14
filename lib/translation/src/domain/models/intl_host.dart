@@ -1,20 +1,44 @@
 import 'dart:collection';
 import 'dart:ui';
 
+import 'package:sint/state_manager/src/engine/list_notifier.dart';
+import 'package:sint/state_manager/src/engine/notifier.dart';
+
 import 'path_translator.dart';
+
+class _LocaleSignal extends ListNotifier {
+  @pragma('vm:prefer-inline')
+  void track() => reportRead();
+
+  @pragma('vm:prefer-inline')
+  void emit() => refresh();
+}
 
 class IntlHost {
   Locale? _locale;
   Locale? _fallbackLocale;
 
-  late final Map<String, Map<String, String>> translations =
-      _InvalidatingTranslationsMap(_markDirty);
+  /// Zero-Stream reactive signal notified whenever [locale], [fallbackLocale],
+  /// or [translations] change. Read lazily only when inside an active `Obx` or
+  /// `Computed` scope (`Notifier.instance.isTracking`).
+  final _LocaleSignal _localeSignal = _LocaleSignal();
+
+  late final _InvalidatingTranslationsMap _translationsMap =
+      _InvalidatingTranslationsMap(_markDirtyAndNotify);
+
+  Map<String, Map<String, String>> get translations => _translationsMap;
 
   /// Optional lazy translation loaders keyed by locale tag (e.g. `'es'`, `'es_MX'`).
   final Map<String, Future<Map<String, String>> Function()> lazyLoaders = {};
 
   /// Tracks locale tags already loaded via [lazyLoaders].
   final Set<String> loadedLocales = {};
+
+  /// Deduplicates concurrent in-flight lazy translation loads per locale tag.
+  final Map<String, Future<Map<String, String>>> inFlightLoaders = {};
+
+  /// Incremented on [clearTranslations] so stale in-flight loaders are ignored.
+  int loaderGeneration = 0;
 
   /// Optional hook invoked when a key is missing in both active and fallback locales.
   void Function(String key, Locale? locale)? onMissingKey;
@@ -28,28 +52,72 @@ class IntlHost {
   Map<String, String>? _fallbackPrimaryMap;
   Map<String, String>? _fallbackLanguageMap;
 
-  Locale? get locale => _locale;
+  Locale? get locale {
+    if (Notifier.instance.isTracking) {
+      _localeSignal.track();
+    }
+    return _locale;
+  }
+
+  /// Non-tracking read of the current [locale] for internal framework checks.
+  Locale? get peekLocale => _locale;
 
   set locale(Locale? value) {
     if (_locale == value) return;
     _locale = value;
     _cacheDirty = true;
+    _localeSignal.emit();
   }
 
-  Locale? get fallbackLocale => _fallbackLocale;
+  Locale? get fallbackLocale {
+    if (Notifier.instance.isTracking) {
+      _localeSignal.track();
+    }
+    return _fallbackLocale;
+  }
 
   set fallbackLocale(Locale? value) {
     if (_fallbackLocale == value) return;
     _fallbackLocale = value;
     _cacheDirty = true;
+    _localeSignal.emit();
   }
 
   void invalidateCache() {
     _cacheDirty = true;
+    _localeSignal.emit();
   }
 
-  void _markDirty() {
+  /// Replaces locale entries with defensive inner copies and emits at most one
+  /// reactive notification.
+  void addTranslations(Map<String, Map<String, String>> tr) {
+    _translationsMap.addAll(tr);
+  }
+
+  /// Merges [tr] into existing locale maps (creating mutable defensive copies
+  /// even when prior entries were `const` maps) and emits at most one reactive
+  /// notification across all locales.
+  void appendTranslations(Map<String, Map<String, String>> tr) {
+    _translationsMap.mergeAll(tr);
+  }
+
+  /// Clears all translations, lazy loaders, and missing-key hooks with a single
+  /// cache invalidation.
+  void clearTranslations() {
+    loaderGeneration++;
+    lazyLoaders.clear();
+    loadedLocales.clear();
+    inFlightLoaders.clear();
+    onMissingKey = null;
+    final hadEntries = _translationsMap.clearWithoutNotify();
+    if (hadEntries || !_cacheDirty) {
+      _markDirtyAndNotify();
+    }
+  }
+
+  void _markDirtyAndNotify() {
     _cacheDirty = true;
+    _localeSignal.emit();
   }
 
   Map<String, String>? _resolveLanguageMap(String languageCode) {
@@ -100,8 +168,13 @@ class IntlHost {
   }
 
   /// Resolves [key] in `O(1)` against cached active/fallback locale maps.
+  /// When evaluated inside an `Obx` or `Computed` scope, automatically
+  /// registers `_localeSignal` so UI/derived state updates on locale changes.
   /// Returns `null` when no translation exists (or when [locale] is `null`).
   String? lookup(String key, {bool reportMissing = true}) {
+    if (Notifier.instance.isTracking) {
+      _localeSignal.track();
+    }
     final loc = _locale;
     if (loc == null) return null;
     if (_cacheDirty) _rebuildCache();
@@ -141,8 +214,14 @@ class _InvalidatingTranslationsMap
 
   @override
   void operator []=(String key, Map<String, String> value) {
-    _inner[key] = value;
+    _inner[key] = Map<String, String>.of(value);
     _onMutated();
+  }
+
+  bool clearWithoutNotify() {
+    if (_inner.isEmpty) return false;
+    _inner.clear();
+    return true;
   }
 
   @override
@@ -181,7 +260,29 @@ class _InvalidatingTranslationsMap
   @override
   void addAll(Map<String, Map<String, String>> other) {
     if (other.isEmpty) return;
-    _inner.addAll(other);
+    other.forEach((key, value) {
+      _inner[key] = Map<String, String>.of(value);
+    });
     _onMutated();
+  }
+
+  void mergeAll(Map<String, Map<String, String>> other) {
+    if (other.isEmpty) return;
+    var changed = false;
+    other.forEach((key, map) {
+      final existing = _inner[key];
+      if (existing != null) {
+        if (map.isNotEmpty) {
+          existing.addAll(map);
+          changed = true;
+        }
+      } else {
+        _inner[key] = Map<String, String>.of(map);
+        changed = true;
+      }
+    });
+    if (changed) {
+      _onMutated();
+    }
   }
 }

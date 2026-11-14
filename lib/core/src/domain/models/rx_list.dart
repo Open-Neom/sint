@@ -46,8 +46,9 @@ class RxList<E> extends SintListenable<List<E>>
 
   @override
   void operator []=(int index, E val) {
-    if (value[index] != val) {
-      value[index] = val;
+    final target = peek;
+    if (target[index] != val) {
+      target[index] = val;
       refresh();
     }
   }
@@ -57,7 +58,6 @@ class RxList<E> extends SintListenable<List<E>>
   @override
   RxList<E> operator +(Iterable<E> val) {
     addAll(val);
-    // refresh();
     return this;
   }
 
@@ -68,19 +68,48 @@ class RxList<E> extends SintListenable<List<E>>
 
   @override
   void add(E element) {
-    value.add(element);
+    peek.add(element);
     refresh();
   }
 
   @override
   void addAll(Iterable<E> iterable) {
-    value.addAll(iterable);
+    final target = peek;
+    if (identical(this, iterable) || identical(target, iterable)) {
+      if (target.isEmpty) return;
+      target.addAll(List<E>.of(target));
+      refresh();
+      return;
+    }
+    final prevLength = target.length;
+    target.addAll(iterable);
+    if (target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
+  void insert(int index, E element) {
+    peek.insert(index, element);
     refresh();
   }
 
   @override
+  void insertAll(int index, Iterable<E> iterable) {
+    final target = peek;
+    final source = (identical(this, iterable) || identical(target, iterable))
+        ? List<E>.of(target)
+        : iterable;
+    final prevLength = target.length;
+    target.insertAll(index, source);
+    if (target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
   bool remove(Object? element) {
-    final removed = value.remove(element);
+    final removed = peek.remove(element);
     if (removed) {
       refresh();
     }
@@ -88,19 +117,89 @@ class RxList<E> extends SintListenable<List<E>>
   }
 
   @override
+  E removeAt(int index) {
+    final removed = peek.removeAt(index);
+    refresh();
+    return removed;
+  }
+
+  @override
+  E removeLast() {
+    final removed = peek.removeLast();
+    refresh();
+    return removed;
+  }
+
+  @override
+  void removeRange(int start, int end) {
+    final target = peek;
+    final prevLength = target.length;
+    target.removeRange(start, end);
+    if (target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
   void removeWhere(bool Function(E element) test) {
-    final prevLength = value.length;
-    value.removeWhere(test);
-    if (value.length != prevLength) {
+    final target = peek;
+    final prevLength = target.length;
+    target.removeWhere(test);
+    if (target.length != prevLength) {
       refresh();
     }
   }
 
   @override
   void retainWhere(bool Function(E element) test) {
-    final prevLength = value.length;
-    value.retainWhere(test);
-    if (value.length != prevLength) {
+    final target = peek;
+    final prevLength = target.length;
+    target.retainWhere(test);
+    if (target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
+  void setAll(int index, Iterable<E> iterable) {
+    final target = peek;
+    final source = (identical(this, iterable) || identical(target, iterable))
+        ? List<E>.of(target)
+        : iterable;
+    target.setAll(index, source);
+    refresh();
+  }
+
+  @override
+  void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0]) {
+    final target = peek;
+    final source = (identical(this, iterable) || identical(target, iterable))
+        ? List<E>.of(target)
+        : iterable;
+    target.setRange(start, end, source, skipCount);
+    if (end > start) {
+      refresh();
+    }
+  }
+
+  @override
+  void replaceRange(int start, int end, Iterable<E> newContents) {
+    final target = peek;
+    final source =
+        (identical(this, newContents) || identical(target, newContents))
+            ? List<E>.of(target)
+            : newContents;
+    final prevLength = target.length;
+    target.replaceRange(start, end, source);
+    if (end > start || target.length != prevLength) {
+      refresh();
+    }
+  }
+
+  @override
+  void fillRange(int start, int end, [E? fill]) {
+    peek.fillRange(start, end, fill);
+    if (end > start) {
       refresh();
     }
   }
@@ -109,25 +208,30 @@ class RxList<E> extends SintListenable<List<E>>
   int get length => value.length;
 
   @override
+  bool get isEmpty => value.isEmpty;
+
+  @override
+  bool get isNotEmpty => value.isNotEmpty;
+
+  @override
+  bool contains(Object? element) => value.contains(element);
+
+  @override
   set length(int newLength) {
-    if (value.length != newLength) {
-      value.length = newLength;
+    final target = peek;
+    if (target.length != newLength) {
+      target.length = newLength;
       refresh();
     }
   }
 
   @override
   void clear() {
-    if (value.isNotEmpty) {
-      value.clear();
+    final target = peek;
+    if (target.isNotEmpty) {
+      target.clear();
       refresh();
     }
-  }
-
-  @override
-  void insertAll(int index, Iterable<E> iterable) {
-    value.insertAll(index, iterable);
-    refresh();
   }
 
   @override
@@ -145,24 +249,28 @@ class RxList<E> extends SintListenable<List<E>>
 
   @override
   void sort([int Function(E a, E b)? compare]) {
-    value.sort(compare);
-    refresh();
+    final target = peek;
+    if (target.length > 1) {
+      target.sort(compare);
+      refresh();
+    }
   }
 
   /// Replaces all existing items with [item] in a reactive way,
   /// triggering [refresh] only if the list actually changes.
   void assign(E item) {
-    if (value.length == 1 && value.first == item) return;
-    value.clear();
-    value.add(item);
+    final target = peek;
+    if (target.length == 1 && target.first == item) return;
+    target.clear();
+    target.add(item);
     refresh();
   }
 
   /// Replaces all existing items with [items] in a reactive way,
   /// triggering [refresh] only if the contents actually change.
   void assignAll(Iterable<E> items) {
-    final current = value;
-    if (identical(current, items)) return;
+    final current = peek;
+    if (identical(this, items) || identical(current, items)) return;
     // Iterables and list views may read this very list lazily. Consume them
     // before clearing the backing collection (also preserves it on failure).
     // A List can be compared without allocating when its contents are equal.

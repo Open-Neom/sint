@@ -1,0 +1,160 @@
+# SINT (State · Injection · Navigation · Translation) — v2.2.0 LLM Reference
+
+> High-performance, Clean Architecture micro-framework for Flutter (`>=3.47.0`, Dart `^3.13.0`).
+> Repository: https://github.com/Open-Neom/sint
+> Pub package: https://pub.dev/packages/sint
+
+SINT replaces legacy GetX internals with a strict 4-pillar architecture (`S · I · N · T`), reified `Type`-keyed DI (safe under Web/Wasm minification), single-element `MultiBinder` (`O(1)` widget depth), zero-allocation single-slot `Obx`/`Computed` signals, a multi-level literal prefix trie router, and reactive `O(1)` localization.
+
+## Critical Rules for AI Coding Assistants
+
+1. **Import only `package:sint/sint.dart`** — Never generate `GetConnect`, HTTP clients, or string validators from `sint` (SINT intentionally excludes non-pillar bloat).
+2. **Use `Sint*` symbols, NOT `@Deprecated` `Get*` aliases**:
+   - `Sint` (not `Get`), `SintController` (not `GetxController`), `SintService` (not `GetxService`)
+   - `SintApp` / `SintMaterialApp` / `SintCupertinoApp` (not `GetMaterialApp`)
+   - `SintPage` (not `GetPage`), `SintView<T>` (not `GetView<T>`), `SintBuilder<T>` (not `GetBuilder<T>`), `SintRouterOutlet` (not `GetRouterOutlet`)
+   - Use `initialRoute:` + `sintPages:` (never the deprecated `home:` parameter).
+3. **Contract-First Clean Architecture DI (`Bind.contract`)**:
+   - When binding an abstract interface `AuthService` implemented by `AuthController extends SintController implements AuthService`, ALWAYS use a single `Bind.contract<AuthService, AuthController>(() => AuthController(), fenix: true)` (or `Sint.contract` / `Sint.putContract` / `Sint.putContractAsync`).
+   - NEVER emit two separate lines with a closure bridge (`Bind.lazyPut<AuthController>(...)` + `Bind.lazyPut<AuthService>(() => Sint.find<AuthController>())`).
+4. **Fine-Grained Signals (`Obx`, `Computed`, `Sint.batch`, `RxFuture`)**:
+   - Mutate multiple reactive fields inside `Sint.batch(() { ... })` to coalesce downstream `Computed` and `Obx` rebuilds into a single pass.
+   - Inside `SintController`, declare derived state with `late final total = computed(() => ...)` and async state with `late final profile = rxFuture(() => repo.load())` so resources auto-dispose on route pop (`onClose`).
+   - Read `.peek` (or `Sint.untrack(...)`) inside controller methods/mutators when you do NOT want to register a reactive dependency.
+
+---
+
+## Pillar S — State Management
+
+```dart
+class CheckoutController extends SintController {
+  final qty = 1.obs;
+  final unitPrice = 25.0.obs;
+  late final subtotal = computed(() => qty.value * unitPrice.value); // Glitch-free diamond signal (optional `lazy: true`)
+  late final orderStatus = rxFuture(() => api.fetchOrder());
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Zero-Stream synchronous workers (auto-disposed with controller):
+    ever<int>(qty, (next) => Sint.log('Qty changed: $next'));
+    everAll([qty, unitPrice], (_) => Sint.log('Pricing inputs updated'));
+  }
+
+  void applyBundle() => Sint.batch(() {
+    qty.value += 2;
+    unitPrice.value = 20.0;
+  });
+}
+```
+
+- **Widgets**:
+  - `Obx(() => Text('${c.subtotal.value}'))` — Zero-allocation single-slot fast path for 1-signal widgets; automatic conditional branch pruning; tracks `.obs`, `Computed`, external `ValueListenable.rxValue`, and `.tr`.
+  - `SintView<CheckoutController>` — Typed `StatelessWidget` with `controller` getter (automatically honors `SintScope`).
+  - Exhaustive async UI via Dart 3 `SintStatus<T>` pattern matching:
+    ```dart
+    Obx(() => switch (c.orderStatus.value) {
+      LoadingStatus(:final previousData) when previousData != null => ContentView(previousData, refreshing: true),
+      LoadingStatus() => const CircularProgressIndicator(),
+      SuccessStatus(:final data) => ContentView(data),
+      EmptyStatus() => const EmptyPlaceholder(),
+      ErrorStatus(:final error, :final stackTrace) => ErrorBanner('$error', stackTrace: stackTrace, onRetry: c.orderStatus.reload),
+    })
+    ```
+- **Collections (`RxList`, `RxMap`, `RxSet`)**:
+  - Default `RxList()`, `RxMap()`, `RxSet()` are mutable; `assign` and `assignAll` short-circuit with `0` notifications when contents are unchanged.
+
+---
+
+## Pillar I — Dependency Injection & Scoped Testing
+
+```dart
+// Declarative root or route-level DI (flattened into 1 MultiBinder Element):
+Binds(
+  binds: [
+    Bind.put<LoggerService>(LoggerService()), // SintService => permanent: true by default
+    Bind.contract<AuthService, AuthController>(
+      () => AuthController(),
+      aliases: [SessionManageable],
+      fenix: true,
+    ),
+  ],
+  child: child,
+)
+```
+
+- **Imperative & Async DI**:
+  - `Sint.put<T>(instance)`, `Sint.lazyPut<T>(() => ..., fenix: true)`
+  - `Sint.contract<S, I>(() => I(), tag: 'v2', isDefault: true, aliases: [...])`
+  - `Sint.putContract<S, I>(instance)` / `await Sint.putContractAsync<S, I>(() async => ...)`
+  - `Sint.find<S>()`, `Sint.findOrNull<S>()`, `Sint.findAll<S>()`, `Sint.findAt<S>(0)`
+- **Scoped Overrides (`SintScope` for Widget Subtrees & Unit Tests)**:
+  ```dart
+  // Headless test:
+  await SintScope.run(
+    overrides: [
+      SintOverride.contract<AuthService, FakeAuthController>(() => FakeAuthController()),
+    ],
+    body: () async {
+      expect(Sint.find<AuthService>().isLoggedIn, isTrue);
+    },
+  );
+
+  // Widget subtree / side-by-side sibling scopes:
+  SintScope(
+    overrides: [SintOverride.value<AuthService>(FakeAuthService())],
+    child: const LoginPage(),
+  )
+  ```
+
+---
+
+## Pillar N — Navigation, Typed Routes & Middlewares
+
+```dart
+// Compile-time typed route descriptor:
+const profileRoute = SintRoute<ProfileArgs, bool>('/profile/:id');
+
+final app = SintApp( // Standalone material_ui / cupertino_ui adaptive host (or SintMaterialApp)
+  materialTheme: ThemeData(),
+  initialRoute: '/',
+  globalMiddlewares: [AuthGuard()],
+  binds: [
+    Bind.contract<AuthService, AuthController>(() => AuthController(), fenix: true),
+  ],
+  sintPages: [
+    SintPage(name: '/', page: () => const HomePage()),
+    profileRoute.page(
+      binds: [Bind.lazyPut(() => ProfileController())],
+      page: () => const ProfilePage(),
+    ),
+  ],
+);
+
+// Navigate with typed arguments, path params, and result Future<bool?>:
+final saved = await profileRoute.to(
+  arguments: const ProfileArgs(tab: 1),
+  pathParams: {'id': '42'},
+  queryParams: {'ref': 'feed'},
+);
+```
+
+- **Context-Free Navigation**: `Sint.toNamed('/path')`, `Sint.offNamed('/path')`, `Sint.offNamedUntil('/path', predicate)`, `Sint.offAndToNamed('/path')`, `Sint.offAllNamed('/login')`, `Sint.back(result: true)`, and typed `profileRoute.uri(...)` / `profileRoute.offAndTo(...)`. Supports `:id`, `:id?`, `:id(\\d+)`, `:slug*`, and `:slug+` multi-segment templates; `pathParams` always take precedence over `queryParams`.
+- **Middlewares (`SintMiddleware`)**:
+  - Override synchronous `RouteSettings? redirect(String? route)` OR `Future<RouteDecoder?> redirectDelegate(RouteDecoder route)`. Enforced consistently before stack mutation across `toNamed`, `offNamed`, `offNamedUntil`, `offAndToNamed`, `offAllNamed`, `off`, and `offAll`.
+
+---
+
+## Pillar T — Reactive Localization (`O(1)` Lookup)
+
+```dart
+// Reactive inside Obx and Computed — automatically updates on Sint.updateLocale!
+Obx(() => Text('welcome_user'.trParams({'name': user.name.value})))
+
+// Register lazy locale bundles on demand:
+Sint.registerLazyTranslations('fr_FR', () => loadFrenchDictionary());
+await Sint.updateLocale(const Locale('fr', 'FR')); // Zero performReassemble() overhead
+```
+
+- Plural keys resolve `_zero` / `_other` automatically via `'item_count'.trPluralParams('item_count_plural', count, {'count': '$count'})`.
+- Missing key telemetry hook: `Sint.onMissingTranslationKey = (key, locale) => ...`.

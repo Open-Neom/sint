@@ -180,7 +180,7 @@ extension RxNumExt<T extends num> on Rx<T> {
 
   /// Returns this [num] clamped to be in the range [lowerLimit]-[upperLimit].
   ///
-  /// The comparison is done using [compareTo] and therefore takes `-0.0` into
+  /// The comparison is done using `compareTo` and therefore takes `-0.0` into
   /// account. This also implies that [double.nan] is treated as the maximal
   /// double value.
   ///
@@ -232,7 +232,7 @@ extension RxNumExt<T extends num> on Rx<T> {
   /// `0 <= fractionDigits <= 20`. In this case the string contains exactly
   /// [fractionDigits] after the decimal point. Otherwise, without the
   /// parameter, the returned string uses the shortest number of digits that
-  /// accurately represent [this].
+  /// accurately represent `this`.
   ///
   /// If [fractionDigits] equals 0 then the decimal point is omitted.
   /// Examples:
@@ -488,7 +488,7 @@ extension RxnNumExt<T extends num> on Rx<T?> {
 
   /// Returns this [num] clamped to be in the range [lowerLimit]-[upperLimit].
   ///
-  /// The comparison is done using [compareTo] and therefore takes `-0.0` into
+  /// The comparison is done using `compareTo` and therefore takes `-0.0` into
   /// account. This also implies that [double.nan] is treated as the maximal
   /// double value.
   ///
@@ -540,7 +540,7 @@ extension RxnNumExt<T extends num> on Rx<T?> {
   /// `0 <= fractionDigits <= 20`. In this case the string contains exactly
   /// [fractionDigits] after the decimal point. Otherwise, without the
   /// parameter, the returned string uses the shortest number of digits that
-  /// accurately represent [this].
+  /// accurately represent `this`.
   ///
   /// If [fractionDigits] equals 0 then the decimal point is omitted.
   /// Examples:
@@ -577,14 +577,16 @@ class RxNum extends Rx<num> {
   RxNum(super.initial);
 
   num operator +(num other) {
-    value += other;
-    return value;
+    final next = peek + other;
+    value = next;
+    return next;
   }
 
   /// Subtraction operator.
   num operator -(num other) {
-    value -= other;
-    return value;
+    final next = peek - other;
+    value = next;
+    return next;
   }
 }
 
@@ -592,18 +594,22 @@ class RxnNum extends Rx<num?> {
   RxnNum([super.initial]);
 
   num? operator +(num other) {
-    if (value != null) {
-      value = value! + other;
-      return value;
+    final current = peek;
+    if (current != null) {
+      final next = current + other;
+      value = next;
+      return next;
     }
     return null;
   }
 
   /// Subtraction operator.
   num? operator -(num other) {
-    if (value != null) {
-      value = value! - other;
-      return value;
+    final current = peek;
+    if (current != null) {
+      final next = current - other;
+      value = next;
+      return next;
     }
     return null;
   }
@@ -612,13 +618,13 @@ class RxnNum extends Rx<num?> {
 extension RxDoubleExt on Rx<double> {
   /// Addition operator.
   Rx<double> operator +(num other) {
-    value = value + other;
+    value = peek + other;
     return this;
   }
 
   /// Subtraction operator.
   Rx<double> operator -(num other) {
-    value = value - other;
+    value = peek - other;
     return this;
   }
 
@@ -720,8 +726,9 @@ extension RxDoubleExt on Rx<double> {
 extension RxnDoubleExt on Rx<double?> {
   /// Addition operator.
   Rx<double?>? operator +(num other) {
-    if (value != null) {
-      value = value! + other;
+    final current = peek;
+    if (current != null) {
+      value = current + other;
       return this;
     }
     return null;
@@ -729,8 +736,9 @@ extension RxnDoubleExt on Rx<double?> {
 
   /// Subtraction operator.
   Rx<double?>? operator -(num other) {
-    if (value != null) {
-      value = value! - other;
+    final current = peek;
+    if (current != null) {
+      value = current - other;
       return this;
     }
     return null;
@@ -871,13 +879,13 @@ class RxInt extends Rx<int> {
 
   /// Addition operator.
   RxInt operator +(int other) {
-    value = value + other;
+    value = peek + other;
     return this;
   }
 
   /// Subtraction operator.
   RxInt operator -(int other) {
-    value = value - other;
+    value = peek - other;
     return this;
   }
 }
@@ -887,16 +895,18 @@ class RxnInt extends Rx<int?> {
 
   /// Addition operator.
   RxnInt operator +(int other) {
-    if (value != null) {
-      value = value! + other;
+    final current = peek;
+    if (current != null) {
+      value = current + other;
     }
     return this;
   }
 
   /// Subtraction operator.
   RxnInt operator -(int other) {
-    if (value != null) {
-      value = value! - other;
+    final current = peek;
+    if (current != null) {
+      value = current - other;
     }
     return this;
   }
@@ -1356,11 +1366,11 @@ extension RxnIntExt on Rx<int?> {
 }
 
 extension IntExtension on int {
-  /// Returns a `RxInt` with [this] `int` as initial value.
+  /// Returns a `RxInt` with `this` `int` as initial value.
   RxInt get obs => RxInt(this);
 }
 
 extension DoubleExtension on double {
-  /// Returns a `RxDouble` with [this] `double` as initial value.
+  /// Returns a `RxDouble` with `this` `double` as initial value.
   RxDouble get obs => RxDouble(this);
 }

@@ -75,13 +75,18 @@ extension TransExtension on String {
         replacement = params[trans.substring(tokenStart, identEnd)];
       }
 
-      // Fallback for non-identifier keys or prefix tokens (e.g. '@a' inside '@ab').
+      // Fallback for non-identifier keys (e.g. '@user-name') without corrupting
+      // longer identifier tokens when only a prefix key is present (e.g. '@admin'
+      // inside '@admin_email').
       if (replacement == null) {
         var bestLen = 0;
         params.forEach((key, value) {
           if (key.length > bestLen && trans.startsWith(key, tokenStart)) {
-            bestLen = key.length;
-            replacement = value;
+            final endPos = tokenStart + key.length;
+            if (endPos >= length || !_isIdentChar(trans.codeUnitAt(endPos))) {
+              bestLen = key.length;
+              replacement = value;
+            }
           }
         });
         if (bestLen > 0) {
@@ -137,6 +142,9 @@ extension TransExtension on String {
   /// Example: your name => Your name
   String get capitalizeFirst {
     if (trim().isEmpty) return this;
-    return this[0].toUpperCase() + substring(1).toLowerCase();
+    final firstRune = runes.first;
+    final firstLen = firstRune > 0xFFFF ? 2 : 1;
+    return substring(0, firstLen).toUpperCase() +
+        substring(firstLen).toLowerCase();
   }
 }

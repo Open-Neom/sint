@@ -32,8 +32,8 @@ class RouterReportManager<T> {
     _current = newRoute;
   }
 
-  /// Links a Class instance [S] (or [tag]) to the current route.
-  /// Requires usage of `SintMaterialApp`.
+  /// Links a Class instance `S` (or `tag`) to the current route.
+  /// Requires usage of `SintMaterialApp` or `SintApp`.
   /// Accepts generation-scoped references or unambiguous legacy string keys.
   void reportDependencyLinkedToRoute(Object dependencyKey) {
     if (dependencyKey is! String && dependencyKey is! RouteDependency) {
@@ -53,8 +53,8 @@ class RouterReportManager<T> {
   }
 
   void appendRouteByCreate(SintLifeCycleMixin i) {
+    if (_current == null) return;
     _routesByCreate[_current] ??= HashSet<Function>();
-    // _routesByCreate[Sint.reference]!.add(i.onDelete as Function);
     _routesByCreate[_current]!.add(i.onDelete);
   }
 

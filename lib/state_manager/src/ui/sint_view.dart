@@ -7,7 +7,9 @@ import 'package:sint/injection/sint_injection.dart';
 ///
 /// Serves as the idiomatic SINT counterpart to `GetView<T>`, eliminating
 /// repeated `final controller = Sint.find<MyController>();` boilerplate
-/// across modular pages.
+/// across modular pages. Automatically honors ancestor [SintScope] overrides
+/// (including side-by-side sibling scopes) with zero cost when no scopes are
+/// active.
 ///
 /// ```dart
 /// class CounterPage extends SintView<CounterController> {
@@ -27,4 +29,22 @@ abstract class SintView<T> extends StatelessWidget {
 
   /// Resolves the active [T] instance from SINT's dependency container.
   T get controller => Sint.find<T>(tag: tag);
+
+  @override
+  StatelessElement createElement() => _SintViewElement<T>(this);
+}
+
+class _SintViewElement<T> extends StatelessElement {
+  _SintViewElement(SintView<T> super.widget);
+
+  @override
+  Widget build() {
+    if (!InjectionExtension.hasActiveScopes) {
+      return super.build();
+    }
+    return InjectionExtension.runWithWidgetBuildScopes(
+      SintScope.ancestorContainersOf(this),
+      super.build,
+    );
+  }
 }

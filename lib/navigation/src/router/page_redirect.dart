@@ -25,12 +25,14 @@ class PageRedirect {
       // depth indicate a middleware loop — fail loudly instead of
       // looping forever.
       if (++redirectDepth > 5) {
-        throw 'Redirect loop detected: "${settings?.name}" exceeded the '
-            'maximum redirect depth (5). Check your middlewares for '
-            'cyclic redirects.';
+        throw StateError(
+          'Redirect loop detected: "${settings?.name}" exceeded the '
+          'maximum redirect depth (5). Check your middlewares for '
+          'cyclic redirects.',
+        );
       }
     }
-    final r = (isUnknown ? (unk ?? rou) : rou);
+    final r = isUnknown ? (unk ?? rou) : (route ?? rou);
     final global = context.delegate.globalMiddlewares;
 
     return SintPageRoute<T>(
@@ -40,7 +42,7 @@ class PageRedirect {
       title: r.title,
       maintainState: r.maintainState,
       routeName: r.name,
-      settings: r,
+      settings: rou,
       curve: r.curve,
       showCupertinoParallax: r.showCupertinoParallax,
       gestureWidth: r.gestureWidth,
@@ -66,8 +68,13 @@ class PageRedirect {
     if (settings == null && route != null) {
       settings = route;
     }
+    final targetName = settings?.name;
+    if (targetName == null || targetName.isEmpty) {
+      isUnknown = true;
+      return false;
+    }
     final delegate = context.delegate;
-    final match = delegate.matchRoute(settings!.name!);
+    final match = delegate.matchRoute(targetName);
 
     // No Match found
     if (match.route == null) {
@@ -75,21 +82,29 @@ class PageRedirect {
       return false;
     }
 
+    isUnknown = false;
+
     final combinedMiddlewares = MiddlewareRunner.combine(
       delegate.globalMiddlewares,
       match.route!.middlewares,
     );
 
-    // No middlewares found return match.
+    // No middlewares found: preserve initial page unless redirected.
     if (combinedMiddlewares.isEmpty) {
+      if (!identical(settings, route)) {
+        route = match.route;
+      }
       return false;
     }
 
     final runner = MiddlewareRunner(combinedMiddlewares);
-    route = runner.runOnPageCalled(match.route);
+    final candidate = identical(settings, route)
+        ? (route ?? match.route)
+        : match.route;
+    route = runner.runOnPageCalled(candidate) ?? candidate;
     addPageParameter(route!);
 
-    final newSettings = runner.runRedirect(settings!.name);
+    final newSettings = runner.runRedirect(targetName);
     if (newSettings == null) {
       return false;
     }

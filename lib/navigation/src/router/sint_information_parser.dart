@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/translation/sint_translation.dart';
 import 'package:sint/navigation/src/router/route_decoder.dart';
 
@@ -15,6 +16,7 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
   }
 
   final String initialRoute;
+  bool _consumedInitialRoute = false;
 
   SintInformationParser({
     required this.initialRoute,
@@ -25,14 +27,17 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
   SynchronousFuture<RouteDecoder> parseRouteInformation(
     RouteInformation routeInformation,
   ) {
+    final isFirstParse = !_consumedInitialRoute;
+    _consumedInitialRoute = true;
     final uri = routeInformation.uri;
     var location = uri.toString();
     if (location == '/') {
-      //check if there is a corresponding page
-      //if not, relocate to initialRoute
-      if (!(Sint.rootController.rootDelegate)
-          .registeredRoutes
-          .any((element) => element.name == '/')) {
+      // On first non-web boot, honor an explicit non-root `initialRoute` even
+      // when `'/'` is also registered; otherwise fall back to `initialRoute`
+      // whenever `'/'` is not a registered route (`O(1)` trie lookup).
+      if (!SintRoot.treeInitialized ||
+          (!kIsWeb && isFirstParse && initialRoute != '/') ||
+          !(Sint.rootController.rootDelegate).hasRegisteredRootRoute) {
         location = initialRoute;
       }
     } else if (location.isEmpty) {
@@ -77,11 +82,19 @@ class SintInformationParser extends RouteInformationParser<RouteDecoder> {
 /// This only prevents opaque Dart objects (for example domain models), cyclic
 /// containers, maps with non-string keys, and non-finite numbers from reaching
 /// browser history serialization.
+const Set<String> _kUnsafeRouteStateKeys = <String>{
+  '__proto__',
+  'constructor',
+  'prototype',
+};
+const int _kMaxRouteStateDepth = 32;
+
 @visibleForTesting
 Object? sanitizeRouteInformationState(Object? state) {
   return _isJsonSafeRouteInformationState(
     state,
     HashSet<Object>.identity(),
+    0,
   )
       ? state
       : null;
@@ -90,19 +103,27 @@ Object? sanitizeRouteInformationState(Object? state) {
 bool _isJsonSafeRouteInformationState(
   Object? value,
   Set<Object> activeContainers,
+  int depth,
 ) {
-  if (value == null || value is String || value is bool || value is int) {
+  if (depth > _kMaxRouteStateDepth) return false;
+
+  if (value == null || value is String || value is bool) {
     return true;
   }
 
-  if (value is double) {
+  // On JS/DDC `double.infinity is int` evaluates to true, so check `num.isFinite`.
+  if (value is num) {
     return value.isFinite;
   }
 
   if (value is List) {
     if (!activeContainers.add(value)) return false;
     final isSafe = value.every(
-      (element) => _isJsonSafeRouteInformationState(element, activeContainers),
+      (element) => _isJsonSafeRouteInformationState(
+        element,
+        activeContainers,
+        depth + 1,
+      ),
     );
     activeContainers.remove(value);
     return isSafe;
@@ -113,7 +134,12 @@ bool _isJsonSafeRouteInformationState(
     final isSafe = value.entries.every(
       (entry) =>
           entry.key is String &&
-          _isJsonSafeRouteInformationState(entry.value, activeContainers),
+          !_kUnsafeRouteStateKeys.contains(entry.key) &&
+          _isJsonSafeRouteInformationState(
+            entry.value,
+            activeContainers,
+            depth + 1,
+          ),
     );
     activeContainers.remove(value);
     return isSafe;

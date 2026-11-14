@@ -13,25 +13,35 @@ class SintQueue {
 
   void cancelAllJobs() {
     for (final item in _queue) {
-      item.completer.completeError(StateError('Job cancelled'));
+      if (!item.completer.isCompleted) {
+        item.completer.completeError(StateError('Job cancelled'));
+      }
     }
     _queue.clear();
   }
 
-  void _check() async {
-    if (!_active && _queue.isNotEmpty) {
-      _active = true;
-      var item = _queue.removeAt(0);
-      try {
-        item.completer.complete(await item.job());
-      } catch (e) {
-        // Catch everything (Exception AND Error, e.g. TypeError) so the
-        // queue never freezes and the completer always completes.
-        item.completer.completeError(e);
-      } finally {
-        _active = false;
+  Future<void> _check() async {
+    if (_active) return;
+    _active = true;
+    try {
+      while (_queue.isNotEmpty) {
+        final item = _queue.removeAt(0);
+        if (item.completer.isCompleted) continue;
+        try {
+          final result = await item.job();
+          if (!item.completer.isCompleted) {
+            item.completer.complete(result);
+          }
+        } catch (e, st) {
+          // Catch everything (Exception AND Error, e.g. TypeError) so the
+          // queue never freezes and the completer always completes.
+          if (!item.completer.isCompleted) {
+            item.completer.completeError(e, st);
+          }
+        }
       }
-      _check();
+    } finally {
+      _active = false;
     }
   }
 }

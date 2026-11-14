@@ -352,7 +352,18 @@ class SintApp extends StatelessWidget {
         shortcuts: shortcuts,
         actions: actions,
         restorationScopeId: restorationScopeId,
-        scrollBehavior: scrollBehavior,
+        scrollBehavior:
+            scrollBehavior ??
+            (kIsWeb
+                ? const cupertino.CupertinoScrollBehavior().copyWith(
+                    scrollbars: true,
+                    dragDevices: {
+                      ui.PointerDeviceKind.touch,
+                      ui.PointerDeviceKind.mouse,
+                      ui.PointerDeviceKind.trackpad,
+                    },
+                  )
+                : null),
       );
     }
     return material.MaterialApp.router(

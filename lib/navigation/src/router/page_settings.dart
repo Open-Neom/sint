@@ -69,23 +69,44 @@ class PageSettings extends RouteSettings {
 /// When [pathParams] is supplied, required parameters without a value are
 /// left as-is. Optional parameters without a value are omitted, together
 /// with their '/' or '.' separator.
+final RegExp _kRouteControlOrBidi = RegExp(
+  r'[\x00-\x1F\x7F-\x9F\u061C\u202A-\u202E\u2066-\u2069]',
+);
+
 String resolveRoutePath(
   String page, {
   Map<String, String>? pathParams,
   Map<String, String>? queryParams,
 }) {
-  var resolved = page;
+  var resolved = page.replaceAll(_kRouteControlOrBidi, '');
 
   if (pathParams != null) {
-    resolved = RouteTemplate.parse(page).resolve(pathParams);
+    final cleanPathParams = <String, String>{
+      for (final e in pathParams.entries)
+        e.key.replaceAll(_kRouteControlOrBidi, ''):
+            e.value.replaceAll(_kRouteControlOrBidi, ''),
+    };
+    resolved = RouteTemplate.parse(resolved).resolve(cleanPathParams);
   }
 
   if (queryParams != null && queryParams.isNotEmpty) {
-    final uri = Uri.parse(resolved);
-    resolved = uri.replace(queryParameters: {
-      ...uri.queryParameters,
-      ...queryParams,
-    }).toString();
+    final cleanQueryParams = <String, String>{
+      for (final e in queryParams.entries)
+        if (e.key.replaceAll(_kRouteControlOrBidi, '').isNotEmpty)
+          e.key.replaceAll(_kRouteControlOrBidi, ''):
+              e.value.replaceAll(_kRouteControlOrBidi, ''),
+    };
+    if (cleanQueryParams.isEmpty) return resolved;
+    final uri = Uri.tryParse(resolved);
+    if (uri != null) {
+      resolved = uri.replace(queryParameters: {
+        ...uri.queryParameters,
+        ...cleanQueryParams,
+      }).toString();
+    } else {
+      final base = resolved.split('?').first.split('#').first;
+      resolved = Uri(path: base, queryParameters: cleanQueryParams).toString();
+    }
   }
 
   return resolved;

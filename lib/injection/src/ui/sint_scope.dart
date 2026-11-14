@@ -68,6 +68,26 @@ class SintScope extends StatefulWidget {
     return Sint.find<T>(tag: tag);
   }
 
+  /// Collects ancestor [SintScopeContainer]s in outermost-to-innermost order
+  /// for subtree build scoping (e.g. side-by-side sibling `SintScope`s).
+  static List<SintScopeContainer> ancestorContainersOf(BuildContext context) {
+    if (context is! Element) return const <SintScopeContainer>[];
+    _InheritedSintScope? inherited = context
+        .getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
+        ?.widget as _InheritedSintScope?;
+    if (inherited == null) return const <SintScopeContainer>[];
+    final chain = <SintScopeContainer>[];
+    while (inherited != null) {
+      chain.add(inherited.container);
+      final parentElement = inherited.parentContext;
+      inherited = parentElement
+          ?.getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
+          ?.widget as _InheritedSintScope?;
+    }
+    if (chain.length == 1) return chain;
+    return chain.reversed.toList(growable: false);
+  }
+
   @override
   State<SintScope> createState() => _SintScopeState();
 }

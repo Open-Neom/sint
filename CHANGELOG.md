@@ -1,5 +1,54 @@
 # Changelog - sint
 
+## [2.2.0] - 2026-11-14
+
+### Pillar I — Single-Element `MultiBinder` ($O(1)$ Tree Depth), Lifecycle Hardening & Full Scoped DI
+- **Single-Element `MultiBinder` (`InheritedModel<Type>`)**: `Binds` now collapses $N$ declarative `Bind` entries into **1 single `MultiBindElement`** instead of folding $2N$ nested `Binder` / `Element` wrappers (**−95%+ widget-tree depth** on large modular `RootBinding` setups), while preserving $O(1)$ `Bind.of<T>(context)` lookups (including nearest-ancestor shadowing across nested `Binder` / `MultiBinder` trees and contract lookups via `Bind.of<Contract>(context)`) and granular per-`Type` rebuild notifications.
+- **Lifecycle, Remount & `SmartManagement.keepFactory` Hardening**:
+  - Fixed widget-bound `Bind` factories (`Bind.put`, `Bind.putContract`, `Bind.lazyPut`, `Bind.contract`) so `autoRemove` defaults to `!permanent` and route/subtree unmount → remount cleanly re-registers factories without `BindError`.
+  - Fixed `SmartManagement.keepFactory` so `Sint.delete` disposes active controller instances while preserving `lazyPut` / `contract` factories (`isPrepared == true`) for subsequent resolutions.
+  - Added deterministic circular dependency detection (`StateError` with full resolution chain) and clean stack unwinding across global and `SintScope` containers.
+  - Headless `SintController.onReady()` now schedules via microtask in pure `test()` zones without prematurely initializing `WidgetsFlutterBinding`, and calls `ensureVisualUpdate()` when registered during `SchedulerPhase.idle`.
+  - Fixed `BindElement.update` (`SintBuilder`) so dynamic `id` / `filter` switches subscribe to the updated `id` and pass the true `oldWidget` to `didUpdateWidget`.
+- **Root `Binds` & Route `bindings` + `binds` Composition**: `SintRoot` mounts declarative `binds` and `initialBinding` (`List<Bind>`) directly in the root widget tree, `RouteParser` orders inherited parent `bindings` and `binds` before child entries, and `SintPageRoute` passes a mutable list copy to `SintMiddleware.onBindingsStart`.
+- **Async Contract Registration & Scoped Contract Overrides**: Added `Sint.putContractAsync<S, I>()`, `Bind.putAsync<T>()`, `Bind.putContractAsync<S, I>()`, `SintOverride.contract<S, I>()`, `SintOverride.contractValue<S, I>()`, `aliases:` on `SintOverride`, scope-aware `Sint.findAll<S>()` / `Sint.findAt<S>()`, silent $O(1)$ `Sint.isPrepared<S>()`, and automatic subtree isolation for side-by-side sibling `SintScope`s across `SintView<T>`, `Obx`, `Binder`, `MultiBinder`, and `SintBuilder<T>`.
+
+### Pillar S — Glitch-Free & Lazy `Computed`, Single-Slot `Obx`, `everAll` & Collection Hardening
+- **Glitch-Free Diamond & Lazy `Computed<T>` (`Sint.computed(..., lazy: true)`)**: Upgraded `Computed<T>` to a tri-color push-dirty / pull-value graph (`clean`, `check`, `dirty`) that eliminates intermediate diamond glitches *both inside and outside `Sint.batch`*, skips downstream recomputations when intermediate `Computed` nodes memoize equal values, and supports `lazy: true` to defer unobserved evaluations in $O(1)$ until `.value`, `.peek`, or an `Obx` listener demands the result.
+- **Inline Single-Source Fast Slot (`NotifyData`) & External `Listenable` Reuse**: 1-signal `Obx` widgets and `Computed<T>` instances store their upstream `ListNotifier` and `Disposer` inline with **zero `HashMap`, `HashSet`, or `List` allocations**, and retain external `ValueListenable.rxValue` subscriptions across rebuilds.
+- **Zero-Stream `everAll`, `SintStatus.stackTraceOrNull` & Iterative `SintQueue`**:
+  - Added synchronous zero-Stream `SintController.everAll(listeners, callback)` worker with automatic `onClose` disposal.
+  - Preserved `StackTrace` end-to-end across `RxFuture` and `ErrorStatus` (`SintStatus.stackTraceOrNull`).
+  - Converted `SintQueue` from recursive microtask chaining to an iterative FIFO loop safe for deep sequential queues.
+- **Reactive Primitives & Single-Notification Collection Ops**:
+  - Fixed `Rx.trigger(v)`, `Rx.value` `firstRebuild` semantics, and in-place `Rx.update(...)` notifications; switched mutators (`RxBool.toggle`, `RxInt.+/-`, `RxDouble.+/-`, `RxString.+`) to untracked `.peek` reads so mutations inside reactive scopes never cause self-subscription loops; fixed `RxnBool.operator ^` null safety.
+  - Overrode `RxList` (`insert`, `removeAt`, `removeLast`, `removeRange`, `setAll`, `setRange`, `replaceRange`, `fillRange`) and `RxMap` (`update`, `updateAll`, `addEntries`, `addAll`) to emit **1 coalesced notification**, guarded `RxList.addAll` / `RxSet.addAll` against self-aliasing `ConcurrentModificationError`, and added content-checked `assign` / `assignAll` on `RxMap` and `RxSet`.
+
+### Pillar N — Full Navigator 2.0 Middleware Enforcement, Parameter Integrity & Typed Routes
+- **Complete Navigator 2.0 Middleware Pipeline & Unknown Redirect Fallback**:
+  - Default `redirectDelegate` bridges automatically to synchronous `SintMiddleware.redirect(route)`, and `PageRedirect` properly resolves redirected destination routes even when the target route has no local middlewares.
+  - Enforced `runMiddleware` *before* mutating `_activePages` across `off`, `offNamed`, `offNamedUntil`, `toNamedAndOffUntil`, `offUntil`, `backAndtoNamed`, `offAll`, and `offAllNamed`, with safe `unknownRoute` fallback when a middleware redirects to an unregistered path and `UniqueKey` support when `preventDuplicates: false`.
+- **Path-over-Query Parameter Precedence, `:param+` Wildcards & Hot-Reload Preservation**:
+  - `pathParam` and `routeParam` read strictly from `pathParams`, merged `parameters` gives `pathParams` precedence over query strings (preventing `?id=spoofed` shadowing `:id`), `SintDelegate.refreshRoutes` preserves query parameters across hot reloads, and `RouteTemplate` / `RouteParser` support one-or-more multi-segment `:param+` routes as well as child flattening in standalone `RouteParser(routes:)`.
+- **Typed `SintRoute`, Outlets, Standalone Cupertino & Leak-Free Overlays**:
+  - Added `SintRoute.uri(...)`, `SintRoute.offAndTo(...)`, full `SintPage` pass-through options, and unified `resolveRoutePath` (`pathParams` + `queryParams`) across all named navigation extensions.
+  - Fixed `IndexedRouteBuilder` segment-boundary / `'/'` root tab matching, `RouterOutlet(delegate:)` explicit delegate binding, standalone `Cupertino` default 404 page (no `Scaffold` dependency) + web drag scroll behavior, `Sint.showOverlay` `try / finally` cleanup on `Error` throws, `Transition.size` null-curve safety, `CurvedAnimation` disposal via `animation.drive(CurveTween(...))`, and caller-owned `SintSnackBar.progressIndicatorController` lifecycle safety.
+
+### Pillar T — Reactive `.tr`, Zero-Reassemble `updateLocale` & Lazy Loader Deduplication
+- **Reactive `.tr` Inside `Obx` & `Sint.computed`**: `IntlHost` tracks a lightweight `ListNotifier` signal only when `Notifier.instance.isTracking` is `true`, keeping non-reactive `.tr` calls $O(1)$ while updating `Obx` and `Computed` automatically on locale or dictionary updates.
+- **Zero-Reassemble `Sint.updateLocale`, Immutable `const` Map Safety & Concurrent Loader Deduplication**:
+  - Replaced `WidgetsBinding.performReassemble()` in `Sint.updateLocale` with targeted `SintRoot` + `SintDelegate` + reactive locale signal updates.
+  - Defensively copies inner locale maps in `IntlHost` so `Sint.appendTranslations` never throws `UnsupportedError` after `const` `Translations` maps and coalesces multi-locale merges into **1** notification; concurrent `Sint.ensureLocaleLoaded` calls share a single in-flight `Future`.
+  - Hardened `.trParams` boundary matching so `@admin` never corrupts `@admin_email` while still matching hyphenated keys like `@user-name`, prevented `PathTranslator` reverse mappings from hijacking canonical route segments, and reset `locale`, `fallbackLocale`, and `pathTranslator` in `Sint.reset()`.
+
+### AI, Headless Entrypoint & Security Hardening
+- **Headless Reactive Entrypoint (`package:sint/rx.dart`)**: Lightweight library export exposing `Rx`, `Computed`, `RxFuture`, `SintStatus`, `SintController`, and `ListNotifier` for pure domain/data packages without pulling in UI router widgets.
+- **Router, Log & Batch Cycle Hardening**:
+  - `sanitizeRouteInformationState` guards Web history state against prototype-pollution keys (`__proto__`, `constructor`), deep nesting (`> 32`), and non-finite numbers; `SintInformationParser` safely handles unmounted `SintRoot` parsing; explicit non-root `initialRoute` is honored on first boot.
+  - `PathTranslator` preserves `#fragment` anchors while rejecting `__proto__` segments, and `resolveRoutePath` strips C0/C1/Bidi control characters.
+  - `sanitizeSintLogMessage` redacts sensitive query tokens (`api_key`, `id_token`, JWTs) and preserves UTF-16 surrogate boundaries; `ListNotifier.batch` breaks cyclic `Computed` cascades deterministically with full engine recovery.
+- **Official `llms.txt` Specification**: Added [`llms.txt`](llms.txt) at the package root with canonical SINT `2.2.0` rules and idioms for AI coding assistants (Cursor, Claude, Gemini, GitHub Copilot, Antigravity).
+
 ## [2.1.1] - 2026-11-07
 
 - Add official `pub.dev` discovery `topics`, `repository`, `issue_tracker`, `documentation`, and `@Open-Neom` GitHub Sponsors `funding` metadata, plus production showcase links in `README.md`.

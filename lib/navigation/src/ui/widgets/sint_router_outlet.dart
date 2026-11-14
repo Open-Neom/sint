@@ -31,8 +31,8 @@ class RouterOutlet<TDelegate extends RouterDelegate<T>, T extends Object>
     ) pageBuilder,
   }) : this.builder(
           builder: (context) {
-            final currentConfig = context.delegate.currentConfiguration as T?;
-            final rDelegate = context.delegate as TDelegate;
+            final rDelegate = (delegate ?? context.delegate) as TDelegate;
+            final currentConfig = rDelegate.currentConfiguration;
             var picked =
                 currentConfig == null ? null : pickPages(currentConfig);
             if (picked?.isEmpty ?? true) {
@@ -62,17 +62,28 @@ class RouterOutletState<TDelegate extends RouterDelegate<T>, T extends Object>
 
   VoidCallback? disposer;
 
+  void _bindDelegate() {
+    disposer?.call();
+    delegate = widget.routerDelegate;
+    delegate?.addListener(_listener);
+    disposer = () => delegate?.removeListener(_listener);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    disposer?.call();
-    final router = Router.of(context);
-    delegate ??= router.routerDelegate;
-    delegate?.addListener(_listener);
-    disposer = () => delegate?.removeListener(_listener);
-
+    _bindDelegate();
+    final router = Router.maybeOf(context);
     _backButtonDispatcher =
-        router.backButtonDispatcher?.createChildBackButtonDispatcher();
+        router?.backButtonDispatcher?.createChildBackButtonDispatcher();
+  }
+
+  @override
+  void didUpdateWidget(covariant RouterOutlet<TDelegate, T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.routerDelegate, widget.routerDelegate)) {
+      _bindDelegate();
+    }
   }
 
   @override
@@ -230,12 +241,20 @@ class IndexedRouteBuilder<T> extends StatelessWidget {
   final NavigatorItemBuilderBuilder builder;
 
   int _getCurrentIndex(String currentLocation) {
+    final cleanLoc = currentLocation.split('?').first.split('#').first;
+    var bestIndex = 0;
+    var bestLength = -1;
     for (int i = 0; i < routes.length; i++) {
-      if (currentLocation.startsWith(routes[i])) {
-        return i;
+      final route = routes[i];
+      final isMatch = cleanLoc == route ||
+          (route != '/' &&
+              cleanLoc.startsWith(route.endsWith('/') ? route : '$route/'));
+      if (isMatch && route.length > bestLength) {
+        bestLength = route.length;
+        bestIndex = i;
       }
     }
-    return 0;
+    return bestIndex;
   }
 
   @override
@@ -267,7 +286,7 @@ mixin RouterListenerMixin<T extends StatefulWidget> on State<T> {
     super.didChangeDependencies();
     disposer?.call();
     final router = Router.of(context);
-    delegate ??= router.routerDelegate as SintDelegate;
+    delegate = router.routerDelegate;
 
     delegate?.addListener(_listener);
     disposer = () => delegate?.removeListener(_listener);

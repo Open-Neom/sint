@@ -36,27 +36,15 @@ extension LocalesIntl on SintInterface {
   set pathTranslator(PathTranslator? value) => _intlHost.pathTranslator = value;
 
   void addTranslations(Map<String, Map<String, String>> tr) {
-    translations.addAll(tr);
-    _intlHost.invalidateCache();
+    _intlHost.addTranslations(tr);
   }
 
   void clearTranslations() {
-    translations.clear();
-    _intlHost.lazyLoaders.clear();
-    _intlHost.loadedLocales.clear();
-    _intlHost.onMissingKey = null;
-    _intlHost.invalidateCache();
+    _intlHost.clearTranslations();
   }
 
   void appendTranslations(Map<String, Map<String, String>> tr) {
-    tr.forEach((key, map) {
-      if (translations.containsKey(key)) {
-        translations[key]!.addAll(map);
-      } else {
-        translations[key] = map;
-      }
-    });
-    _intlHost.invalidateCache();
+    _intlHost.appendTranslations(tr);
   }
 
   /// Registers a deferred loader for [localeTag] (e.g. `'es'` or `'es_MX'`).
@@ -73,9 +61,11 @@ extension LocalesIntl on SintInterface {
   /// Ensures any deferred translations registered via [registerLazyTranslations]
   /// for [targetLocale] (`languageCode` and `languageCode_countryCode`) are loaded.
   ///
-  /// Returns `true` if at least one lazy bundle was fetched and merged.
+  /// Concurrent calls for the same locale tag share a single in-flight [Future].
+  /// Returns `true` if at least one lazy bundle was newly fetched and merged.
   Future<bool> ensureLocaleLoaded(Locale targetLocale) async {
     if (_intlHost.lazyLoaders.isEmpty) return false;
+    final gen = _intlHost.loaderGeneration;
     var loadedAny = false;
     final candidates = <String>[
       targetLocale.languageCode,
@@ -87,10 +77,22 @@ extension LocalesIntl on SintInterface {
       if (_intlHost.loadedLocales.contains(tag)) continue;
       final loader = _intlHost.lazyLoaders[tag];
       if (loader != null) {
-        final map = await loader();
-        _intlHost.loadedLocales.add(tag);
-        appendTranslations({tag: map});
-        loadedAny = true;
+        final pending = _intlHost.inFlightLoaders.putIfAbsent(
+          tag,
+          () => Future<Map<String, String>>.sync(loader),
+        );
+        try {
+          final map = await pending;
+          if (gen == _intlHost.loaderGeneration &&
+              _intlHost.loadedLocales.add(tag)) {
+            appendTranslations({tag: map});
+            loadedAny = true;
+          }
+        } finally {
+          if (identical(_intlHost.inFlightLoaders[tag], pending)) {
+            _intlHost.inFlightLoaders.remove(tag);
+          }
+        }
       }
     }
     return loadedAny;

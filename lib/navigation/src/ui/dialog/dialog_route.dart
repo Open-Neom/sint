@@ -4,13 +4,23 @@ import 'package:sint/navigation/src/router/router_report_manager.dart';
 class SintDialogRoute<T> extends PopupRoute<T> {
   SintDialogRoute({
     required RoutePageBuilder pageBuilder,
-    this._barrierDismissible = true,
-    this._barrierLabel,
-    this._barrierColor = const Color(0x80000000),
-    this._transitionDuration = const Duration(milliseconds: 200),
-    this._transitionBuilder,
+    bool barrierDismissible = true,
+    String? barrierLabel,
+    Color barrierColor = const Color(0x80000000),
+    Duration transitionDuration = const Duration(milliseconds: 200),
+    RouteTransitionsBuilder? transitionBuilder,
     super.settings,
-  }) : widget = pageBuilder {
+  })  : widget = pageBuilder,
+        // ignore: prefer_initializing_formals
+        _barrierDismissible = barrierDismissible,
+        // ignore: prefer_initializing_formals
+        _barrierLabel = barrierLabel,
+        // ignore: prefer_initializing_formals
+        _barrierColor = barrierColor,
+        // ignore: prefer_initializing_formals
+        _transitionDuration = transitionDuration,
+        // ignore: prefer_initializing_formals
+        _transitionBuilder = transitionBuilder {
     RouterReportManager.instance.reportCurrentRoute(this);
   }
 
@@ -62,7 +72,7 @@ class SintDialogRoute<T> extends PopupRoute<T> {
   ) {
     if (_transitionBuilder == null) {
       return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.linear),
+        opacity: animation,
         child: child,
       );
     } // Some default transition

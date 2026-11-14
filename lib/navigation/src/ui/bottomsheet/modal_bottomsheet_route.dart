@@ -74,7 +74,7 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   @override
   Animation<double> createAnimation() {
     if (curve != null) {
-      return CurvedAnimation(curve: curve!, parent: animationController!.view);
+      return animationController!.view.drive(CurveTween(curve: curve!));
     }
     return animationController!.view;
   }

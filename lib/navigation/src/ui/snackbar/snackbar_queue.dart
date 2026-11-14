@@ -34,16 +34,16 @@ class SnackBarQueue {
   }
 
   void disposeControllers() {
-    if (_currentSnackbar != null) {
-      _currentSnackbar?.removeOverlay();
-      _currentSnackbar?.controller.dispose();
-      _snackbarList.remove(_currentSnackbar);
+    final current = _currentSnackbar;
+    if (current != null) {
+      current.removeOverlay();
+      _snackbarList.remove(current);
     }
 
     _queue.cancelAllJobs();
 
-    for (var element in _snackbarList) {
-      element.controller.dispose();
+    for (final element in List<SnackbarController>.from(_snackbarList)) {
+      element.removeOverlay();
     }
     _snackbarList.clear();
   }

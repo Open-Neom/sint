@@ -54,7 +54,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byType(SintRoot), findsOneWidget);
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
+      if (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
         expect(find.byType(cupertino.CupertinoApp), findsOneWidget);
         expect(
           pageContext.cupertinoTheme.primaryColor,

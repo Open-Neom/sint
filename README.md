@@ -42,12 +42,18 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 | --- | --- | --- |
 | **S — State** | `SintController`, `Obx`, `.obs`, `Sint.computed`, `Sint.batch`, `RxFuture`, `SintStatus`, `SintView` | [State Docs](documentation/en_US/state_management.md) |
 | **I — Injection** | `Bind.contract`, `Bind.putContract`, `Sint.put`, `Sint.lazyPut`, `Sint.find`, `Sint.findAll`, `SintScope`, `SintService` | [Injection Docs](documentation/en_US/injection_management.md) |
-| **N — Navigation** | `SintApp`, `SintPage`, `SintRoute`, `SintRouterOutlet`, `globalMiddlewares`, `Sint.toNamed`, `pathParams`, `queryParams` | [Navigation Docs](documentation/en_US/navigation_management.md) |
+| **N — Navigation** | `SintApp`, `SintPage`, `SintRoute`, `SintRouterOutlet`, `globalMiddlewares`, `Sint.toNamed`, `Sint.maybePop`, `Sint.canPop`, `Sint.pop`, `pathParams`, `queryParams` | [Navigation Docs](documentation/en_US/navigation_management.md) |
 | **T — Translation** | `.tr`, `.trParams`, `Translations`, `Sint.updateLocale`, `Sint.registerLazyTranslations`, `translateEndpoints` | [Translation Docs](documentation/en_US/translation_management.md) |
 
 ---
 
-## What's New in 2.2.0
+## What's New in 2.2.1
+
+- **Full `Navigator`-Free Compatibility (`Sint.maybePop`, `Sint.canPop`, Safe `Sint.pop` & `Sint.resolveNavigator`)**: Adds context-free `Sint.maybePop<T>([result, id])` (closing active overlays first, honoring `PopScope(canPop: false)`, and safely returning `false` on root routes), `Sint.canPop`, and `canPop()`-guarded `Sint.pop<T>([result])` so modular Flutter codebases never need direct `Navigator.*` calls.
+- **Automatic `MaterialApp` / `CupertinoApp` Host & Widget-Test Fallback**: Reusable UI modules calling `Sint.to`, `Sint.off`, `Sint.toNamed`, `Sint.offNamed`, `Sint.back`, `Sint.pop`, `Sint.maybePop`, `Sint.canPop`, `Sint.dialog`, or `Sint.bottomSheet` resolve `SintDelegate` in $O(1)$ inside `SintMaterialApp` / `SintApp`, and automatically fall back to a mounted host `NavigatorState` when tested inside standalone `MaterialApp` / `CupertinoApp` harnesses.
+- **Overlay Queue, `MultiBinder` & Platform Polish**: Synchronous queue cancellation in `Sint.closeAllSnackbars()` eliminates pending-timer leaks, `MultiBinder` re-subscribes on dynamic `filter` updates, `SintDesign.auto` includes `TargetPlatform.macOS`, and core/router assertions throw structured `StateError` / `ArgumentError` instances.
+
+### Highlights from 2.2.0
 
 - **Single-Element `MultiBinder` ($O(1)$ Widget Depth), Scoped DI & Circular Cycle Guard**: `Binds` collapses $N$ declarative bindings into **1 single `MultiBindElement` (`InheritedModel<Type>`)** (**−95%+ widget-tree depth** on modular `RootBinding` hosts) while keeping `Bind.of<T>(context)` (including `Bind.of<Contract>(context)`) $O(1)$ and type-granular. Adds `Sint.putContractAsync`, `SintOverride.contract` / `contractValue`, circular dependency detection (`StateError`), headless `onReady` microtask support, `SmartManagement.keepFactory` lazy preservation, and automatic sibling `SintScope` isolation across `SintView`, `Obx`, `Binder`, `MultiBinder`, and `SintBuilder`.
 - **Glitch-Free & Lazy `Computed`, Single-Slot `Obx`, `everAll` & Fast Collections**: Tri-color (`clean`/`check`/`dirty`) `Computed` eliminates diamond glitches inside and outside `Sint.batch` with optional `lazy: true` demand evaluation; 1-signal `Obx`/`Computed` track dependencies inline with **zero `Map`/`Set`/`List` allocations**; adds zero-Stream `everAll`, `SintStatus.stackTraceOrNull`, single-notification `RxList`/`RxMap` bulk mutators, and content-checked `RxMap`/`RxSet.assignAll`.
@@ -72,7 +78,7 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 
 ```yaml
 dependencies:
-  sint: ^2.2.0
+  sint: ^2.2.1
 ```
 
 ```dart
@@ -161,7 +167,7 @@ Building an equivalent 4-pillar feature (Reactive State + Derived Value + Scoped
 
 ## Migrating from GetX
 
-1. Replace `get:` with `sint: ^2.2.0` in `pubspec.yaml`.
+1. Replace `get:` with `sint: ^2.2.1` in `pubspec.yaml`.
 2. Replace `import 'package:get/get.dart';` with `import 'package:sint/sint.dart';`.
 3. **Zero-friction compatibility in `2.x`**: Existing `Get.`, `GetxController`, `GetMaterialApp`, `GetPage`, `GetBuilder`, and `GetRouterOutlet` calls continue to compile with `@Deprecated` notices so you can migrate to `Sint*` symbols incrementally before `3.0.0`.
 

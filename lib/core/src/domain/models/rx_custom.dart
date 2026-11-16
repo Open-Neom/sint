@@ -12,8 +12,8 @@ class Rx<T> extends RxImpl<T> {
   dynamic toJson() {
     try {
       return (value as dynamic)?.toJson();
-    } on Exception catch (_) {
-      throw '$T has not method [toJson]';
+    } on Object catch (_) {
+      throw StateError('$T has not method [toJson]');
     }
   }
 }
@@ -25,8 +25,8 @@ class Rxn<T> extends Rx<T?> {
   dynamic toJson() {
     try {
       return (value as dynamic)?.toJson();
-    } on Exception catch (_) {
-      throw '$T has not method [toJson]';
+    } on Object catch (_) {
+      throw StateError('$T has not method [toJson]');
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/navigation/src/router/sint_page_route.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/core/src/domain/interfaces/sint_interface.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 import 'package:sint/navigation/src/ui/bottomsheet/modal_bottomsheet_route.dart';
@@ -24,20 +25,27 @@ extension BottomSheetExtension on SintInterface {
     Duration? exitBottomSheetDuration,
     Curve? curve,
   }) {
-    if (rootController.config.useStandaloneDesign) {
-      final source = overlayContext!;
-      final navigator = Navigator.of(source, rootNavigator: useRootNavigator);
+    final fallbackNav = resolveNavigator(rootNavigator: useRootNavigator);
+    final source = overlayContext ??
+        context ??
+        fallbackNav?.overlay?.context ??
+        fallbackNav?.context;
+    if (SintRoot.treeInitialized && rootController.config.useStandaloneDesign) {
+      final src = source!;
+      final navigator = overlayContext != null
+          ? Navigator.of(src, rootNavigator: useRootNavigator)
+          : fallbackNav!;
       return navigator.push<T>(
         _StandaloneBottomSheetRoute<T>(
           // Preserve the legacy route's content-sized layout. Its persistent
           // argument did not change the route's actual modal presentation.
           builder: (_) => bottomsheet,
           capturedThemes: InheritedTheme.capture(
-            from: source,
+            from: src,
             to: navigator.context,
           ),
           barrierLabel: material.MaterialLocalizations.of(
-            source,
+            src,
           ).modalBarrierDismissLabel,
           backgroundColor: backgroundColor ?? Colors.transparent,
           elevation: elevation,
@@ -59,16 +67,21 @@ extension BottomSheetExtension on SintInterface {
         ),
       );
     }
-    return Navigator.of(overlayContext!, rootNavigator: useRootNavigator).push(
+    final nav = overlayContext != null
+        ? Navigator.of(overlayContext!, rootNavigator: useRootNavigator)
+        : fallbackNav!;
+    final themeCtx =
+        (SintRoot.treeInitialized ? key.currentContext : null) ?? source!;
+    return nav.push(
       SintModalBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
         isPersistent: persistent,
         // theme: Theme.of(key.currentContext, shadowThemeOnly: true),
-        theme: Theme.of(key.currentContext!),
+        theme: Theme.of(themeCtx),
         isScrollControlled: isScrollControlled,
 
         barrierLabel: MaterialLocalizations.of(
-          key.currentContext!,
+          themeCtx,
         ).modalBarrierDismissLabel,
 
         backgroundColor: backgroundColor ?? Colors.transparent,

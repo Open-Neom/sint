@@ -189,8 +189,10 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     if (config.routerDelegate == null &&
         config.sintPages == null &&
         config.home == null) {
-      throw 'You need to provide sintPages (recommended) or home (deprecated). '
-          'Use initialRoute + sintPages for string-based routing.';
+      throw ArgumentError(
+        'You need to provide sintPages (recommended) or home (deprecated). '
+        'Use initialRoute + sintPages for string-based routing.',
+      );
     }
 
     if (config.routerDelegate == null) {

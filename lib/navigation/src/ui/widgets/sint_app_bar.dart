@@ -163,8 +163,8 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
       onPressed: () {
         if (_canSintGoBack()) {
           Sint.back();
-        } else if (Navigator.maybeOf(context)?.canPop() ?? false) {
-          Navigator.of(context).pop();
+        } else if (Sint.canPop) {
+          Sint.pop();
         } else {
           Sint.offAllNamed(fallbackRoute);
         }
@@ -175,14 +175,14 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Whether Sint's route stack has a previous page to go back to.
   static bool _canSintGoBack() {
     try {
-      return Sint.rootController.rootDelegate.canBack;
+      return Sint.canBack;
     } catch (_) {
       return false;
     }
   }
 
   bool _shouldShowBackButton(BuildContext context) {
-    if (Navigator.maybeOf(context)?.canPop() ?? false) return true;
+    if (Sint.canPop) return true;
 
     final current = Sint.currentRoute;
     final isRootRoute = current == '/' || current == '/root'

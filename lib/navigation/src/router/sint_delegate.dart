@@ -207,9 +207,11 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     // indicate a middleware loop — fail loudly instead of overflowing
     // the stack.
     if (depth > 5) {
-      throw 'Redirect loop detected: "${config.pageSettings?.name}" '
-          'exceeded the maximum middleware redirect depth (5). '
-          'Check your middlewares for cyclic redirects.';
+      throw StateError(
+        'Redirect loop detected: "${config.pageSettings?.name}" '
+        'exceeded the maximum middleware redirect depth (5). '
+        'Check your middlewares for cyclic redirects.',
+      );
     }
     // Both middleware pipelines honor `priority` with a stable sort (1.5.0),
     // merging app-level globalMiddlewares with route-local middlewares without
@@ -845,7 +847,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
       if (!canBack) {
         final last = _activePages.last;
         final name = last.route?.name;
-        throw 'The page $name cannot be popped';
+        throw StateError('The page $name cannot be popped');
       }
       return true;
     }());

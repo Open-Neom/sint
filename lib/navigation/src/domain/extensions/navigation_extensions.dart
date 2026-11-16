@@ -21,9 +21,60 @@ import 'package:sint/navigation/src/router/page_settings.dart';
 /// It replaces the Flutter Navigator, but needs no context.
 /// You can to use navigator.push(YourRoute()) rather
 /// Navigator.push(context, YourRoute());
-NavigatorState? get navigator => NavigationExtension(Sint).key.currentState;
+NavigatorState? get navigator => NavigationExtension(Sint).resolveNavigator();
+
+NavigatorState? _findMountedNavigator({bool rootNavigator = false}) {
+  Element? root;
+  try {
+    var initialized = true;
+    assert(() {
+      if (BindingBase.debugBindingType() == null) {
+        initialized = false;
+      }
+      return true;
+    }());
+    if (!initialized) return null;
+    root = WidgetsBinding.instance.rootElement;
+  } on Object {
+    return null;
+  }
+  if (root == null) return null;
+  NavigatorState? match;
+  void visit(Element element) {
+    if (match != null && rootNavigator) return;
+    if (element is StatefulElement && element.state is NavigatorState) {
+      final state = element.state as NavigatorState;
+      if (state.mounted) {
+        match = state;
+        if (rootNavigator) return;
+      }
+    }
+    element.visitChildren(visit);
+  }
+  visit(root);
+  return match;
+}
 
 extension NavigationExtension on SintInterface {
+  /// Resolves the active [NavigatorState] from SINT (`SintMaterialApp`) in
+  /// `O(1)`, or falls back to a mounted host [NavigatorState] when widgets run
+  /// inside a standalone `MaterialApp` / `CupertinoApp` (e.g. widget tests).
+  NavigatorState? resolveNavigator({String? id, bool rootNavigator = false}) {
+    if (SintRoot.treeInitialized) {
+      final direct = searchDelegate(id).navigatorKey.currentState;
+      if (direct != null) return direct;
+    }
+    return _findMountedNavigator(rootNavigator: rootNavigator);
+  }
+
+  bool _hasMountedSintNavigator([String? id]) =>
+      SintRoot.treeInitialized &&
+      searchDelegate(id).navigatorKey.currentState != null;
+
+  bool _useFallbackNavigator([String? id]) =>
+      !_hasMountedSintNavigator(id) &&
+      !SintTestMode.active &&
+      _findMountedNavigator() != null;
   /// **Navigation.push()** shortcut.<br><br>
   ///
   /// Pushes a new `page` to the stack
@@ -65,6 +116,16 @@ extension NavigationExtension on SintInterface {
         bool rebuildStack = true,
         PreventDuplicateHandlingMode preventDuplicateHandlingMode =
             PreventDuplicateHandlingMode.reorderRoutes}) {
+    if (_useFallbackNavigator(id)) {
+      final nav = _findMountedNavigator()!;
+      return nav.push<T>(
+        MaterialPageRoute<T>(
+          builder: (_) => page(),
+          settings: RouteSettings(name: routeName, arguments: arguments),
+          fullscreenDialog: fullscreenDialog,
+        ),
+      );
+    }
     return searchDelegate(id).to(
       page,
       opaque: opaque,
@@ -120,6 +181,10 @@ extension NavigationExtension on SintInterface {
       });
     }
 
+    if (_useFallbackNavigator(id is String ? id : null)) {
+      return _findMountedNavigator()!.pushNamed<T>(page, arguments: arguments);
+    }
+
     return searchDelegate(id).toNamed(
       page,
       arguments: arguments,
@@ -157,6 +222,12 @@ extension NavigationExtension on SintInterface {
         ...?queryParams,
       });
     }
+    if (_useFallbackNavigator(id)) {
+      return _findMountedNavigator()!.pushReplacementNamed<T, Object?>(
+        page,
+        arguments: arguments,
+      );
+    }
     return searchDelegate(id).offNamed(
       page,
       arguments: arguments,
@@ -179,6 +250,13 @@ extension NavigationExtension on SintInterface {
   /// `Sint.until((route) => !Sint.isDialogOpen())`, to make sure the
   /// dialog is closed
   void until(bool Function(SintPage<dynamic>) predicate, {String? id}) {
+    if (_useFallbackNavigator(id)) {
+      _findMountedNavigator()!.popUntil((route) {
+        final name = route.settings.name ?? '';
+        return predicate(SintPage(name: name, page: () => const SizedBox.shrink()));
+      });
+      return;
+    }
     return searchDelegate(id).backUntil(predicate);
   }
 
@@ -251,6 +329,13 @@ extension NavigationExtension on SintInterface {
         ...?queryParams,
       });
     }
+    if (_useFallbackNavigator(id)) {
+      return _findMountedNavigator()!.popAndPushNamed<T, dynamic>(
+        page,
+        result: result,
+        arguments: arguments,
+      );
+    }
     return searchDelegate(id).backAndtoNamed(
       page,
       arguments: arguments,
@@ -298,6 +383,14 @@ extension NavigationExtension on SintInterface {
           });
     }
 
+    if (_useFallbackNavigator(id)) {
+      return _findMountedNavigator()!.pushNamedAndRemoveUntil<T>(
+        newRouteName,
+        (_) => false,
+        arguments: arguments,
+      );
+    }
+
     return searchDelegate(id).offAllNamed<T>(
       newRouteName,
       arguments: arguments,
@@ -334,6 +427,17 @@ extension NavigationExtension on SintInterface {
       times = 1;
     }
 
+    if (_useFallbackNavigator(id)) {
+      final nav = _findMountedNavigator()!;
+      if (times > 1) {
+        var count = 0;
+        nav.popUntil((_) => count++ == times);
+      } else if (!canPop || nav.canPop()) {
+        nav.pop<T>(result);
+      }
+      return;
+    }
+
     if (times > 1) {
       var count = 0;
       return searchDelegate(id).backUntil((route) => count++ == times);
@@ -341,7 +445,12 @@ extension NavigationExtension on SintInterface {
       if (canPop) {
         if (searchDelegate(id).canBack == true) {
           return searchDelegate(id).back<T>(result);
-        } else if (kIsWeb) {
+        }
+        final nav = searchDelegate(id).navigatorKey.currentState;
+        if (nav != null && nav.canPop()) {
+          return nav.pop<T>(result);
+        }
+        if (kIsWeb) {
           // Web without internal history: do nothing, browser handles it
           return;
         } else {
@@ -434,7 +543,10 @@ extension NavigationExtension on SintInterface {
     String? id,
     T? result,
   }) {
-    searchDelegate(id).navigatorKey.currentState?.pop(result);
+    final nav = resolveNavigator(id: id);
+    if (nav != null && nav.canPop()) {
+      nav.pop<T>(result);
+    }
   }
 
   /// Pop the topmost overlay (dialog, bottomsheet, modal) without
@@ -445,15 +557,54 @@ extension NavigationExtension on SintInterface {
   /// which can be too aggressive for modals.
   ///
   /// Usage: `Sint.pop()` or `Sint.pop(result)`
-  void pop<T>([T? result]) {
+  void pop<T>([T? result, String? id]) {
     if (isDialogOpen ?? false) {
-      closeDialog(result: result);
+      closeDialog<T>(id: id, result: result);
     } else if (isBottomSheetOpen ?? false) {
-      closeBottomSheet(result: result);
+      closeBottomSheet<T>(id: id, result: result);
     } else {
-      // Fallback: pop via Navigator (covers custom modals, popups)
-      searchDelegate(null).navigatorKey.currentState?.pop(result);
+      // Fallback: pop via Navigator when possible (covers modals, popups, and
+      // standalone MaterialApp widget tests without throwing on empty stack).
+      final nav = resolveNavigator(id: id);
+      if (nav != null && nav.canPop()) {
+        nav.pop<T>(result);
+      } else if (SintRoot.treeInitialized && searchDelegate(id).canBack) {
+        searchDelegate(id).back<T>(result);
+      }
     }
+  }
+
+  /// Safely attempts to pop the topmost overlay, imperative route, or SINT
+  /// page, honoring [PopScope] dispositions and returning `false` when at the
+  /// root route instead of throwing or leaving a blank screen.
+  ///
+  /// Replaces `Navigator.maybePop(context, result)` and
+  /// `Navigator.of(context).maybePop(result)` without requiring [BuildContext].
+  Future<bool> maybePop<T>([T? result, String? id]) async {
+    if (_hasMountedSintNavigator(id)) {
+      return searchDelegate(id).popRoute(result: result);
+    }
+    final nav = resolveNavigator(id: id);
+    if (nav != null) {
+      return nav.maybePop<T>(result);
+    }
+    if (SintRoot.treeInitialized && searchDelegate(id).canBack) {
+      searchDelegate(id).back<T>(result);
+      return true;
+    }
+    return false;
+  }
+
+  /// Returns `true` if SINT's route stack, an active overlay, or the
+  /// underlying navigator has an entry that can be popped.
+  ///
+  /// Replaces `Navigator.canPop(context)` and `Navigator.of(context).canPop()`
+  /// without requiring [BuildContext].
+  bool get canPop {
+    if (SintRoot.treeInitialized && (canBack || isOverlaid)) {
+      return true;
+    }
+    return resolveNavigator()?.canPop() ?? false;
   }
 
   void closeAllBottomSheets({
@@ -542,6 +693,15 @@ extension NavigationExtension on SintInterface {
       }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
+    if (_useFallbackNavigator(id)) {
+      return _findMountedNavigator()!.pushReplacement<T, Object?>(
+        MaterialPageRoute<T>(
+          builder: (_) => page(),
+          settings: RouteSettings(name: routeName, arguments: arguments),
+          fullscreenDialog: fullscreenDialog,
+        ),
+      );
+    }
     if (preventDuplicates && routeName == currentRoute) {
       return null;
     }
@@ -619,6 +779,22 @@ extension NavigationExtension on SintInterface {
       }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
+    if (_useFallbackNavigator(id)) {
+      return _findMountedNavigator()!.pushAndRemoveUntil<T>(
+        MaterialPageRoute<T>(
+          builder: (_) => page(),
+          settings: RouteSettings(name: routeName, arguments: arguments),
+          fullscreenDialog: fullscreenDialog,
+        ),
+        (route) {
+          if (predicate == null) return false;
+          final name = route.settings.name ?? '';
+          return predicate(
+            SintPage(name: name, page: () => const SizedBox.shrink()),
+          );
+        },
+      );
+    }
     return searchDelegate(id).offAll<T>(
       page,
       predicate: predicate,
@@ -799,7 +975,7 @@ extension NavigationExtension on SintInterface {
       key = Sint.rootController.rootDelegate;
     } else {
       if (!keys.containsKey(k)) {
-        throw 'Route id ($k) not found';
+        throw ArgumentError.value(k, 'k', 'Route id ($k) not found');
       }
       key = keys[k]!;
     }
@@ -818,10 +994,10 @@ extension NavigationExtension on SintInterface {
   }
 
   /// give name from current route
-  String get currentRoute => routing.current;
+  String get currentRoute => SintRoot.treeInitialized ? routing.current : '';
 
   /// give name from previous route
-  String get previousRoute => routing.previous;
+  String get previousRoute => SintRoot.treeInitialized ? routing.previous : '';
 
   /// check if snackbar is open
   bool get isSnackbarOpen =>
@@ -836,29 +1012,38 @@ extension NavigationExtension on SintInterface {
   }
 
   /// check if dialog is open
-  bool? get isDialogOpen => routing.isDialog;
+  bool? get isDialogOpen => SintRoot.treeInitialized ? routing.isDialog : false;
 
   /// check if bottomsheet is open
-  bool? get isBottomSheetOpen => routing.isBottomSheet;
+  bool? get isBottomSheetOpen =>
+      SintRoot.treeInitialized ? routing.isBottomSheet : false;
 
   /// check if any overlay (dialog, bottomsheet, or popup route) is open
-  bool get isOverlaid => (isDialogOpen ?? false) || (isBottomSheetOpen ?? false) || (rawRoute is PopupRoute);
+  bool get isOverlaid =>
+      (isDialogOpen ?? false) ||
+      (isBottomSheetOpen ?? false) ||
+      (rawRoute is PopupRoute);
 
   /// check if navigator can go back
-  bool get canBack => searchDelegate(null).canBack;
+  bool get canBack => SintRoot.treeInitialized && searchDelegate(null).canBack;
 
   /// check a raw current route
-  Route<dynamic>? get rawRoute => routing.route;
+  Route<dynamic>? get rawRoute =>
+      SintRoot.treeInitialized ? routing.route : null;
 
   /// check if default opaque route is enable
   bool get isOpaqueRouteDefault => defaultOpaqueRoute;
 
   /// give access to currentContext
-  BuildContext? get context => key.currentContext;
+  BuildContext? get context => SintRoot.treeInitialized
+      ? key.currentContext
+      : _findMountedNavigator()?.context;
 
   /// give access to current Overlay Context
   BuildContext? get overlayContext {
-    final overlayState = key.currentState?.overlay;
+    final overlayState = SintRoot.treeInitialized
+        ? key.currentState?.overlay
+        : _findMountedNavigator(rootNavigator: true)?.overlay;
     if (overlayState == null || !overlayState.mounted) return null;
     BuildContext? overlay;
     overlayState.context.visitChildElements((element) {
@@ -981,11 +1166,15 @@ extension NavigationExtension on SintInterface {
   Curve get defaultTransitionCurve => _getxController.defaultTransitionCurve;
 
   Curve get defaultDialogTransitionCurve {
-    return _getxController.defaultDialogTransitionCurve;
+    return SintRoot.treeInitialized
+        ? _getxController.defaultDialogTransitionCurve
+        : Curves.easeOutQuad;
   }
 
   Duration get defaultDialogTransitionDuration {
-    return _getxController.defaultDialogTransitionDuration;
+    return SintRoot.treeInitialized
+        ? _getxController.defaultDialogTransitionDuration
+        : const Duration(milliseconds: 200);
   }
 
   Routing get routing => _getxController.routing;

@@ -236,7 +236,9 @@ class SintApp extends StatelessWidget {
   final BackButtonDispatcher? backButtonDispatcher;
 
   bool get _useCupertino => switch (design) {
-    SintDesign.auto => defaultTargetPlatform == TargetPlatform.iOS,
+    SintDesign.auto =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS,
     SintDesign.material => false,
     SintDesign.cupertino => true,
   };

@@ -28,9 +28,10 @@ class SnackBarQueue {
   }
 
   Future<void> cancelAllJobs() async {
-    await _currentSnackbar?.close();
+    final current = _currentSnackbar;
     _queue.cancelAllJobs();
     _snackbarList.clear();
+    await current?.close();
   }
 
   void disposeControllers() {

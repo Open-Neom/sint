@@ -354,8 +354,9 @@ class MultiBindSlot<T> {
 
   void updateBind(Bind<dynamic> next, void Function(Type type) onDirty) {
     final oldId = _bind.id;
+    final oldFilter = _bind.filter;
     _bind = next as Bind<T>;
-    if (oldId != _bind.id && _wasStarted) {
+    if ((oldId != _bind.id || oldFilter != _bind.filter) && _wasStarted) {
       _subscribeToController(onDirty);
     }
   }
@@ -407,8 +408,8 @@ class MultiBindSlot<T> {
     if (_needStart && localController is SintLifeCycleMixin) {
       localController.onStart();
       _needStart = false;
-      _wasStarted = true;
     }
+    _wasStarted = true;
 
     if (localController is SintController) {
       _remove?.call();
@@ -443,5 +444,6 @@ class MultiBindSlot<T> {
     _ownedDependency = null;
     _controllerBuilder = null;
     _filter = null;
+    _wasStarted = false;
   }
 }

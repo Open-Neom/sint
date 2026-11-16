@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/ui/dialog/dialog_route.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 
 extension DialogExtension on SintInterface {
@@ -22,14 +23,23 @@ extension DialogExtension on SintInterface {
     RouteSettings? routeSettings,
     String? id,
   }) {
-    final standalone = rootController.config.useStandaloneDesign;
-    final themes = InheritedTheme.capture(from: context!, to: null);
-    final barrierLabel = standalone
-        ? material.MaterialLocalizations.of(context!).modalBarrierDismissLabel
-        : MaterialLocalizations.of(context!).modalBarrierDismissLabel;
+    final standalone =
+        SintRoot.treeInitialized && rootController.config.useStandaloneDesign;
+    final navState = navigatorKey?.currentState ??
+        (SintRoot.treeInitialized && id != null
+            ? Sint.nestedKey(id)?.navigatorKey.currentState
+            : null) ??
+        resolveNavigator(id: id, rootNavigator: true);
+    final ctx = context ?? navState?.overlay?.context ?? navState?.context;
+    final themes = ctx != null ? InheritedTheme.capture(from: ctx, to: null) : null;
+    final barrierLabel = ctx == null
+        ? 'Dismiss'
+        : standalone
+            ? material.MaterialLocalizations.of(ctx).modalBarrierDismissLabel
+            : MaterialLocalizations.of(ctx).modalBarrierDismissLabel;
     return generalDialog<T>(
       pageBuilder: (buildContext, animation, secondaryAnimation) {
-        Widget dialog = themes.wrap(widget);
+        Widget dialog = themes != null ? themes.wrap(widget) : widget;
         if (useSafeArea) {
           dialog = SafeArea(child: dialog);
         }
@@ -67,13 +77,15 @@ extension DialogExtension on SintInterface {
     String? id,
   }) {
     assert(!barrierDismissible || barrierLabel != null);
-    final key = navigatorKey ?? Sint.nestedKey(id)?.navigatorKey;
-    final nav =
-        key?.currentState ??
-        Navigator.of(
-          overlayContext!,
-          rootNavigator: true,
-        ); //overlay context will always return the root navigator
+    final key = navigatorKey ??
+        (SintRoot.treeInitialized ? Sint.nestedKey(id)?.navigatorKey : null);
+    final nav = key?.currentState ??
+        (overlayContext != null
+            ? Navigator.of(
+                overlayContext!,
+                rootNavigator: true,
+              )
+            : resolveNavigator(id: id, rootNavigator: true)!); //overlay context will always return the root navigator
     return nav.push<T>(
       SintDialogRoute<T>(
         pageBuilder: pageBuilder,
@@ -121,7 +133,8 @@ extension DialogExtension on SintInterface {
     // the navigator used to push the dialog
     GlobalKey<NavigatorState>? navigatorKey,
   }) {
-    final standalone = rootController.config.useStandaloneDesign;
+    final standalone =
+        SintRoot.treeInitialized && rootController.config.useStandaloneDesign;
     final secondaryColor = standalone
         ? materialTheme.colorScheme.secondary
         : theme.colorScheme.secondary;

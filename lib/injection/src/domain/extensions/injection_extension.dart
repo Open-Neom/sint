@@ -269,7 +269,7 @@ extension InjectionExtension on SintInterface {
     final dep = _typeSingl[S]?[tag];
     if (dep == null) {
       // ignore: lines_longer_than_80_chars
-      throw '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"';
+      throw StateError('"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"');
     }
     final i = Sint._initDependencies<S>(name: tag, dep: dep);
     return (i ?? dep.getDependency()) as S;

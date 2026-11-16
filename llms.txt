@@ -1,4 +1,4 @@
-# SINT (State · Injection · Navigation · Translation) — v2.2.0 LLM Reference
+# SINT (State · Injection · Navigation · Translation) — v2.2.1 LLM Reference
 
 > High-performance, Clean Architecture micro-framework for Flutter (`>=3.47.0`, Dart `^3.13.0`).
 > Repository: https://github.com/Open-Neom/sint
@@ -139,7 +139,10 @@ final saved = await profileRoute.to(
 );
 ```
 
-- **Context-Free Navigation**: `Sint.toNamed('/path')`, `Sint.offNamed('/path')`, `Sint.offNamedUntil('/path', predicate)`, `Sint.offAndToNamed('/path')`, `Sint.offAllNamed('/login')`, `Sint.back(result: true)`, and typed `profileRoute.uri(...)` / `profileRoute.offAndTo(...)`. Supports `:id`, `:id?`, `:id(\\d+)`, `:slug*`, and `:slug+` multi-segment templates; `pathParams` always take precedence over `queryParams`.
+- **Context-Free Navigation (Never use `Navigator.*` directly)**:
+  - **Page navigation**: `Sint.toNamed('/path')`, `Sint.offNamed('/path')`, `Sint.offNamedUntil('/path', predicate)`, `Sint.offAndToNamed('/path')`, `Sint.offAllNamed('/login')`, `Sint.to(() => Page())`, `Sint.off(() => Page())`, `Sint.until(predicate)`, `Sint.back(result: true)`, `Sint.maybePop(result)`, `Sint.canPop`, and typed `profileRoute.uri(...)` / `profileRoute.offAndTo(...)`. Supports `:id`, `:id?`, `:id(\\d+)`, `:slug*`, and `:slug+` multi-segment templates; `pathParams` always take precedence over `queryParams`.
+  - **Dialogs & BottomSheets (`Sint.pop` vs `Sint.back`)**: Open overlays via `Sint.dialog<T>(widget)` and `Sint.bottomSheet<T>(widget)`, and ALWAYS dismiss overlays/popups with **`Sint.pop([result])`** (never `Sint.back()`, which pops page routes). For `Scaffold` drawers, use `Scaffold.maybeOf(context)?.closeDrawer()`.
+  - **Host & Test Fallback (`Sint.resolveNavigator`)**: All `Sint` navigation and overlay extensions automatically fall back to a mounted host `NavigatorState` when reusable widgets are tested inside a plain `MaterialApp` or `CupertinoApp`.
 - **Middlewares (`SintMiddleware`)**:
   - Override synchronous `RouteSettings? redirect(String? route)` OR `Future<RouteDecoder?> redirectDelegate(RouteDecoder route)`. Enforced consistently before stack mutation across `toNamed`, `offNamed`, `offNamedUntil`, `offAndToNamed`, `offAllNamed`, `off`, and `offAll`.
 

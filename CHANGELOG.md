@@ -1,5 +1,23 @@
 # Changelog - sint
 
+## [2.2.1] - 2026-11-15
+
+### Pillar N — Full `Navigator` Compatibility Extensions (`maybePop`, `canPop`, `resolveNavigator`) & Host Fallback
+- **Native `Sint.maybePop<T>([result, id])` & `Sint.canPop`**:
+  - Added `Sint.maybePop<T>([T? result, String? id])` backed by `SintDelegate.popRoute(result: result)` to replace `Navigator.maybePop(context)` across pages and overlays: closes active `PopupRoute` overlays (`Dialog`, `BottomSheet`, `PopupMenu`) with `result` first, honors `PopScope(canPop: false)` dispositions, pops SINT route history cleanly, and safely returns `false` on root routes without throwing or blanking Web deep-links.
+  - Added `Sint.canPop` (`canBack || isOverlaid || resolveNavigator()?.canPop()`) for context-free back/close UI branching without `Navigator.of(context).canPop()`.
+  - Hardened `Sint.pop<T>([T? result, String? id])` and `Sint.closeOverlay()` with `canPop()` guards so repeated or defensive modal dismissals never trigger `AssertionError` on empty stacks, and migrated `SintAppBar` internally to `Sint.canPop` / `Sint.pop()`.
+- **Standalone `MaterialApp` / `CupertinoApp` Host & Widget-Test Compatibility (`Sint.resolveNavigator`)**:
+  - Added `Sint.resolveNavigator({String? id, bool rootNavigator = false})`, resolving `SintDelegate.navigatorKey.currentState` in $O(1)$ inside `SintApp` / `SintMaterialApp` / `SintCupertinoApp` and automatically falling back to a mounted host `NavigatorState` when reusable modular widgets are mounted inside a plain `MaterialApp` or `CupertinoApp` (such as standalone package widget tests or hybrid hosts).
+  - Guarded `SintRoot.treeInitialized` across `NavigationExtension`, `DialogExtension`, and `BottomsheetExtension` so `Sint.to`, `Sint.off`, `Sint.toNamed`, `Sint.offNamed`, `Sint.offAllNamed`, `Sint.offAndToNamed`, `Sint.until`, `Sint.back`, `Sint.pop`, `Sint.maybePop`, `Sint.canPop`, `Sint.dialog`, and `Sint.bottomSheet` work seamlessly even without `SintRoot`.
+- **Snackbar Queue Cancellation Race Fix & Adaptive `SintDesign.auto` on macOS**:
+  - Fixed `SnackBarQueue.cancelAllJobs()` (`Sint.closeAllSnackbars()`) to cancel pending queue jobs and clear `_snackbarList` synchronously *before* awaiting `_currentSnackbar?.close()`, preventing queued snackbars from dequeuing and starting new timers during dismissal animations.
+  - `SintApp` (`SintDesign.auto`) now selects Cupertino design on both `TargetPlatform.iOS` and `TargetPlatform.macOS`.
+
+### Pillar I & S — `MultiBinder` Dynamic Filter Subscriptions & Typed Dart Errors
+- **`MultiBinder` Dynamic `filter` Re-Subscription**: `MultiBindSlot.updateBind` now re-subscribes when `Bind.filter` changes dynamically (matching `Bind.id` updates) and tracks `_wasStarted` consistently across all controllers, resetting cleanly on `dispose()`.
+- **Structured Dart Error Types (`only_throw_errors` Compliance)**: Replaced raw `String` throws (and `NoSuchMethodError` misses in `Rx.toJson` / `Rxn.toJson`) with typed `StateError` and `ArgumentError` across `Rx.toJson`, `Rxn.toJson`, `Sint.find`, `SintDelegate` redirect-loop / `popHistory` assertions, and `SintRoot` configuration validation.
+
 ## [2.2.0] - 2026-11-14
 
 ### Pillar I — Single-Element `MultiBinder` ($O(1)$ Tree Depth), Lifecycle Hardening & Full Scoped DI

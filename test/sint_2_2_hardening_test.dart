@@ -16,6 +16,23 @@ class _HeadlessReadyController extends SintController {
   }
 }
 
+class _UnannotatedAlphaController extends SintController {}
+
+class _UnannotatedBetaController extends SintController {}
+
+class _UnannotatedGammaService {}
+
+class _UnannotatedRootBinding extends Binding {
+  @override
+  List<Bind> dependencies() {
+    return [
+      Bind.put(_UnannotatedAlphaController(), permanent: true),
+      Bind.lazyPut(() => _UnannotatedGammaService(), fenix: true),
+      Bind.put(_UnannotatedBetaController(), permanent: true),
+    ];
+  }
+}
+
 class _CycleA {
   _CycleA() {
     Sint.find<_CycleB>();
@@ -955,6 +972,31 @@ void main() {
         expect(Sint.locale, isNull);
         expect(Sint.fallbackLocale, isNull);
         expect(Sint.pathTranslator, isNull);
+      },
+    );
+
+    test(
+      'Binding.dependencies() preserves inferred concrete types on unannotated Bind.put / Bind.lazyPut and rejects dynamic',
+      () {
+        Sint.reset();
+        final binds = _UnannotatedRootBinding().dependencies();
+
+        expect(
+          binds.map((b) => b.boundType).toList(),
+          equals([
+            _UnannotatedAlphaController,
+            _UnannotatedGammaService,
+            _UnannotatedBetaController,
+          ]),
+        );
+        expect(Sint.isRegistered<_UnannotatedAlphaController>(), isTrue);
+        expect(Sint.isRegistered<_UnannotatedGammaService>(), isTrue);
+        expect(Sint.isRegistered<_UnannotatedBetaController>(), isTrue);
+        expect(Sint.find<_UnannotatedBetaController>(), isA<_UnannotatedBetaController>());
+        expect(Sint.find<_UnannotatedGammaService>(), isA<_UnannotatedGammaService>());
+
+        final dynamic untypedValue = _UnannotatedGammaService();
+        expect(() => Sint.put(untypedValue), throwsArgumentError);
       },
     );
   });

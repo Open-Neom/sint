@@ -716,6 +716,13 @@ extension InjectionExtension on SintInterface {
     bool bindUntaggedDefault = false,
     bool overwriteDefault = false,
   }) {
+    if (S == dynamic) {
+      throw ArgumentError(
+        'Cannot register a dependency under type "dynamic". '
+        'Specify an explicit type argument (e.g. Sint.put<MyController>(...) '
+        'or Bind.lazyPut<MyService>(...)) or pass a statically typed value.',
+      );
+    }
     var tagMap = _typeSingl[S];
     if (tagMap != null) {
       final existing = tagMap[name];

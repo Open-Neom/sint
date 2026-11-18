@@ -71,7 +71,12 @@ abstract class Bind<T> extends StatelessWidget {
   /// Creates a typed [MultiBindSlot] preserving generic type [T].
   MultiBindSlot<T> createMultiBindSlot() => MultiBindSlot<T>(this);
 
-  static Bind<S> put<S>(
+  /// Returns `Bind<dynamic>` on the static signature so downward context from
+  /// `List<Bind>` (`List<Bind<dynamic>>` in `Binding.dependencies()`,
+  /// `SintMaterialApp(binds: [...])`, `SintPage(binds: [...])`, `Binds(...)`)
+  /// never coerces `S` to `dynamic` when callers omit `<S>`; the underlying
+  /// `_FactoryBind<S>` still preserves the reified `S` at runtime.
+  static Bind<dynamic> put<S>(
     S dependency, {
     String? tag,
     bool? permanent,
@@ -99,7 +104,7 @@ abstract class Bind<T> extends StatelessWidget {
 
   /// Eager contract-first registration: registers [dependency] primarily under
   /// service contract [S] while also aliasing [I] for intra-module consumers.
-  static Bind<S> putContract<S, I extends S>(
+  static Bind<dynamic> putContract<S, I extends S>(
     I dependency, {
     String? tag,
     bool? permanent,
@@ -131,7 +136,7 @@ abstract class Bind<T> extends StatelessWidget {
     );
   }
 
-  static Bind<S> lazyPut<S>(
+  static Bind<dynamic> lazyPut<S>(
     InstanceBuilderCallback<S> builder, {
     String? tag,
     bool fenix = false,
@@ -171,7 +176,7 @@ abstract class Bind<T> extends StatelessWidget {
   ///   `Sint.findAll<S>()` (by registration order).
   /// - Intra-module screens inside the owning package can also resolve
   ///   `Sint.find<I>()` from the exact same shared factory.
-  static Bind<S> contract<S, I extends S>(
+  static Bind<dynamic> contract<S, I extends S>(
     InstanceBuilderCallback<I> builder, {
     String? tag,
     bool fenix = false,
@@ -209,7 +214,7 @@ abstract class Bind<T> extends StatelessWidget {
     );
   }
 
-  static Bind<S> create<S>(
+  static Bind<dynamic> create<S>(
     InstanceCreateBuilderCallback<S> builder, {
     String? tag,
     bool permanent = true,
@@ -222,7 +227,7 @@ abstract class Bind<T> extends StatelessWidget {
     );
   }
 
-  static Bind<S> spawn<S>(
+  static Bind<dynamic> spawn<S>(
     InstanceBuilderCallback<S> builder, {
     String? tag,
     bool permanent = true,

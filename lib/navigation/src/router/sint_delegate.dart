@@ -228,7 +228,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     }
     final middlewares = MiddlewareRunner.sortByPriority(combined);
     var iterator = config;
-    for (var item in middlewares) {
+    for (final item in middlewares) {
       var redirectRes = await item.redirectDelegate(iterator);
 
       if (redirectRes == null) {

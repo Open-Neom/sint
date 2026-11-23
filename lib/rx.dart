@@ -5,6 +5,7 @@ library;
 export 'core/src/domain/models/rx_bool.dart';
 export 'core/src/domain/models/rx_computed.dart';
 export 'core/src/domain/models/rx_custom.dart';
+export 'core/src/domain/models/rx_frame_throttled.dart';
 export 'core/src/domain/models/rx_impl.dart';
 export 'core/src/domain/models/rx_interface.dart';
 export 'core/src/domain/models/rx_list.dart';

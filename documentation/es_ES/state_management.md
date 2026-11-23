@@ -1,424 +1,170 @@
-# Gestion del Estado
+# Gestión de Estado (Pilar S)
 
-SINT proporciona dos sistemas principales de gestion del estado: **Reactive State Manager** y **Simple State Manager**, ademas de herramientas avanzadas como **StateMixin** y **Workers**.
-
-## Tabla de Contenidos
-
-- [Reactive State Manager](#reactive-state-manager)
-  - [Variables Observables (.obs)](#variables-observables-obs)
-  - [Obx Widget](#obx-widget)
-  - [GetX Widget](#getx-widget)
-  - [Rx Types](#rx-types)
-- [Simple State Manager](#simple-state-manager)
-  - [SintBuilder](#SintBuilder)
-  - [Uso Basico](#uso-basico)
-- [StateMixin](#statemixin)
-- [Workers](#workers)
-- [Test Roadmap](#test-roadmap)
+- [Señales Reactivas (`.obs`, `Obx`, `ObxSelect`)](#señales-reactivas-obs-obx-obxselect)
+- [Estado Derivado (`Sint.computed`) y Batch Síncrono (`Sint.batch`)](#estado-derivado-sintcomputed-y-batch-síncrono-sintbatch)
+- [UI de Alta Frecuencia en Tiempo Real (`Sint.frameBatch` y `FrameThrottledRx`)](#ui-de-alta-frecuencia-en-tiempo-real-sintframebatch-y-framethrottledrx)
+- [Estado Asíncrono (`RxFuture<T>` y `SintStatus<T>`)](#estado-asíncrono-rxfuturet-y-sintstatust)
+- [Workers Síncronos Zero-Stream](#workers-síncronos-zero-stream)
+- [Gestor Simple (`SintBuilder`)](#gestor-simple-sintbuilder)
+- [Perfilado en Tiempo de Ejecución (`Sint.diagnostics`)](#perfilado-en-tiempo-de-ejecución-sintdiagnostics)
 
 ---
 
-## Reactive State Manager
-
-El **Reactive State Manager** utiliza programacion reactiva para actualizar automaticamente la UI cuando cambia el estado. Se basa en **observables** (.obs) y **observers** (Obx, GetX).
-
-### Variables Observables (.obs)
-
-Cualquier variable puede convertirse en observable agregando `.obs`:
-
-```dart
-import 'package:sint/sint.dart';
-
-class CounterController extends SintController {
-  var count = 0.obs;
-
-  void increment() {
-    count++;
-  }
-}
-```
-
-Cuando `count` cambia, todos los widgets que lo observan se reconstruyen automaticamente.
-
-### Obx Widget
-
-`Obx` es un widget que se reconstruye cuando cambia cualquier observable dentro de su closure:
-
-```dart
-class CounterPage extends StatelessWidget {
-  final CounterController controller = Sint.put(CounterController());
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Contador Reactivo')),
-      body: Center(
-        child: Obx(() => Text(
-          'Clicks: ${controller.count}',
-          style: TextStyle(fontSize: 30),
-        )),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: controller.increment,
-        child: Icon(Icons.add),
-      ),
-    );
-  }
-}
-```
-
-**Nota importante:** `Obx` solo detecta observables que se usan **dentro** de su closure. Si no se usa ninguno, no se reconstruira.
-
-### GetBuilder Widget
-
-`GetBuilder` es similar a `Obx`, pero permite acceder al controller directamente:
-
-```dart
-class CounterPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: GetBuilder<CounterController>(
-          init: CounterController(),
-          builder: (controller) => Text(
-            'Clicks: ${controller.count}',
-            style: TextStyle(fontSize: 30),
-          ),
-        ),
-      ),
-    );
-  }
-}
-```
-
-**Diferencia clave:**
-- `Obx`: Requiere que el controller ya este inyectado
-- `GetBuilder`: Puede inicializar el controller automaticamente
-
-### Rx Types
-
-SINT proporciona tipos especializados para diferentes estructuras de datos:
-
-```dart
-class DataController extends SintController {
-  // Primitivos
-  var name = ''.obs;
-  var age = 0.obs;
-  var isActive = false.obs;
-  var price = 0.0.obs;
-
-  // Colecciones
-  var list = <String>[].obs;
-  var set = <String>{}.obs;
-  var map = <String, int>{}.obs;
-
-  // Tipos Rx especificos (alternativa)
-  RxString username = ''.obs;
-  RxInt counter = 0.obs;
-  RxBool isLoading = false.obs;
-  RxDouble rating = 0.0.obs;
-  RxList<Product> products = <Product>[].obs;
-  RxMap<String, dynamic> settings = <String, dynamic>{}.obs;
-}
-```
-
-**Trabajando con colecciones observables:**
-
-```dart
-// Agregar elementos
-controller.list.add('item');
-controller.map['key'] = value;
-
-// Metodos reactivos
-controller.list.assignAll(['a', 'b', 'c']);
-controller.map.addAll({'x': 1, 'y': 2});
-
-// Acceder al valor
-print(controller.name.value);
-controller.age.value = 25;
-```
-
-**Objetos personalizados:**
-
-```dart
-class User {
-  String name;
-  int age;
-
-  User({required this.name, required this.age});
-}
-
-class UserController extends SintController {
-  var user = User(name: 'Juan', age: 30).obs;
-
-  void updateName(String newName) {
-    // Opcion 1: Actualizar y notificar
-    user.update((val) {
-      val!.name = newName;
-    });
-
-    // Opcion 2: Asignar nuevo objeto
-    user.value = User(name: newName, age: user.value.age);
-  }
-}
-```
+El pilar **State** de SINT es un motor de señales síncrono sin `Stream`s diseñado tanto para apps convencionales como para cargas extremas de Flutter (DAWs de audio en tiempo real, HUDs 3D/VR, flujos EEG de 256 Hz y streaming LLM en dispositivo).
 
 ---
 
-## Simple State Manager
+## Señales Reactivas (`.obs`, `Obx`, `ObxSelect`)
 
-El **Simple State Manager** usa `SintBuilder` para actualizaciones manuales y es mas eficiente cuando no necesitas reactividad automatica.
-
-### SintBuilder
-
-`SintBuilder` se reconstruye solo cuando llamas a `update()` en el controller:
+Convierte cualquier valor en observable con `.obs`:
 
 ```dart
-class CounterController extends SintController {
-  int count = 0;
-
-  void increment() {
-    count++;
-    update(); // Notifica a SintBuilder que se reconstruya
-  }
-}
-
-class CounterPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: SintBuilder<CounterController>(
-          init: CounterController(),
-          builder: (controller) => Text(
-            'Clicks: ${controller.count}',
-            style: TextStyle(fontSize: 30),
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Sint.find<CounterController>().increment(),
-        child: Icon(Icons.add),
-      ),
-    );
-  }
-}
+final count = 0.obs;
+final name = 'SINT'.obs;
+final items = <String>[].obs;
+final user = User(name: 'Serzen', age: 30).obs;
 ```
 
-### Uso Basico
-
-**Ventajas de SintBuilder:**
-- Consume menos memoria
-- Mas rapido para actualizaciones frecuentes
-- Control preciso sobre reconstrucciones
-
-**IDs para actualizaciones selectivas:**
+### `Obx` (Ruta Rápida Single-Slot sin Asignaciones)
 
 ```dart
-class ProductController extends SintController {
-  String productName = 'Widget';
-  double productPrice = 9.99;
-
-  void updateName(String newName) {
-    productName = newName;
-    update(['name']); // Solo reconstruye widgets con id 'name'
-  }
-
-  void updatePrice(double newPrice) {
-    productPrice = newPrice;
-    update(['price']); // Solo reconstruye widgets con id 'price'
-  }
-}
-
-// En la UI
-SintBuilder<ProductController>(
-  id: 'name',
-  builder: (controller) => Text(controller.productName),
+Obx(
+  () => Text('${controller.count.value}'),
+  debugLabel: 'counter-label', // Etiqueta opcional para Sint.diagnostics
 )
+```
 
-SintBuilder<ProductController>(
-  id: 'price',
-  builder: (controller) => Text('\$${controller.productPrice}'),
+- `Obx` solo reconstruye cuando el valor observado cambia realmente (`==`).
+- Los widgets `Obx` de 1 señal almacenan su suscripción inline sin crear `Map`/`Set`/`List`.
+- Las ramas condicionales `if`/`else` se podan automáticamente en cada build — cero fugas de listeners.
+- Lee sin suscribirte usando `rx.peek` o `Sint.untrack(() => ...)`.
+
+### `ObxSelect<T>` (Selector Fino Inline — SINT 2.3)
+
+Observa una única propiedad de un `Rx<Model>` sin declarar campos `Computed` extra:
+
+```dart
+ObxSelect<double>(
+  debugLabel: 'alpha-power',
+  selector: () => controller.telemetry.value.alphaPower,
+  equals: (prev, next) => (prev - next).abs() < 0.05,
+  builder: (power) => Text('${power.toStringAsFixed(2)} µV'),
 )
 ```
 
 ---
 
-## StateMixin
-
-`StateMixin` facilita el manejo de estados de carga, error y exito:
+## Estado Derivado (`Sint.computed`) y Batch Síncrono (`Sint.batch`)
 
 ```dart
-class ApiController extends SintController with StateMixin<List<User>> {
-  @override
-  void onInit() {
-    super.onInit();
-    fetchUsers();
-  }
+class CartController extends SintController {
+  final items = 1.obs;
+  final price = 25.0.obs;
+  final tax = 2.0.obs;
 
-  Future<void> fetchUsers() async {
-    change(null, status: RxStatus.loading());
+  // Propagación glitch-free en diamante; auto-disposed en onClose().
+  late final total = computed(() => (items.value * price.value) + tax.value);
 
-    try {
-      final users = await userRepository.getUsers();
-      if (users.isEmpty) {
-        change(null, status: RxStatus.empty());
-      } else {
-        change(users, status: RxStatus.success());
-      }
-    } catch (e) {
-      change(null, status: RxStatus.error(e.toString()));
-    }
-  }
-}
-
-// En la UI
-class UsersPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SintBuilder<ApiController>(
-        init: ApiController(),
-        builder: (controller) {
-          return controller.obx(
-            (users) => ListView.builder(
-              itemCount: users!.length,
-              itemBuilder: (_, index) => UserTile(users[index]),
-            ),
-            onLoading: Center(child: CircularProgressIndicator()),
-            onEmpty: Center(child: Text('No hay usuarios')),
-            onError: (error) => Center(child: Text('Error: $error')),
-          );
-        },
-      ),
-    );
-  }
-}
-```
-
-**Estados disponibles:**
-- `RxStatus.loading()` - Cargando datos
-- `RxStatus.success()` - Datos cargados exitosamente
-- `RxStatus.empty()` - Sin datos
-- `RxStatus.error(message)` - Error con mensaje
-
----
-
-## Workers
-
-Los **Workers** son callbacks reactivos que escuchan cambios en observables:
-
-```dart
-class FormController extends SintController {
-  var email = ''.obs;
-  var password = ''.obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-
-    // ever: Se ejecuta cada vez que cambia
-    ever(email, (value) {
-      print('Email cambio a: $value');
-    });
-
-    // once: Se ejecuta solo la primera vez que cambia
-    once(password, (value) {
-      print('Password establecida por primera vez');
-    });
-
-    // debounce: Espera que el usuario deje de escribir
-    debounce(email, (value) {
-      validateEmail(value);
-    }, time: Duration(milliseconds: 800));
-
-    // interval: Ignora cambios durante el intervalo
-    interval(password, (value) {
-      checkPasswordStrength(value);
-    }, time: Duration(milliseconds: 500));
-  }
-
-  void validateEmail(String email) {
-    // Validacion de email
-  }
-
-  void checkPasswordStrength(String password) {
-    // Verificar fortaleza de password
-  }
-}
-```
-
-**Tipos de Workers:**
-
-| Worker | Descripcion |
-|--------|-------------|
-| `ever` | Se ejecuta cada vez que cambia el observable |
-| `once` | Se ejecuta solo la primera vez que cambia |
-| `debounce` | Espera a que el usuario deje de hacer cambios |
-| `interval` | Ignora cambios dentro del intervalo especificado |
-
-**Cancelar Workers:**
-
-```dart
-class SearchController extends SintController {
-  var searchTerm = ''.obs;
-  late Worker searchWorker;
-
-  @override
-  void onInit() {
-    super.onInit();
-    searchWorker = debounce(
-      searchTerm,
-      performSearch,
-      time: Duration(milliseconds: 500),
-    );
-  }
-
-  void performSearch(String term) {
-    // Buscar...
-  }
-
-  @override
-  void onClose() {
-    searchWorker.dispose(); // Cancelar worker
-    super.onClose();
-  }
+  void applyBundle() => Sint.batch(() {
+    items.value += 2;
+    price.value = 20.0;
+    tax.value = 1.5;
+  }); // Recalcula `total` y notifica a `Obx` UNA sola vez en lugar de 3.
 }
 ```
 
 ---
 
-## Test Roadmap
+## UI de Alta Frecuencia en Tiempo Real (`Sint.frameBatch` y `FrameThrottledRx`)
 
-### Pruebas Planificadas - Pilar de Estado
+Para flujos más rápidos que el refresco de pantalla (60–1000 Hz en audio DSP, EEG, VR o streaming de tokens LLM):
 
-1. **Profiling Reactivo**
-   - Benchmarks de rendimiento para Obx vs SintBuilder
-   - Medicion de reconstrucciones innecesarias
-   - Optimizacion de memoria en listas grandes con .obs
-   - Comparativa de performance con Provider y Riverpod
+### 1. `Sint.frameBatch` (Agrupación Alineada a VSync)
 
-2. **Contenedores Rx con Alcance**
-   - Tests de aislamiento de estado entre modulos
-   - Validacion de garbage collection de observables
-   - Pruebas de state scoping en navegacion profunda
-   - Verificacion de memory leaks en Workers
+```dart
+/// Seguro a 256+ Hz desde callbacks FFI, DSP o WebSocket:
+void onHardwarePacket(double sample, double peakDb) {
+  Sint.frameBatch(() {
+    eegSample.value = sample;
+    meterDb.value = peakDb;
+  });
+}
+```
 
-3. **Interoperabilidad con Stream**
-   - Integracion bidireccional Stream <-> Rx
-   - Tests de conversion .obs.stream y stream.value
-   - Validacion de backpressure handling
-   - Pruebas de sincronizacion con StreamController
+Múltiples mutaciones en ticks separados se agrupan en `O(1)` en **como máximo un flush antes del siguiente frame VSync** (**8× menos dispatches** y **3.56× más rápido** que `ValueNotifier` sin agrupar). Usa `Sint.flushFrameBatch()` para forzar un flush inmediato.
 
-4. **StateMixin Avanzado**
-   - Estados personalizados mas alla de loading/error/success
-   - Composicion de multiples StateMixin
-   - Tests de transiciones de estado invalidas
-   - Validacion de rollback automatico en errores
+### 2. `FrameThrottledRx<T>` (`rx.throttledToFrame()` / `controller.frameThrottled(rx)`)
 
-5. **Workers Edge Cases**
-   - Comportamiento con cambios rapidos consecutivos
-   - Memory profiling de workers no dispuestos
-   - Tests de race conditions en debounce/interval
-   - Validacion de orden de ejecucion en multiple workers
+```dart
+class SynthController extends SintController {
+  final rawPlayheadMs = 0.obs;
+
+  // 1 emisión máxima por VSync; omite notificaciones si no hay listeners o si
+  // el jitter vuelve al último valor emitido. Auto-disposed en onClose().
+  late final uiPlayheadMs = frameThrottled(rawPlayheadMs);
+}
+```
+
+---
+
+## Estado Asíncrono (`RxFuture<T>` y `SintStatus<T>`)
+
+```dart
+class ProfileController extends SintController {
+  late final profile = rxFuture(() => repo.fetchProfile());
+}
+
+Obx(() => switch (controller.profile.value) {
+  LoadingStatus(:final previousData) when previousData != null =>
+      ProfileBody(previousData, refreshing: true),
+  LoadingStatus() => const CircularProgressIndicator(),
+  SuccessStatus(:final data) => ProfileBody(data),
+  EmptyStatus() => const Text('Sin datos'),
+  ErrorStatus(:final error) => Text('Error: $error'),
+})
+```
+
+---
+
+## Workers Síncronos Zero-Stream
+
+```dart
+@override
+void onInit() {
+  super.onInit();
+  ever<int>(count, (v) => Sint.log('cambió: $v'));
+  everAll([items, price], (_) => Sint.log('entradas actualizadas'));
+  once<int>(count, (v) => Sint.log('primer cambio: $v'));
+  debounce<String>(query, (q) => search(q), time: const Duration(milliseconds: 300));
+  interval<int>(clicks, (c) => track(c), time: const Duration(seconds: 1));
+}
+```
+
+---
+
+## Gestor Simple (`SintBuilder`)
+
+```dart
+class CounterController extends SintController {
+  int counter = 0;
+  void increment() {
+    counter++;
+    update(['counter-text']);
+  }
+}
+
+SintBuilder<CounterController>(
+  id: 'counter-text',
+  init: CounterController(),
+  builder: (c) => Text('${c.counter}'),
+)
+```
+
+---
+
+## Perfilado en Tiempo de Ejecución (`Sint.diagnostics`)
+
+```dart
+Sint.diagnostics.enableRebuildTracking = true;
+print(Sint.diagnostics.rebuildStats()); // Ordenado descendentemente por número de rebuilds
+```

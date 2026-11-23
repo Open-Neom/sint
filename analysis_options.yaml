@@ -1,5 +1,5 @@
-# Include option is buggy:
 include: package:flutter_lints/flutter.yaml
+
 analyzer:
   errors:
     unintended_html_in_doc_comment: ignore
@@ -11,3 +11,17 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+
+linter:
+  rules:
+    # Bug & resource-leak prevention
+    cancel_subscriptions: true
+    close_sinks: true
+    literal_only_boolean_expressions: true
+    no_adjacent_strings_in_list: true
+    only_throw_errors: true
+    throw_in_finally: true
+    # Clean, modern Dart 3 hygiene
+    prefer_final_in_for_each: true
+    unnecessary_null_checks: true
+    use_super_parameters: true

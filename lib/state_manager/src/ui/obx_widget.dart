@@ -12,7 +12,11 @@ import 'package:sint/state_manager/src/ui/obx_reactive_element.dart';
 class Obx extends StatelessWidget {
   final WidgetCallback builder;
 
-  const Obx(this.builder, {super.key});
+  /// Optional label used by `Sint.diagnostics` when live rebuild tracking is
+  /// enabled in debug/profile mode.
+  final String? debugLabel;
+
+  const Obx(this.builder, {super.key, this.debugLabel});
 
   @override
   Widget build(BuildContext context) {

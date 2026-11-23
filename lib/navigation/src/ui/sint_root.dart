@@ -179,6 +179,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
     Sint.smartManagement = config.smartManagement;
     Sint.isLogEnable = config.enableLog ?? kDebugMode;
     Sint.log = config.logWriterCallback ?? defaultLogWriterCallback;
+    SintDiagnostics.instance.registerServiceExtensions();
     final dynamic initialDeps = config.initialBinding?.dependencies();
     if (config.binds.isNotEmpty || initialDeps is List<Bind>) {
       _rootBinds = <Bind<dynamic>>[

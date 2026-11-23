@@ -371,7 +371,7 @@ class SnackbarController {
     _isDisposed = true;
     _cancelTimer();
     if (!_isTesting) {
-      for (var element in _overlayEntries) {
+      for (final element in _overlayEntries) {
         if (element.mounted) {
           element.remove();
         }

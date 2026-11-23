@@ -22,6 +22,7 @@ export 'src/sint_listenable.dart';
 
 // UI
 export 'src/ui/obx_reactive_element.dart';
+export 'src/ui/obx_select.dart';
 export 'src/ui/obx_widget.dart';
 export 'src/ui/sint_listener.dart';
 export 'src/ui/sint_view.dart';

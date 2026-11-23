@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
+import 'package:sint/core/src/diagnostics/sint_diagnostics.dart';
 import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
 import 'package:sint/injection/src/ui/sint_scope.dart';
 import 'package:sint/state_manager/src/domain/notify_data.dart';
 import 'package:sint/state_manager/src/engine/notifier.dart';
+import 'package:sint/state_manager/src/ui/obx_widget.dart';
 
 class ObxReactiveElement extends StatelessElement {
   ObxReactiveElement(super.widget);
@@ -19,6 +21,13 @@ class ObxReactiveElement extends StatelessElement {
 
   @override
   Widget build() {
+    if (SintDiagnostics.isRebuildTrackingEnabled) {
+      final obx = widget;
+      final label = obx is Obx && obx.debugLabel != null
+          ? obx.debugLabel!
+          : widget.runtimeType.toString();
+      SintDiagnostics.instance.recordRebuild(label);
+    }
     if (!InjectionExtension.hasActiveScopes) {
       return Notifier.instance.append(_notifyData, super.build);
     }

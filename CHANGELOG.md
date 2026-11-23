@@ -1,5 +1,30 @@
 # Changelog - sint
 
+## [2.3.0] - 2026-11-22
+
+### Pillar S — High-Frequency Real-Time UI Primitives (`Sint.frameBatch`, `FrameThrottledRx`, `ObxSelect`)
+- **VSync-Aligned Frame Coalescing (`Sint.frameBatch` & `Sint.flushFrameBatch`)**: Added `ListNotifier.frameBatch` / `Sint.frameBatch` and `Sint.flushFrameBatch()` to coalesce rapid multi-tick reactive mutations (256 Hz EEG biosignals, DAW playheads/meters, VR controller telemetry, 50–100+ tok/s LLM streams) into **at most one UI flush right before the next display VSync** with zero per-tick allocations — delivering **8× fewer UI dispatches** and **3.56× faster** throughput than unbatched `ValueNotifier` in the 60-frame telemetry benchmark (`test/benchmarks/high_frequency_benchmark_test.dart`). Uses `SchedulerBinding.instance.scheduleFrameCallback` in Flutter apps and deterministic microtask/custom `ListNotifier.frameScheduler` support in headless unit tests.
+- **Zero-Stream Frame-Throttled Signal (`FrameThrottledRx<T>`)**: Added `FrameThrottledRx<T>` (`rx.throttledToFrame()`, `Sint.frameThrottled(rx)`, and `SintController.frameThrottled(rx)` with automatic `onClose()` disposal, also exported from headless `package:sint/rx.dart`). Coalesces high-frequency upstream bursts to at most 1 notification per VSync frame, skips scheduling when unobserved (`listenersLength == 0`), suppresses sub-frame oscillations returning to the last emitted value (`0 -> 1 -> 0` emits 0 notifications), and flushes in the same frame when combined with `Sint.frameBatch`.
+- **Inline Fine-Grained Selector Widget (`ObxSelect<T>`)**: Added `ObxSelect<T>(selector: ..., builder: ..., equals: ..., debugLabel: ...)` so widgets can subscribe to a single projected slice of a complex `Rx<Model>` or `RxMap` with optional custom equality (`equals:`), `SintScope` isolation, and zero boilerplate `Computed` fields.
+
+### Developer Experience — Automated Migration & 10-Rule Architectural Linter (`dart run sint:migrate` & `dart run sint:audit`)
+- **Zero-Dependency Pure-Dart CLIs (`bin/migrate.dart` & `bin/audit.dart`)**:
+  - `dart run sint:migrate [dir] [--dry-run | --apply | --strict | --fail-on-warnings | --rule= | --json]` safely previews or applies GetX → SINT migrations (`pubspec.yaml` dependency replacement with deduplication, `package:get/*` → `package:sint/sint.dart`, and `Get*` → `Sint*` / `getPages:` → `sintPages:` rewrites outside comments and string literals).
+  - `dart run sint:audit [dir] [--strict] [--fail-on-warnings] [--rule=a,b] [--json]` provides a read-only CI architectural linter covering **10 rules empirically validated across 7,500+ Open Neom Dart files**: `sint_no_get_connect`, `bind_put_closure_trap`, `sint_back_inside_modal`, `avoid_sint_put_in_build`, `avoid_direct_navigator`, `prefer_sint_find_or_null`, `prefer_sint_find_or_put`, `prefer_contract_binding`, `prefer_sint_batch`, and `--strict` `deprecated_flutter_ui_import`, with per-rule summary counts and `// sint-ignore: <code>` inline suppressions.
+
+### Pillar I & N — Ecosystem Ergonomics & Headless Safety (`Sint.findOrPut`, `Sint.argumentsAs<T>()`)
+- **Atomic `Sint.findOrPut<S>(builder, {tag, permanent})`**: Single `O(1)` find-or-register helper honoring active `SintScope` overrides without eagerly instantiating `builder` when `S` is already registered — replacing `Sint.isRegistered<T>() ? Sint.find<T>() : Sint.put(T())` boilerplate across modular apps.
+- **Type-Safe `Sint.argumentsAs<T>()` & Headless-Safe Route Getters**: Added `T? Sint.argumentsAs<T>()` (never throws `TypeError` on null or mismatched route arguments) and guarded `arguments`, `args<T>()`, `parameters`, `pathParams`, `queryParams`, `routeParam`, `pathParam`, `queryParam`, and `queryParamOrDefault` when `!SintRoot.treeInitialized`, eliminating `try/catch` wrappers in controllers during headless unit tests.
+- **Strict Package Lint Hardening (`analysis_options.yaml`)**: Enabled `only_throw_errors`, `cancel_subscriptions`, `close_sinks`, `literal_only_boolean_expressions`, `no_adjacent_strings_in_list`, `throw_in_finally`, `prefer_final_in_for_each`, `unnecessary_null_checks`, and `use_super_parameters` across `sint`, converting the last raw-`String` throw in `Sint.find<S>()` to a typed `StateError`.
+
+### Observability — Built-in Runtime Diagnostics, `onRebuild` Hook & VM Service Extensions (`Sint.diagnostics`)
+- **Unified 4-Pillar Runtime Inspector (`Sint.diagnostics`)**: Added `SintDiagnostics` (`Sint.diagnostics.snapshot()`, `stateSnapshot()`, `dependenciesSnapshot()`, `routesSnapshot()`, `localizationSnapshot()`), opt-in `Obx` / `ObxSelect` rebuild hot-spot tracking (`Sint.diagnostics.enableRebuildTracking = true`, optional `debugLabel:` on `Obx` and `ObxSelect`, and descending-sorted `rebuildStats()`), and an external `Sint.diagnostics.onRebuild` callback hook so client circuit-breakers like `sint_sentinel` can monitor runaway reactive loops with zero package coupling.
+- **Automatic Dart VM Service Extensions (`ext.sint.*`)**: `SintRootState.onInit()` automatically registers `ext.sint.getSnapshot`, `ext.sint.getDependencies`, `ext.sint.getRoutes`, `ext.sint.getLocalization`, and `ext.sint.getRebuildStats` in debug and profile builds (`!kReleaseMode`) for Flutter DevTools and external inspectors.
+
+### Documentation & Positioning
+- Elevated `README.md`, `documentation/es_ES/README.md`, `ROADMAP.md`, `llms.txt`, and all 8 `en_US`/`es_ES` pillar guides to SINT `2.3.0`, showcasing real production workloads from Open Neom's extreme-performance ecosystem (audio DAW/DSP, 3D/VR + Flutter GPU, 256 Hz EEG, edge AI/LLM streaming, and 70+ module Web/Wasm suites) and removing all stale legacy GetX documentation snippets.
+- 100% backwards-compatible minor release (`2.3.0`): all `@Deprecated` `Get*` aliases and `SintMaterialApp` / `SintCupertinoApp` bridges remain intact throughout `2.x`.
+
 ## [2.2.2] - 2026-11-22
 
 ### Flutter 3.50 / Dart 3.14 Clean Analysis (160/160 Pub Points Target) & SDK Decoupling

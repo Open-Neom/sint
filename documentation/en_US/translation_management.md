@@ -1,39 +1,36 @@
-# Translation Management
+# Translation Management (Pillar T)
 
 - [Setup](#setup)
-- [Defining translations](#defining-translations)
-- [Using translations](#using-translations)
-  - [Simple translation](#simple-translation)
-  - [Translation with parameters](#translation-with-parameters)
-  - [Plural translations](#plural-translations)
-- [Changing locale](#changing-locale)
-- [System locale](#system-locale)
-- [Test Roadmap](#test-roadmap)
+- [Defining Translations](#defining-translations)
+- [Reactive `.tr`, Parameters & Plurals](#reactive-tr-parameters--plurals)
+- [Lazy Locale Bundles & Zero-Reassemble Switching](#lazy-locale-bundles--zero-reassemble-switching)
+- [Missing-Key Telemetry & Endpoint Translation](#missing-key-telemetry--endpoint-translation)
+- [Runtime Inspection (`Sint.diagnostics`)](#runtime-inspection-sintdiagnostics)
 
 ---
 
-SINT's **Translation** pillar provides internationalization (i18n) support using a simple key-value dictionary system with the `.tr` extension.
+SINT's **Translation** pillar provides `O(1)` pre-resolved dictionary lookups, single-pass `.trParams` interpolation, native `.tr` reactivity inside `Obx` / `ObxSelect` / `Computed`, lazy per-locale bundle loading, and zero-reassemble locale switching.
 
 ---
 
 ## Setup
 
-Configure translations in `SintMaterialApp`:
+Configure translations directly on `SintApp` (or `SintMaterialApp` / `SintCupertinoApp`):
 
 ```dart
-SintMaterialApp(
+SintApp(
+  materialTheme: ThemeData(),
   translations: AppTranslations(),
-  locale: Locale('en', 'US'),
-  fallbackLocale: Locale('en', 'US'),
-  home: MyHome(),
+  locale: Sint.deviceLocale ?? const Locale('en', 'US'),
+  fallbackLocale: const Locale('en', 'US'),
+  initialRoute: '/',
+  sintPages: [...],
 )
 ```
 
 ---
 
-## Defining translations
-
-Create a class extending `Translations`:
+## Defining Translations
 
 ```dart
 class AppTranslations extends Translations {
@@ -42,14 +39,16 @@ class AppTranslations extends Translations {
     'en_US': {
       'hello': 'Hello World',
       'logged_in': 'Logged in as @name',
+      'item_count_zero': 'No items',
+      'item_count': '1 item',
+      'item_count_plural': '@count items',
     },
     'es_ES': {
       'hello': 'Hola Mundo',
-      'logged_in': 'Sesion iniciada como @name',
-    },
-    'ar_EG': {
-      'hello': 'مرحبا بالعالم',
-      'logged_in': 'تم تسجيل الدخول باسم @name',
+      'logged_in': 'Sesión iniciada como @name',
+      'item_count_zero': 'Sin elementos',
+      'item_count': '1 elemento',
+      'item_count_plural': '@count elementos',
     },
   };
 }
@@ -57,60 +56,63 @@ class AppTranslations extends Translations {
 
 ---
 
-## Using translations
+## Reactive `.tr`, Parameters & Plurals
 
-### Simple translation
-
-```dart
-Text('hello'.tr); // "Hello World" or "Hola Mundo" depending on locale
-```
-
-### Translation with parameters
+`.tr` automatically registers a lightweight signal read whenever evaluated inside `Obx`, `ObxSelect`, or `Sint.computed`:
 
 ```dart
-Text('logged_in'.trParams({'name': 'Serzen'}));
-// "Logged in as Serzen"
-```
+// Simple reactive translation
+Obx(() => Text('hello'.tr))
 
-### Plural translations
+// Single-pass parameter substitution
+Obx(() => Text('logged_in'.trParams({'name': controller.userName.value})))
 
-```dart
-Text('item_count'.trPlural('items_count', itemList.length, args));
-```
-
----
-
-## Changing locale
-
-```dart
-var locale = Locale('es', 'ES');
-Sint.updateLocale(locale);
-```
-
-All widgets using `.tr` will automatically update.
-
----
-
-## System locale
-
-Use the device's locale:
-
-```dart
-SintMaterialApp(
-  locale: Sint.deviceLocale,
-)
+// Automatic _zero / singular / _other plural handling
+Obx(() => Text(
+  'item_count'.trPluralParams(
+    'item_count_plural',
+    controller.count.value,
+    {'count': '${controller.count.value}'},
+  ),
+))
 ```
 
 ---
 
-## Test Roadmap
+## Lazy Locale Bundles & Zero-Reassemble Switching
 
-Tests for Translation are retained from the original GetX test suite. Future enhancements:
+Defer large locale JSON/ARB bundles until actually selected by the user. Concurrent calls for the same locale share a single in-flight `Future`:
 
-- **Dynamic per-module translation loading** on demand
-- **Build-time `.tr` key validation** across all locales
-- **RTL/LTR layout integration** tied to locale changes
-- Missing key fallback tests
-- Parameter substitution tests
-- Locale change reactivity tests
-- Plural form handling for various languages
+```dart
+Sint.registerLazyTranslations('fr_FR', () async {
+  return await loadFrenchDictionary();
+});
+
+// Loads lazily (if needed) and updates all active Obx/.tr widgets in O(1)
+// WITHOUT calling WidgetsBinding.performReassemble():
+await Sint.updateLocale(const Locale('fr', 'FR'));
+```
+
+You can also merge modular package dictionaries incrementally at runtime using `Sint.appendTranslations({...})` (safely clones `const` maps).
+
+---
+
+## Missing-Key Telemetry & Endpoint Translation
+
+```dart
+// Report missing keys in CI or analytics:
+Sint.onMissingTranslationKey = (key, locale) {
+  Sint.log('Missing translation "$key" for $locale');
+};
+```
+
+Set `translateEndpoints: true` on `SintApp` to localize URL route segments automatically via `PathTranslator`.
+
+---
+
+## Runtime Inspection (`Sint.diagnostics`)
+
+```dart
+final i18n = Sint.diagnostics.localizationSnapshot();
+// { locale, fallbackLocale, loadedLocales, lazyLoaderLocales, dictionarySizes }
+```

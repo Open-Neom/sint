@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
 import 'package:sint/state_manager/src/engine/notifier.dart';
 
@@ -8,16 +10,38 @@ import 'package:sint/state_manager/src/engine/notifier.dart';
 /// Maintained with original names to ensure multirepo compatibility.
 class ListNotifier extends Listenable {
   static int _batchDepth = 0;
+  static int _frameBatchDepth = 0;
   static int _propagationDepth = 0;
   static bool _isFlushingBatch = false;
+  static bool _isFlushingFrameBatch = false;
+  static bool _frameFlushScheduled = false;
+  static int _frameScheduleGeneration = 0;
   static final List<ListNotifier> _batchedNotifiers = <ListNotifier>[];
   static final List<VoidCallback> _batchedComputed = <VoidCallback>[];
+  static final List<ListNotifier> _frameBatchedNotifiers = <ListNotifier>[];
 
-  /// Whether execution is currently inside a [batch] block.
+  /// Optional custom frame scheduler hook used by [frameBatch] (e.g. for
+  /// deterministic custom clocks or headless tests). When `null`, SINT
+  /// schedules a VSync transient frame callback via [SchedulerBinding] when an
+  /// active Flutter frame loop is running, or falls back to a microtask in
+  /// headless `test()` zones.
+  static void Function(VoidCallback flush)? frameScheduler;
+
+  /// Whether execution is currently inside a synchronous [batch] block.
   static bool get isBatching => _batchDepth > 0;
+
+  /// Whether execution is currently inside a VSync-aligned [frameBatch] block.
+  static bool get isFrameBatching => _frameBatchDepth > 0;
+
+  /// Whether one or more [ListNotifier] updates are queued for the next frame
+  /// flush via [frameBatch].
+  static bool get hasPendingFrameBatch => _frameBatchedNotifiers.isNotEmpty;
 
   /// Whether a completed [batch] or synchronous signal wave is flushing listeners.
   static bool get isFlushingBatch => _isFlushingBatch;
+
+  /// Whether a scheduled VSync [frameBatch] flush is currently running.
+  static bool get isFlushingFrameBatch => _isFlushingFrameBatch;
 
   /// Whether an upstream [ListNotifier] is currently dispatching notifications.
   static bool get isPropagating => _propagationDepth > 0;
@@ -25,6 +49,114 @@ class ListNotifier extends Listenable {
   /// Internal hook for `Computed<T>` to coalesce recomputations during a wave/batch flush.
   static void enqueueBatchedComputed(VoidCallback flushCallback) {
     _batchedComputed.add(flushCallback);
+  }
+
+  static void _scheduleFrameFlush() {
+    if (_frameFlushScheduled) return;
+    _frameFlushScheduled = true;
+    final generation = _frameScheduleGeneration;
+    void runFlush() {
+      if (generation != _frameScheduleGeneration) return;
+      flushFrameBatch();
+    }
+
+    final custom = frameScheduler;
+    if (custom != null) {
+      custom(runFlush);
+      return;
+    }
+
+    var useHeadlessMicrotask = false;
+    assert(() {
+      final bindingType = BindingBase.debugBindingType();
+      if (bindingType == null) {
+        useHeadlessMicrotask = true;
+      } else if (Zone.current[#test.declarer] != null) {
+        try {
+          final dynamic binding = SchedulerBinding.instance;
+          if (binding.inTest == false) {
+            useHeadlessMicrotask = true;
+          }
+        } on Object {
+          // Custom non-test binding inside a test zone: use normal frame callback.
+        }
+      }
+      return true;
+    }());
+
+    if (useHeadlessMicrotask) {
+      scheduleMicrotask(runFlush);
+      return;
+    }
+
+    try {
+      final binding = SchedulerBinding.instance;
+      binding.scheduleFrameCallback((_) => runFlush());
+      binding.scheduleFrame();
+    } on Object {
+      scheduleMicrotask(runFlush);
+    }
+  }
+
+  /// Runs [action] while coalescing high-frequency reactive mutations across
+  /// multiple async events (e.g. 256 Hz EEG streams, DAW playheads, VR
+  /// controllers, or LLM token bursts) into **at most one VSync frame flush**.
+  ///
+  /// All mutated notifiers are deduplicated in `O(1)` with zero heap
+  /// allocations per tick and flushed inside a single glitch-free [batch] right
+  /// before the next frame's build/layout/paint pass.
+  static T frameBatch<T>(T Function() action) {
+    _frameBatchDepth++;
+    try {
+      return action();
+    } finally {
+      _frameBatchDepth--;
+      if (_frameBatchDepth == 0 && _frameBatchedNotifiers.isNotEmpty) {
+        _scheduleFrameFlush();
+      }
+    }
+  }
+
+  /// Immediately flushes any pending [frameBatch] updates inside a single
+  /// coalesced [batch] wave. Safe to call when nothing is pending.
+  static void flushFrameBatch() {
+    _frameFlushScheduled = false;
+    if (_frameBatchedNotifiers.isEmpty) return;
+
+    _isFlushingFrameBatch = true;
+    try {
+      batch(() {
+        while (_frameBatchedNotifiers.isNotEmpty) {
+          final count = _frameBatchedNotifiers.length;
+          for (var i = 0; i < count; i++) {
+            final notifier = _frameBatchedNotifiers[i];
+            notifier._queuedInFrameBatch = false;
+            if (!notifier.isDisposed) {
+              notifier.onFrameBatchFlush();
+            }
+          }
+          if (count == _frameBatchedNotifiers.length) {
+            _frameBatchedNotifiers.clear();
+          } else {
+            _frameBatchedNotifiers.removeRange(0, count);
+          }
+        }
+      });
+    } finally {
+      _isFlushingFrameBatch = false;
+    }
+  }
+
+  /// Clears any pending [frameBatch] queue and resets [frameScheduler] (used by
+  /// `Sint.reset()` between tests).
+  static void resetFrameBatch() {
+    _frameScheduleGeneration++;
+    _frameFlushScheduled = false;
+    for (final notifier in _frameBatchedNotifiers) {
+      notifier._queuedInFrameBatch = false;
+    }
+    _frameBatchedNotifiers.clear();
+    frameScheduler = null;
   }
 
   /// Runs [action] while coalescing synchronous [ListNotifier] notifications.
@@ -106,6 +238,7 @@ class ListNotifier extends Listenable {
   int _removedListeners = 0;
   int _computedListeners = 0;
   bool _queuedInBatch = false;
+  bool _queuedInFrameBatch = false;
 
   /// Whether this notifier has at least one non-`Computed` listener (`Obx`,
   /// `ever`, `everSync`, `SintBuilder`, or active `stream` subscriber).
@@ -223,10 +356,25 @@ class ListNotifier extends Listenable {
     Notifier.instance.add(disposer);
   }
 
+  /// Invoked when a VSync [frameBatch] flushes this notifier. Subclasses such
+  /// as `FrameThrottledRx` may override to skip redundant dispatch when the
+  /// net sub-frame delta returned to the last emitted value.
+  @protected
+  void onFrameBatchFlush() {
+    _notifyUpdate();
+  }
+
   @pragma('vm:prefer-inline')
   void _notifyUpdate() {
     final list = _updaters;
     if (list == null || list.length <= _removedListeners) return;
+    if (_frameBatchDepth > 0) {
+      if (!_queuedInFrameBatch) {
+        _queuedInFrameBatch = true;
+        _frameBatchedNotifiers.add(this);
+      }
+      return;
+    }
     if (_batchDepth > 0) {
       if (!_queuedInBatch) {
         _queuedInBatch = true;

@@ -171,12 +171,12 @@ class MapEquality<K, V> implements IEquality<Map<K, V>> {
     var length = map1.length;
     if (length != map2.length) return false;
     Map<_MapEntry, int> equalElementCounts = HashMap();
-    for (var key in map1.keys) {
+    for (final key in map1.keys) {
       var entry = _MapEntry(this, key, map1[key]);
       var count = equalElementCounts[entry] ?? 0;
       equalElementCounts[entry] = count + 1;
     }
-    for (var key in map2.keys) {
+    for (final key in map2.keys) {
       var entry = _MapEntry(this, key, map2[key]);
       var count = equalElementCounts[entry];
       if (count == null || count == 0) return false;
@@ -189,7 +189,7 @@ class MapEquality<K, V> implements IEquality<Map<K, V>> {
   int hash(Map<K, V>? map) {
     if (map == null) return null.hashCode;
     var hash = 0;
-    for (var key in map.keys) {
+    for (final key in map.keys) {
       var keyHash = _keyEquality.hash(key);
       var valueHash = _valueEquality.hash(map[key] as V);
       hash = (hash + 3 * keyHash + 7 * valueHash) & _hashMask;
@@ -251,7 +251,7 @@ class IterableEquality<E> implements IEquality<Iterable<E>> {
     if (elements == null) return null.hashCode;
     // Jenkins's one-at-a-time hash function.
     var hash = 0;
-    for (var element in elements) {
+    for (final element in elements) {
       var c = _elementEquality.hash(element);
       hash = (hash + c) & _hashMask;
       hash = (hash + (hash << 10)) & _hashMask;
@@ -295,12 +295,12 @@ abstract class _UnorderedEquality<E, T extends Iterable<E>>
       isValidKey: _elementEquality.isValidKey,
     );
     var length = 0;
-    for (var e in elements1) {
+    for (final e in elements1) {
       var count = counts[e] ?? 0;
       counts[e] = count + 1;
       length++;
     }
-    for (var e in elements2) {
+    for (final e in elements2) {
       var count = counts[e];
       if (count == null || count == 0) return false;
       counts[e] = count - 1;
@@ -313,7 +313,7 @@ abstract class _UnorderedEquality<E, T extends Iterable<E>>
   int hash(T? elements) {
     if (elements == null) return null.hashCode;
     var hash = 0;
-    for (E element in elements) {
+    for (final E element in elements) {
       var c = _elementEquality.hash(element);
       hash = (hash + c) & _hashMask;
     }

@@ -181,6 +181,34 @@ extension InjectionExtension on SintInterface {
   /// Fast `O(1)` check indicating whether at least one `SintScope` is active.
   static bool get hasActiveScopes => _hasActiveScopes;
 
+  /// Total number of currently active `SintScope` containers (mounted widget
+  /// scopes + imperative `SintScope.run` scopes + active build scopes).
+  static int get activeScopeCount =>
+      _mountedScopes.length + _imperativeScopes.length + _buildScopes.length;
+
+  /// Returns a JSON-serializable summary of all registered bindings in the
+  /// global DI container for [SintDiagnostics] and DevTools inspection.
+  static List<Map<String, Object?>> debugDescribeDependencies() {
+    final entries = <Map<String, Object?>>[];
+    for (final typeEntry in _typeSingl.entries) {
+      final typeName = typeEntry.key.toString();
+      for (final tagEntry in typeEntry.value.entries) {
+        final factory = tagEntry.value;
+        entries.add(<String, Object?>{
+          'type': typeName,
+          'tag': tagEntry.key,
+          'permanent': factory.permanent,
+          'fenix': factory.fenix,
+          'initialized': factory.isInit,
+          'instantiated': factory.dependency != null,
+          'isSingleton': factory.isSingleton,
+          'isLazyFactory': factory.isLazyFactory,
+        });
+      }
+    }
+    return entries;
+  }
+
   static void _refreshScopeFlag() {
     _hasActiveScopes =
         _mountedScopes.isNotEmpty ||
@@ -882,8 +910,9 @@ extension InjectionExtension on SintInterface {
     }
     final dep = _typeSingl[S]?[tag];
     if (dep == null) {
-      // ignore: lines_longer_than_80_chars
-      throw '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"';
+      throw StateError(
+        '"$S" not found. You need to call "Sint.put($S())" or "Sint.lazyPut(()=>$S())"',
+      );
     }
 
     /// although dirty solution, the lifecycle starts inside
@@ -905,6 +934,19 @@ extension InjectionExtension on SintInterface {
     if (dep == null) return null;
     final i = _initDependencies<S>(name: tag, dep: dep);
     return (i ?? dep.getDependency()) as S;
+  }
+
+  /// Returns the existing registered instance of [S] (honoring active
+  /// `SintScope` overrides first), or creates and registers it via [builder]
+  /// if absent — in a single `O(1)` check without eagerly instantiating
+  /// [builder] when [S] is already registered.
+  ///
+  /// Replaces verbose `Sint.isRegistered<T>() ? Sint.find<T>() : Sint.put(T())`
+  /// boilerplate across modular pages and controllers.
+  S findOrPut<S>(S Function() builder, {String? tag, bool permanent = false}) {
+    final existing = findOrNull<S>(tag: tag);
+    if (existing != null) return existing;
+    return put<S>(builder(), tag: tag, permanent: permanent);
   }
 
   static List<(_InstanceBuilderFactory, bool)> _orderedFactoriesForType(

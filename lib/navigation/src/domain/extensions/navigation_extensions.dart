@@ -1167,14 +1167,27 @@ extension NavigationExtension on SintInterface {
 
   bool get _shouldUseMock => SintTestMode.active && !SintRoot.treeInitialized;
 
-  /// give current arguments
+  /// give current arguments (returns `null` safely when `SintRoot` is not mounted)
   dynamic get arguments {
-    return args();
+    if (_shouldUseMock) return SintTestMode.arguments;
+    if (!SintRoot.treeInitialized) return null;
+    return rootController.rootDelegate.arguments();
+  }
+
+  /// Safely reads the current route arguments cast to [T], returning `null`
+  /// if no `SintRoot` is mounted, arguments are absent, or the runtime type
+  /// does not match [T].
+  T? argumentsAs<T>() {
+    final raw = arguments;
+    return raw is T ? raw : null;
   }
 
   T args<T>() {
     if (_shouldUseMock) {
       return SintTestMode.arguments as T;
+    }
+    if (!SintRoot.treeInitialized) {
+      return null as T;
     }
     return rootController.rootDelegate.arguments<T>();
   }
@@ -1193,7 +1206,9 @@ extension NavigationExtension on SintInterface {
     if (_shouldUseMock) {
       return SintTestMode.parameters;
     }
-
+    if (!SintRoot.treeInitialized) {
+      return const <String, String?>{};
+    }
     return rootController.rootDelegate.parameters;
   }
 
@@ -1207,6 +1222,9 @@ extension NavigationExtension on SintInterface {
           if (e.value != null) e.key: e.value!,
       };
     }
+    if (!SintRoot.treeInitialized) {
+      return const <String, String>{};
+    }
     return rootController.rootDelegate.pathParams;
   }
 
@@ -1215,6 +1233,7 @@ extension NavigationExtension on SintInterface {
   /// Usage: `String? tab = Sint.queryParams['tab'];`
   Map<String, String> get queryParams {
     if (_shouldUseMock) return SintTestMode.queryParameters;
+    if (!SintRoot.treeInitialized) return const <String, String>{};
     return rootController.rootDelegate.queryParams;
   }
 
@@ -1223,6 +1242,7 @@ extension NavigationExtension on SintInterface {
   /// Usage: `String? id = Sint.routeParam;`
   String? get routeParam {
     if (_shouldUseMock) return SintTestMode.routeParam;
+    if (!SintRoot.treeInitialized) return null;
     return rootController.rootDelegate.routeParam;
   }
 
@@ -1230,6 +1250,7 @@ extension NavigationExtension on SintInterface {
   /// Usage: `String? id = Sint.pathParam('bookId');`
   String? pathParam(String name) {
     if (_shouldUseMock) return SintTestMode.pathParam(name);
+    if (!SintRoot.treeInitialized) return null;
     return rootController.rootDelegate.pathParam(name);
   }
 
@@ -1237,6 +1258,7 @@ extension NavigationExtension on SintInterface {
   /// Usage: `String? page = Sint.queryParam('page');`
   String? queryParam(String name) {
     if (_shouldUseMock) return SintTestMode.queryParam(name);
+    if (!SintRoot.treeInitialized) return null;
     return rootController.rootDelegate.queryParam(name);
   }
 
@@ -1246,6 +1268,7 @@ extension NavigationExtension on SintInterface {
     if (_shouldUseMock) {
       return SintTestMode.queryParamOrDefault(name, defaultValue);
     }
+    if (!SintRoot.treeInitialized) return defaultValue;
     return rootController.rootDelegate.queryParamOrDefault(name, defaultValue);
   }
 

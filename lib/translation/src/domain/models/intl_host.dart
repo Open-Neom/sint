@@ -62,6 +62,9 @@ class IntlHost {
   /// Non-tracking read of the current [locale] for internal framework checks.
   Locale? get peekLocale => _locale;
 
+  /// Non-tracking read of the current [fallbackLocale] for internal diagnostics.
+  Locale? get peekFallbackLocale => _fallbackLocale;
+
   set locale(Locale? value) {
     if (_locale == value) return;
     _locale = value;

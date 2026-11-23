@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:sint/core/src/domain/models/rx_computed.dart';
+import 'package:sint/core/src/domain/models/rx_frame_throttled.dart';
 import 'package:sint/core/src/domain/models/rx_interface.dart';
 import 'package:sint/injection/src/lifecycle.dart';
 import 'package:sint/state_manager/src/domain/rx_future.dart';
@@ -53,6 +54,16 @@ abstract class SintController extends ListNotifier with SintLifeCycleMixin {
   /// Set [lazy] to `true` to defer recomputation while unobserved until read.
   Computed<T> computed<T>(T Function() compute, {bool lazy = false}) {
     final signal = Computed<T>(compute, lazy: lazy);
+    _syncDisposers.add(signal.dispose);
+    return signal;
+  }
+
+  /// Creates a VSync-throttled [FrameThrottledRx] view over a high-frequency
+  /// [source] signal (e.g. 256 Hz EEG/sensor telemetry, DAW playheads, VR
+  /// controllers, or LLM token streams) and automatically disposes it in
+  /// [onClose].
+  FrameThrottledRx<T> frameThrottled<T>(SintListenable<T> source) {
+    final signal = FrameThrottledRx<T>(source);
     _syncDisposers.add(signal.dispose);
     return signal;
   }

@@ -22,7 +22,7 @@ void main() {
         final deleted = Sint.delete(key: key);
         expect(deleted, isTrue);
         expect(Sint.isRegistered<_SampleService>(), isFalse);
-        expect(() => Sint.find<_SampleService>(), throwsA(isA<String>()));
+        expect(() => Sint.find<_SampleService>(), throwsStateError);
       },
     );
 

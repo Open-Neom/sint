@@ -1,200 +1,196 @@
-# State Management
+# State Management (Pillar S)
 
-- [Reactive State Manager](#reactive-state-manager)
-  - [Declaring a reactive variable](#declaring-a-reactive-variable)
-  - [Using values in the view](#using-values-in-the-view)
-  - [Conditions to rebuild](#conditions-to-rebuild)
-  - [Workers](#workers)
-- [Simple State Manager (SintBuilder)](#simple-state-manager-SintBuilder)
-  - [Usage](#usage)
-  - [Unique IDs](#unique-ids)
-- [StateMixin](#statemixin)
-- [Performance notes](#performance-notes)
-- [Test Roadmap](#test-roadmap)
+- [Reactive Signals (`.obs`, `Obx`, `ObxSelect`)](#reactive-signals-obs-obx-obxselect)
+- [Derived State (`Sint.computed`) & Synchronous Batching (`Sint.batch`)](#derived-state-sintcomputed--synchronous-batching-sintbatch)
+- [High-Frequency Real-Time UI (`Sint.frameBatch` & `FrameThrottledRx`)](#high-frequency-real-time-ui-sintframebatch--framethrottledrx)
+- [Async State (`RxFuture<T>` & `SintStatus<T>`)](#async-state-rxfuturet--sintstatust)
+- [Zero-Stream Synchronous Workers](#zero-stream-synchronous-workers)
+- [Simple State Manager (`SintBuilder`)](#simple-state-manager-sintbuilder)
+- [Runtime Rebuild Profiling (`Sint.diagnostics`)](#runtime-rebuild-profiling-sintdiagnostics)
+- [Performance Notes](#performance-notes)
 
 ---
 
-SINT's **State Management** pillar provides two complementary approaches: a **Reactive State Manager** (using `.obs` and `Obx`) and a **Simple State Manager** (`SintBuilder`). Both avoid `ChangeNotifier` and `Streams` boilerplate, delivering high performance with minimal RAM consumption.
+SINT's **State** pillar is a zero-Stream synchronous signals engine built for both everyday UI and extreme-performance Flutter workloads (real-time audio DAWs, 3D/VR HUDs, 256 Hz EEG streams, and on-device LLM token streams).
 
 ---
 
-## Reactive State Manager
+## Reactive Signals (`.obs`, `Obx`, `ObxSelect`)
 
-Make any variable observable by appending `.obs`:
-
-```dart
-var name = 'SINT'.obs;
-```
-
-Display it in the UI with `Obx`:
+Make any value observable with `.obs`:
 
 ```dart
-Obx(() => Text(controller.name.value));
-```
-
-`Obx` only rebuilds when the observed value actually changes. If you set `name.value = 'SINT'` again, no rebuild occurs.
-
-### Declaring a reactive variable
-
-Three equivalent ways:
-
-```dart
-// 1. Typed Rx
-final count = RxInt(0);
-
-// 2. Generic Rx
-final count = Rx<int>(0);
-
-// 3. .obs (preferred)
 final count = 0.obs;
-```
-
-Works with any type:
-
-```dart
+final name = 'SINT'.obs;
 final items = <String>[].obs;
 final user = User(name: 'Serzen', age: 30).obs;
 ```
 
-### Using values in the view
+### `Obx` (Zero-Allocation Single-Slot Fast Path)
 
 ```dart
-// Controller
-final count1 = 0.obs;
-final count2 = 0.obs;
-int get sum => count1.value + count2.value;
+Obx(
+  () => Text('${controller.count.value}'),
+  debugLabel: 'counter-label', // Optional label for Sint.diagnostics
+)
 ```
+
+- `Obx` only rebuilds when an observed value actually changes (`==`).
+- Single-signal `Obx` widgets store their subscription inline with zero `Map`/`Set`/`List` allocations.
+- Conditional `if`/`else` branches are pruned automatically on every build — zero stale listener leaks.
+- Read values without tracking via `rx.peek` or `Sint.untrack(() => ...)`.
+
+### `ObxSelect<T>` (Inline Fine-Grained Selector — SINT 2.3)
+
+Observe a single slice of a rich `Rx<Model>` without declaring boilerplate `Computed` fields:
 
 ```dart
-// View
-Obx(() => Text('${controller.count1.value}')),
-Obx(() => Text('${controller.sum}')),
+ObxSelect<double>(
+  debugLabel: 'alpha-power',
+  selector: () => controller.telemetry.value.alphaPower,
+  equals: (prev, next) => (prev - next).abs() < 0.05, // Optional custom equality
+  builder: (power) => Text('${power.toStringAsFixed(2)} µV'),
+)
 ```
-
-Incrementing `count1` only rebuilds widgets that depend on `count1` or `sum`. Other widgets remain untouched.
-
-### Conditions to rebuild
-
-```dart
-list.addIf(item < limit, item);
-```
-
-### Workers
-
-Trigger callbacks when reactive variables change:
-
-```dart
-// Called every time count changes
-ever(count, (_) => print('changed: $_'));
-
-// Called only the first time
-once(count, (_) => print('first change: $_'));
-
-// Called after user stops changing for 1 second
-debounce(count, (_) => print('debounced: $_'), time: Duration(seconds: 1));
-
-// Called at most once per second
-interval(count, (_) => print('interval: $_'), time: Duration(seconds: 1));
-```
-
-Workers should be initialized in `onInit()` of your controller.
-
-Worker timers are lifecycle-safe: `debounce` and `interval` timers (and
-all worker subscriptions) are cancelled automatically in the
-controller's `onClose()`, so pending callbacks never fire on an
-already-disposed controller.
 
 ---
 
-## Simple State Manager (SintBuilder)
-
-For cases where you need to update multiple widgets at once without reactive streams. More economical in RAM.
-
-### Usage
+## Derived State (`Sint.computed`) & Synchronous Batching (`Sint.batch`)
 
 ```dart
-class CountController extends SintController {
-  int counter = 0;
-  void increment() {
-    counter++;
-    update(); // notifies SintBuilder widgets
-  }
+class CartController extends SintController {
+  final items = 1.obs;
+  final price = 25.0.obs;
+  final tax = 2.0.obs;
+
+  // Glitch-free tri-color diamond propagation; auto-disposed on onClose().
+  // Pass `lazy: true` to defer evaluation while unobserved.
+  late final total = computed(() => (items.value * price.value) + tax.value);
+
+  void applyBundle() => Sint.batch(() {
+    items.value += 2;
+    price.value = 20.0;
+    tax.value = 1.5;
+  }); // Recomputes `total` and notifies `Obx` ONCE instead of 3 times.
 }
 ```
 
+---
+
+## High-Frequency Real-Time UI (`Sint.frameBatch` & `FrameThrottledRx`)
+
+For streams arriving faster than display refresh (60–1000 Hz audio playheads, VU meters, EEG biosignals, VR controllers, or 100 tok/s LLM streams):
+
+### 1. `Sint.frameBatch` (VSync-Aligned Coalescing)
+
 ```dart
-SintBuilder<CountController>(
-  init: CountController(),
-  builder: (_) => Text('${_.counter}'),
-)
+/// Safe to call at 256+ Hz from FFI, DSP, or WebSocket callbacks:
+void onHardwarePacket(double sample, double peakDb) {
+  Sint.frameBatch(() {
+    eegSample.value = sample;
+    meterDb.value = peakDb;
+  });
+}
 ```
 
-### Unique IDs
+Multiple `Sint.frameBatch` calls arriving across separate async ticks coalesce in `O(1)` into **at most one UI flush right before the next Flutter VSync frame**. Call `Sint.flushFrameBatch()` if you need to force an immediate flush in tests or shutdown hooks.
 
-Target specific widgets:
+### 2. `FrameThrottledRx<T>` (`rx.throttledToFrame()` / `controller.frameThrottled(rx)`)
 
 ```dart
-SintBuilder<Controller>(
-  id: 'text',
-  builder: (_) => Text('${_.counter}'),
-)
+class SynthController extends SintController {
+  final rawPlayheadMs = 0.obs;
+
+  // Coalesced to 1 emit/VSync; skips notifications when unobserved or when
+  // sub-frame jitter returns to the last emitted value. Auto-disposed on onClose().
+  late final uiPlayheadMs = frameThrottled(rawPlayheadMs);
+}
 ```
 
+- **Zero `StreamController` and zero `Timer` allocations**.
+- Works natively with `Obx`, `ObxSelect`, `Computed`, `ever`, and Flutter's `ValueListenableBuilder`.
+
+---
+
+## Async State (`RxFuture<T>` & `SintStatus<T>`)
+
+Use `rxFuture(...)` inside `SintController` for stale-while-revalidate async state with exhaustive Dart 3 pattern matching:
+
 ```dart
-update(['text']); // only rebuilds widgets with id 'text'
+class ProfileController extends SintController {
+  late final profile = rxFuture(() => repo.fetchProfile());
+}
+
+Obx(() => switch (controller.profile.value) {
+  LoadingStatus(:final previousData) when previousData != null =>
+      ProfileBody(previousData, refreshing: true),
+  LoadingStatus() => const CircularProgressIndicator(),
+  SuccessStatus(:final data) => ProfileBody(data),
+  EmptyStatus() => const Text('No profile found'),
+  ErrorStatus(:final error) => Text('Error: $error'),
+})
 ```
 
 ---
 
-## StateMixin
+## Zero-Stream Synchronous Workers
 
-For UI state management with loading, success, empty, and error states:
+Workers run directly on `ListNotifier` callbacks (zero `StreamController` overhead) and are automatically disposed when their `SintController` closes:
 
 ```dart
-class Controller extends SintController with StateMixin<User> {}
+@override
+void onInit() {
+  super.onInit();
+  ever<int>(count, (v) => Sint.log('changed: $v'));
+  everAll([items, price], (_) => Sint.log('inputs changed'));
+  once<int>(count, (v) => Sint.log('first change: $v'));
+  debounce<String>(query, (q) => search(q), time: const Duration(milliseconds: 300));
+  interval<int>(clicks, (c) => track(c), time: const Duration(seconds: 1));
+}
 ```
 
-```dart
-change(data, status: RxStatus.success());
-change(null, status: RxStatus.loading());
-change(null, status: RxStatus.error('Something went wrong'));
-```
+---
+
+## Simple State Manager (`SintBuilder`)
+
+For coarse manual rebuilds without reactive `.obs` fields:
 
 ```dart
-controller.obx(
-  (state) => Text(state.name),
-  onLoading: CircularProgressIndicator(),
-  onEmpty: Text('No data'),
-  onError: (error) => Text(error!),
+class CounterController extends SintController {
+  int counter = 0;
+  void increment() {
+    counter++;
+    update(['counter-text']); // Empty dynamic ID groups are auto-pruned on unmount
+  }
+}
+
+SintBuilder<CounterController>(
+  id: 'counter-text',
+  init: CounterController(),
+  builder: (c) => Text('${c.counter}'),
 )
 ```
 
 ---
 
-## Performance notes
+## Runtime Rebuild Profiling (`Sint.diagnostics`)
 
-The reactive hot path is allocation-free: notifications iterate the
-listener list directly (a defensive copy is only paid when a listener
-mutates the list mid-notification), and `Obx` schedules its rebuild
-synchronously via `markNeedsBuild` — batched by Flutter into the next
-frame — instead of queuing one microtask per notification. No API
-changes; measured improvements (median µs/op, Dart VM JIT):
+Enable opt-in rebuild tracking in debug/profile mode (zero release overhead):
 
-| Benchmark                              | Before |  After | Δ       |
-|----------------------------------------|-------:|-------:|--------:|
-| Pure notification (RxInt, 1 listener)  | 0.0193 | 0.0101 | −47.7 % |
-| Fan-out (100 listeners)                | 0.6452 | 0.2110 | −67.3 % |
-| `SintController.update()` (1 listener) | 0.0158 | 0.0070 | −55.7 % |
+```dart
+Sint.diagnostics.enableRebuildTracking = true;
+// Interact with your screen...
+print(Sint.diagnostics.rebuildStats()); // Sorted descending by rebuild count
+```
 
 ---
 
-## Test Roadmap
+## Performance Notes
 
-Tests for State Management are retained from the original GetX test suite and will be expanded in future versions:
+Measured on the Dart VM JIT harness ([`four_pillars_benchmark_test.dart`](../../test/benchmarks/four_pillars_benchmark_test.dart), [`high_frequency_benchmark_test.dart`](../../test/benchmarks/high_frequency_benchmark_test.dart)):
 
-- **Reactive performance profiling** for `.obs` rebuild frequency
-- **Scoped Rx containers** that auto-dispose with navigation scopes
-- **Stream interop** with Dart `Stream`/`StreamController` and platform channels
-- Unit tests for `Workers` (ever, once, debounce, interval)
-- Integration tests for `SintBuilder` with unique IDs
-- StateMixin lifecycle tests
+| Workload | SINT 2.3 Median | Baseline | Speedup |
+| --- | ---: | ---: | --- |
+| 60 frames × 8 bursts/frame (256–480 Hz) × 50 subs | **`20.6 µs`** (`Sint.frameBatch`) | `73.3 µs` (`ValueNotifier`) | **8× fewer dispatches · 3.56× faster** |
+| 20-widget screen, 4-field transaction + derived total | **`0.23 µs/op`** (`Sint.batch` + `Computed`) | `0.90 µs/op` (`ChangeNotifier`) | **4.0× faster** |
+| Pure signal notify (1 listener) | **`0.010 µs/op`** | — | Allocation-free hot path |

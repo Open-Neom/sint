@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
 import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
@@ -954,10 +954,7 @@ class SintDelegate extends RouterDelegate<RouteDecoder>
     final parameters = arguments.params;
     if (parameters.isNotEmpty) {
       final uri = arguments.uri.replace(
-        queryParameters: {
-          ...arguments.uri.queryParameters,
-          ...parameters,
-        },
+        queryParameters: {...arguments.uri.queryParameters, ...parameters},
       );
       page = uri.toString();
     }

@@ -7,7 +7,7 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 class RxMap<K, V> extends SintListenable<Map<K, V>>
     with MapMixin<K, V>, RxObjectMixin<Map<K, V>> {
   RxMap([Map<K, V> initial = const {}])
-      : super(initial.isEmpty ? <K, V>{} : Map<K, V>.of(initial));
+    : super(initial.isEmpty ? <K, V>{} : Map<K, V>.of(initial));
 
   RxMap._(super.initial);
 

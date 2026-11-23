@@ -16,13 +16,8 @@ import 'package:sint/state_manager/src/domain/sint_status.dart';
 /// }
 /// ```
 class RxFuture<T> extends Rx<SintStatus<T>> {
-  RxFuture(
-    this._loader, {
-    bool immediate = true,
-    this.isEmpty,
-  }) : super(
-          immediate ? SintStatus<T>.loading() : SintStatus<T>.empty(),
-        ) {
+  RxFuture(this._loader, {bool immediate = true, this.isEmpty})
+    : super(immediate ? SintStatus<T>.loading() : SintStatus<T>.empty()) {
     if (immediate) {
       unawaited(reload());
     }
@@ -30,10 +25,7 @@ class RxFuture<T> extends Rx<SintStatus<T>> {
 
   /// Creates an [RxFuture] that starts in [EmptyStatus] without running
   /// the loader until [reload] or [revalidate] is invoked.
-  RxFuture.idle(
-    this._loader, {
-    this.isEmpty,
-  }) : super(SintStatus<T>.empty());
+  RxFuture.idle(this._loader, {this.isEmpty}) : super(SintStatus<T>.empty());
 
   Future<T> Function() _loader;
   final bool Function(T data)? isEmpty;

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/navigation/sint_navigation.dart';
 
 class WrapperNamed extends StatelessWidget {

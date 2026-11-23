@@ -1,6 +1,1 @@
-enum RowStyle {
-  icon,
-  action,
-  all,
-  none,
-}
+enum RowStyle { icon, action, all, none }

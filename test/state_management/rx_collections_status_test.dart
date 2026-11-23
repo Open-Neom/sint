@@ -59,21 +59,26 @@ void main() {
       final src = {'a': 1};
       final m = RxMap<String, int>.from(src);
       m['b'] = 2;
-      expect(src.containsKey('b'), isFalse,
-          reason: 'changes to RxMap must not bleed back to source');
+      expect(
+        src.containsKey('b'),
+        isFalse,
+        reason: 'changes to RxMap must not bleed back to source',
+      );
     });
 
-    test('default RxMap() and const-initialized RxMap are mutable (Issue #13)',
-        () {
-      final emptyMap = RxMap<String, int>();
-      emptyMap['a'] = 1;
-      emptyMap.remove('a');
-      expect(emptyMap, isEmpty);
+    test(
+      'default RxMap() and const-initialized RxMap are mutable (Issue #13)',
+      () {
+        final emptyMap = RxMap<String, int>();
+        emptyMap['a'] = 1;
+        emptyMap.remove('a');
+        expect(emptyMap, isEmpty);
 
-      final seededMap = RxMap<String, int>(const {'x': 10});
-      seededMap['y'] = 20;
-      expect(seededMap, {'x': 10, 'y': 20});
-    });
+        final seededMap = RxMap<String, int>(const {'x': 10});
+        seededMap['y'] = 20;
+        expect(seededMap, {'x': 10, 'y': 20});
+      },
+    );
   });
 
   group('RxList default constructor mutability (Issue #13)', () {
@@ -99,17 +104,19 @@ void main() {
   });
 
   group('RxSet', () {
-    test('default RxSet() and const-initialized RxSet are mutable (Issue #13)',
-        () {
-      final items = RxSet<int>();
-      items.add(1);
-      items.retainWhere((e) => e != 1);
-      expect(items, isEmpty);
+    test(
+      'default RxSet() and const-initialized RxSet are mutable (Issue #13)',
+      () {
+        final items = RxSet<int>();
+        items.add(1);
+        items.retainWhere((e) => e != 1);
+        expect(items, isEmpty);
 
-      final seeded = RxSet<int>(const {1, 2});
-      seeded.add(3);
-      expect(seeded.toSet(), {1, 2, 3});
-    });
+        final seeded = RxSet<int>(const {1, 2});
+        seeded.add(3);
+        expect(seeded.toSet(), {1, 2, 3});
+      },
+    );
 
     test('add and remove notify', () async {
       final s = <int>{1, 2}.obs;
@@ -191,10 +198,7 @@ void main() {
 
     test('maybeWhen falls back to orElse when not matched', () {
       final s = SintStatus<int>.empty();
-      final r = s.maybeWhen<String>(
-        success: (_) => 'S',
-        orElse: () => 'else',
-      );
+      final r = s.maybeWhen<String>(success: (_) => 'S', orElse: () => 'else');
       expect(r, 'else');
       expect(s.isEmpty, isTrue);
     });
@@ -208,7 +212,10 @@ void main() {
     });
 
     test('Two LoadingStatus instances are equal', () {
-      expect(SintStatus<String>.loading(), equals(SintStatus<String>.loading()));
+      expect(
+        SintStatus<String>.loading(),
+        equals(SintStatus<String>.loading()),
+      );
     });
   });
 }

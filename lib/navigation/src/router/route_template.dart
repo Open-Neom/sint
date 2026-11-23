@@ -16,9 +16,9 @@ class RouteTemplate {
 
     void addLiteral(int end) {
       if (end > literalStart) {
-        tokens.add(RouteTemplateToken.literal(
-          source.substring(literalStart, end),
-        ));
+        tokens.add(
+          RouteTemplateToken.literal(source.substring(literalStart, end)),
+        );
       }
     }
 
@@ -35,7 +35,8 @@ class RouteTemplate {
         continue;
       }
 
-      final start = cursor > literalStart &&
+      final start =
+          cursor > literalStart &&
               (source[cursor - 1] == '/' || source[cursor - 1] == '.')
           ? cursor - 1
           : cursor;
@@ -83,17 +84,18 @@ class RouteTemplate {
         }
       }
       final isStar = cursor < source.length && source[cursor] == '*';
-      final isPlus =
-          !isStar && cursor < source.length && source[cursor] == '+';
+      final isPlus = !isStar && cursor < source.length && source[cursor] == '+';
       if (isStar || isPlus) cursor++;
-      tokens.add(RouteTemplateToken.parameter(
-        source: source.substring(start, cursor),
-        name: name,
-        prefix: prefix,
-        pattern: pattern,
-        optional: optional,
-        wildcard: isStar || isPlus,
-      ));
+      tokens.add(
+        RouteTemplateToken.parameter(
+          source: source.substring(start, cursor),
+          name: name,
+          prefix: prefix,
+          pattern: pattern,
+          optional: optional,
+          wildcard: isStar || isPlus,
+        ),
+      );
       literalStart = cursor;
     }
     addLiteral(source.length);
@@ -136,8 +138,9 @@ class RouteTemplate {
         expression.write(RegExp.escape(token.source));
         continue;
       }
-      final pattern =
-          token.wildcard ? '.+' : token.pattern ?? r"[\w%+._~!$&'()*,;=:@-]+";
+      final pattern = token.wildcard
+          ? '.+'
+          : token.pattern ?? r"[\w%+._~!$&'()*,;=:@-]+";
       expression.write('(?:${RegExp.escape(token.prefix)}($pattern))');
       if (token.optional) expression.write('?');
       keys.add(token.name);
@@ -161,11 +164,11 @@ class RouteTemplate {
 
 class RouteTemplateToken {
   const RouteTemplateToken.literal(this.source)
-      : name = null,
-        prefix = '',
-        pattern = null,
-        optional = false,
-        wildcard = false;
+    : name = null,
+      prefix = '',
+      pattern = null,
+      optional = false,
+      wildcard = false;
 
   const RouteTemplateToken.parameter({
     required this.source,

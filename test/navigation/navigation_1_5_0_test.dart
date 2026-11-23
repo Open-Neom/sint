@@ -3,6 +3,7 @@
 // web fixes (W1-W3), middleware fixes (M1, M4), copyWith propagation.
 // ignore_for_file: avoid_print
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -11,37 +12,33 @@ class _OpaqueRouteArgument {
   const _OpaqueRouteArgument();
 }
 
-SintPage _page(String name,
-        {List<SintMiddleware>? middlewares,
-        PreventDuplicateHandlingMode? mode}) =>
-    SintPage(
-      name: name,
-      page: () => const SizedBox(),
-      middlewares: middlewares ?? const [],
-      preventDuplicateHandlingMode:
-          mode ?? PreventDuplicateHandlingMode.reorderRoutes,
-    );
+SintPage _page(
+  String name, {
+  List<SintMiddleware>? middlewares,
+  PreventDuplicateHandlingMode? mode,
+}) => SintPage(
+  name: name,
+  page: () => const SizedBox(),
+  middlewares: middlewares ?? const [],
+  preventDuplicateHandlingMode:
+      mode ?? PreventDuplicateHandlingMode.reorderRoutes,
+);
 
 void main() {
   tearDown(() => Sint.reset());
 
   group('Feature 1 — Route index', () {
     test('literal match works (index happy path)', () {
-      final parser = RouteParser(routes: [
-        _page('/'),
-        _page('/home'),
-        _page('/user/:id'),
-      ]);
+      final parser = RouteParser(
+        routes: [_page('/'), _page('/home'), _page('/user/:id')],
+      );
       final decoder = parser.matchRoute('/home');
       expect(decoder.route, isNotNull);
       expect(decoder.route!.name, '/home');
     });
 
     test('param match captures value', () {
-      final parser = RouteParser(routes: [
-        _page('/'),
-        _page('/user/:id'),
-      ]);
+      final parser = RouteParser(routes: [_page('/'), _page('/user/:id')]);
       final settings = PageSettings(Uri.parse('/user/42'));
       final decoder = parser.matchRoute('/user/42', arguments: settings);
       expect(decoder.route, isNotNull);
@@ -53,18 +50,20 @@ void main() {
       // Param registered FIRST — the index must still prefer the literal
       // SintPage (verified via title + empty pathParams, since matchRoute
       // rewrites route.name to the matched path).
-      final parser = RouteParser(routes: [
-        SintPage(
-          name: '/profile/:profileId',
-          page: () => const SizedBox(),
-          title: 'profile-param',
-        ),
-        SintPage(
-          name: '/profile/edit',
-          page: () => const SizedBox(),
-          title: 'profile-edit-literal',
-        ),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(
+            name: '/profile/:profileId',
+            page: () => const SizedBox(),
+            title: 'profile-param',
+          ),
+          SintPage(
+            name: '/profile/edit',
+            page: () => const SizedBox(),
+            title: 'profile-edit-literal',
+          ),
+        ],
+      );
       final settings = PageSettings(Uri.parse('/profile/edit'));
       final decoder = parser.matchRoute('/profile/edit', arguments: settings);
       expect(decoder.route!.name, '/profile/edit');
@@ -72,19 +71,29 @@ void main() {
       expect(settings.pathParams, isEmpty);
 
       final paramSettings = PageSettings(Uri.parse('/profile/abc123'));
-      final paramDecoder =
-          parser.matchRoute('/profile/abc123', arguments: paramSettings);
+      final paramDecoder = parser.matchRoute(
+        '/profile/abc123',
+        arguments: paramSettings,
+      );
       expect(paramDecoder.route!.title, 'profile-param');
       expect(paramSettings.pathParams['profileId'], 'abc123');
     });
 
     test('first-wins preserved among same-rank routes', () {
-      final parser = RouteParser(routes: [
-        SintPage(
-            name: '/user/:id', page: () => const SizedBox(), title: 'first'),
-        SintPage(
-            name: '/user/:name', page: () => const SizedBox(), title: 'second'),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(
+            name: '/user/:id',
+            page: () => const SizedBox(),
+            title: 'first',
+          ),
+          SintPage(
+            name: '/user/:name',
+            page: () => const SizedBox(),
+            title: 'second',
+          ),
+        ],
+      );
       final decoder = parser.matchRoute('/user/42');
       expect(decoder.route!.title, 'first');
     });
@@ -167,8 +176,11 @@ void main() {
 
   group('Feature 3 — resolveRoutePath', () {
     test('substitutes path params and appends query', () {
-      final url = resolveRoutePath('/user/:id',
-          pathParams: {'id': '42'}, queryParams: {'tab': 'posts'});
+      final url = resolveRoutePath(
+        '/user/:id',
+        pathParams: {'id': '42'},
+        queryParams: {'tab': 'posts'},
+      );
       expect(url, '/user/42?tab=posts');
     });
 
@@ -188,8 +200,11 @@ void main() {
     });
 
     test('preserves an existing query string', () {
-      final url = resolveRoutePath('/user/:id?lang=es',
-          pathParams: {'id': '42'}, queryParams: {'tab': 'posts'});
+      final url = resolveRoutePath(
+        '/user/:id?lang=es',
+        pathParams: {'id': '42'},
+        queryParams: {'tab': 'posts'},
+      );
       expect(url, '/user/42?lang=es&tab=posts');
     });
 
@@ -200,19 +215,22 @@ void main() {
   });
 
   group('Feature 3 — toNamed with pathParams/queryParams (integration)', () {
-    testWidgets('navigates to substituted URL and exposes separated params',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/user/:id'),
-        ],
-      ));
+    testWidgets('navigates to substituted URL and exposes separated params', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [_page('/'), _page('/user/:id')],
+        ),
+      );
       await tester.pumpAndSettle();
 
-      Sint.toNamed('/user/:id',
-          pathParams: {'id': '42'}, queryParams: {'tab': 'posts'});
+      Sint.toNamed(
+        '/user/:id',
+        pathParams: {'id': '42'},
+        queryParams: {'tab': 'posts'},
+      );
       await tester.pumpAndSettle();
 
       // currentRoute keeps the classic path-only semantics (no query).
@@ -224,15 +242,15 @@ void main() {
       expect(Sint.parameters['tab'], 'posts');
     });
 
-    testWidgets('path params round-trip with special characters',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/doc/:name'),
-        ],
-      ));
+    testWidgets('path params round-trip with special characters', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [_page('/'), _page('/doc/:name')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/doc/:name', pathParams: {'name': 'a/b ñ'});
@@ -261,8 +279,10 @@ void main() {
             PreventDuplicateHandlingMode.popUntilOriginalRoute,
       );
       final copy = page.copyWith(parameters: const {'x': 'y'});
-      expect(copy.preventDuplicateHandlingMode,
-          PreventDuplicateHandlingMode.popUntilOriginalRoute);
+      expect(
+        copy.preventDuplicateHandlingMode,
+        PreventDuplicateHandlingMode.popUntilOriginalRoute,
+      );
     });
 
     test('restoreRouteInformation preserves JSON-safe route state', () {
@@ -294,13 +314,10 @@ void main() {
     test('restoreRouteInformation drops containers with unsafe values', () {
       final parser = SintInformationParser(initialRoute: '/');
       const opaqueArgument = _OpaqueRouteArgument();
-      final settings = PageSettings(
-        Uri.parse('/a'),
-        <Object?>[
-          'safe',
-          <String, Object?>{'release': opaqueArgument},
-        ],
-      );
+      final settings = PageSettings(Uri.parse('/a'), <Object?>[
+        'safe',
+        <String, Object?>{'release': opaqueArgument},
+      ]);
       final decoder = RouteDecoder([_page('/a')], settings);
 
       final info = parser.restoreRouteInformation(decoder);
@@ -316,53 +333,60 @@ void main() {
       expect(sanitizeRouteInformationState(double.nan), isNull);
       expect(sanitizeRouteInformationState(double.infinity), isNull);
       expect(
-          sanitizeRouteInformationState(<Object, Object?>{1: 'value'}), isNull);
+        sanitizeRouteInformationState(<Object, Object?>{1: 'value'}),
+        isNull,
+      );
     });
   });
 
   group('W3 + 1.3.1 activation — popUntilOriginalRoute end-to-end', () {
     testWidgets(
-        'duplicate push with popUntilOriginalRoute pops back to original',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/a', mode: PreventDuplicateHandlingMode.popUntilOriginalRoute),
-          _page('/b'),
-        ],
-      ));
-      await tester.pumpAndSettle();
+      'duplicate push with popUntilOriginalRoute pops back to original',
+      (tester) async {
+        await tester.pumpWidget(
+          SintMaterialApp(
+            initialRoute: '/',
+            sintPages: [
+              _page('/'),
+              _page(
+                '/a',
+                mode: PreventDuplicateHandlingMode.popUntilOriginalRoute,
+              ),
+              _page('/b'),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      Sint.toNamed('/a');
-      await tester.pumpAndSettle();
-      Sint.toNamed('/b');
-      await tester.pumpAndSettle();
-      expect(Sint.currentRoute, '/b');
+        Sint.toNamed('/a');
+        await tester.pumpAndSettle();
+        Sint.toNamed('/b');
+        await tester.pumpAndSettle();
+        expect(Sint.currentRoute, '/b');
 
-      // Pushing '/a' again must pop '/b' and land on the ORIGINAL '/a'
-      // (the branch fixed in 1.3.1, now reachable because copyWith
-      // propagates the mode through route matching).
-      Sint.toNamed('/a');
-      await tester.pumpAndSettle();
+        // Pushing '/a' again must pop '/b' and land on the ORIGINAL '/a'
+        // (the branch fixed in 1.3.1, now reachable because copyWith
+        // propagates the mode through route matching).
+        Sint.toNamed('/a');
+        await tester.pumpAndSettle();
 
-      expect(Sint.currentRoute, '/a');
-      final delegate = Sint.rootController.rootDelegate;
-      expect(delegate.activePages.length, 2); // '/', '/a'
-    });
+        expect(Sint.currentRoute, '/a');
+        final delegate = Sint.rootController.rootDelegate;
+        expect(delegate.activePages.length, 2); // '/', '/a'
+      },
+    );
   });
 
   group('W1 — browser back/forward sync', () {
-    testWidgets('setNewRoutePath to an in-stack URL pops instead of pushing',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/a'),
-          _page('/b'),
-        ],
-      ));
+    testWidgets('setNewRoutePath to an in-stack URL pops instead of pushing', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [_page('/'), _page('/a'), _page('/b')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/a');
@@ -382,15 +406,15 @@ void main() {
       expect(delegate.activePages.length, 2);
     });
 
-    testWidgets('setNewRoutePath to the current URL is a no-op',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/a'),
-        ],
-      ));
+    testWidgets('setNewRoutePath to the current URL is a no-op', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [_page('/'), _page('/a')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/a');
@@ -406,16 +430,15 @@ void main() {
       expect(Sint.currentRoute, '/a');
     });
 
-    testWidgets('setNewRoutePath to an unknown-in-stack URL pushes',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/a'),
-          _page('/b'),
-        ],
-      ));
+    testWidgets('setNewRoutePath to an unknown-in-stack URL pushes', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [_page('/'), _page('/a'), _page('/b')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/a');
@@ -449,18 +472,23 @@ void main() {
       SintMiddleware recorder(String label, int priority) =>
           _RecorderMiddleware(label, priority, calls);
 
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/target', middlewares: [
-            recorder('prio5', 5),
-            recorder('prio-8', -8),
-            recorder('prio2a', 2),
-            recorder('prio2b', 2), // stable: declared order among equals
-          ]),
-        ],
-      ));
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [
+            _page('/'),
+            _page(
+              '/target',
+              middlewares: [
+                recorder('prio5', 5),
+                recorder('prio-8', -8),
+                recorder('prio2a', 2),
+                recorder('prio2b', 2), // stable: declared order among equals
+              ],
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/target');
@@ -472,16 +500,19 @@ void main() {
   });
 
   group('M4 — redirect cycle guard', () {
-    testWidgets('cyclic redirectDelegate fails with a clear error',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          _page('/'),
-          _page('/loop-a', middlewares: [_PingPongMiddleware('/loop-b')]),
-          _page('/loop-b', middlewares: [_PingPongMiddleware('/loop-a')]),
-        ],
-      ));
+    testWidgets('cyclic redirectDelegate fails with a clear error', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [
+            _page('/'),
+            _page('/loop-a', middlewares: [_PingPongMiddleware('/loop-b')]),
+            _page('/loop-b', middlewares: [_PingPongMiddleware('/loop-a')]),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       Object? error;
@@ -498,7 +529,7 @@ void main() {
 
 class _RecorderMiddleware extends SintMiddleware {
   _RecorderMiddleware(this.label, int priority, this.calls)
-      : super(priority: priority);
+    : super(priority: priority);
   final String label;
   final List<String> calls;
 

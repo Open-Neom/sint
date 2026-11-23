@@ -10,17 +10,17 @@ class SintDialogRoute<T> extends PopupRoute<T> {
     Duration transitionDuration = const Duration(milliseconds: 200),
     RouteTransitionsBuilder? transitionBuilder,
     super.settings,
-  })  : widget = pageBuilder,
-        // ignore: prefer_initializing_formals
-        _barrierDismissible = barrierDismissible,
-        // ignore: prefer_initializing_formals
-        _barrierLabel = barrierLabel,
-        // ignore: prefer_initializing_formals
-        _barrierColor = barrierColor,
-        // ignore: prefer_initializing_formals
-        _transitionDuration = transitionDuration,
-        // ignore: prefer_initializing_formals
-        _transitionBuilder = transitionBuilder {
+  }) : widget = pageBuilder,
+       // ignore: prefer_initializing_formals
+       _barrierDismissible = barrierDismissible,
+       // ignore: prefer_initializing_formals
+       _barrierLabel = barrierLabel,
+       // ignore: prefer_initializing_formals
+       _barrierColor = barrierColor,
+       // ignore: prefer_initializing_formals
+       _transitionDuration = transitionDuration,
+       // ignore: prefer_initializing_formals
+       _transitionBuilder = transitionBuilder {
     RouterReportManager.instance.reportCurrentRoute(this);
   }
 
@@ -71,10 +71,7 @@ class SintDialogRoute<T> extends PopupRoute<T> {
     Widget child,
   ) {
     if (_transitionBuilder == null) {
-      return FadeTransition(
-        opacity: animation,
-        child: child,
-      );
+      return FadeTransition(opacity: animation, child: child);
     } // Some default transition
     return _transitionBuilder(context, animation, secondaryAnimation, child);
   }

@@ -2,8 +2,10 @@
 library;
 
 import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
+
 import 'bench_harness.dart';
 
 class CleanupBenchController extends SintController {
@@ -64,8 +66,9 @@ void main() {
         },
       );
       printBenchTable(
-          'Route disposal time / $count dependencies, setup excluded',
-          [result]);
+        'Route disposal time / $count dependencies, setup excluded',
+        [result],
+      );
     });
   }
 
@@ -126,8 +129,9 @@ void main() {
           },
         );
         printBenchTable(
-            'Enqueue through final asynchronous event delivery; subscription setup excluded',
-            [result]);
+          'Enqueue through final asynchronous event delivery; subscription setup excluded',
+          [result],
+        );
       });
     }
   }

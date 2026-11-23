@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
@@ -34,8 +35,10 @@ class SintMaterialApp extends StatelessWidget {
   /// When both are provided, priority is ambiguous and the route tree
   /// becomes inconsistent. Always define routes via [sintPages] and
   /// set [initialRoute] to the desired starting route name.
-  @Deprecated('Use initialRoute + sintPages instead. '
-      'home will be removed in SINT 3.0.0.')
+  @Deprecated(
+    'Use initialRoute + sintPages instead. '
+    'home will be removed in SINT 3.0.0.',
+  )
   final Widget? home;
 
   final Map<String, WidgetBuilder>? routes;
@@ -163,11 +166,11 @@ class SintMaterialApp extends StatelessWidget {
     this.highContrastDarkTheme,
     this.actions,
     this.translateEndpoints = false,
-  })  : routeInformationProvider = null,
-        backButtonDispatcher = null,
-        routeInformationParser = null,
-        routerDelegate = null,
-        routerConfig = null;
+  }) : routeInformationProvider = null,
+       backButtonDispatcher = null,
+       routeInformationParser = null,
+       routerDelegate = null,
+       routerConfig = null;
 
   /// Creates a router app using SDK Material types.
   ///
@@ -230,14 +233,14 @@ class SintMaterialApp extends StatelessWidget {
     this.unknownRoute,
     this.snackBarStyle,
     this.translateEndpoints = false,
-  })  : navigatorKey = null,
-        onGenerateRoute = null,
-        // ignore: deprecated_member_use_from_same_package
-        home = null,
-        onGenerateInitialRoutes = null,
-        onUnknownRoute = null,
-        routes = null,
-        initialRoute = null;
+  }) : navigatorKey = null,
+       onGenerateRoute = null,
+       // ignore: deprecated_member_use_from_same_package
+       home = null,
+       onGenerateInitialRoutes = null,
+       onUnknownRoute = null,
+       routes = null,
+       initialRoute = null;
 
   @override
   Widget build(BuildContext context) {
@@ -284,68 +287,77 @@ class SintMaterialApp extends StatelessWidget {
         snackBarStyle: snackBarStyle,
         translateEndpoints: translateEndpoints,
       ),
-      child: Builder(builder: (context) {
-        final controller = SintRoot.of(context);
-        return MaterialApp.router(
-          routerConfig: routerConfig,
-          routerDelegate:
-              routerConfig == null ? controller.config.routerDelegate : null,
-          routeInformationParser: routerConfig == null
-              ? controller.config.routeInformationParser
-              : null,
-          backButtonDispatcher:
-              routerConfig == null ? backButtonDispatcher : null,
-          routeInformationProvider:
-              routerConfig == null ? routeInformationProvider : null,
-          key: controller.config.unikey,
-          builder: (context, child) => Directionality(
-            textDirection: textDirection ??
-                (rtlLanguages.contains(Sint.locale?.languageCode)
-                    ? TextDirection.rtl
-                    : TextDirection.ltr),
-            child: builder == null
-                ? (child ?? const Material())
-                : builder!(context, child ?? const Material()),
-          ),
-          title: title,
-          onGenerateTitle: onGenerateTitle,
-          color: color,
-          theme: controller.config.theme ?? ThemeData.fallback(),
-          darkTheme: controller.config.darkTheme ??
-              controller.config.theme ??
-              ThemeData.fallback(),
-          highContrastTheme: highContrastTheme,
-          highContrastDarkTheme: highContrastDarkTheme,
-          themeMode: controller.config.themeMode,
-          locale: Sint.locale ?? locale,
-          scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
-          localizationsDelegates: localizationsDelegates,
-          localeListResolutionCallback: localeListResolutionCallback,
-          localeResolutionCallback: localeResolutionCallback,
-          supportedLocales: supportedLocales,
-          debugShowMaterialGrid: debugShowMaterialGrid,
-          showPerformanceOverlay: showPerformanceOverlay,
-          checkerboardRasterCacheImages: checkerboardRasterCacheImages,
-          checkerboardOffscreenLayers: checkerboardOffscreenLayers,
-          showSemanticsDebugger: showSemanticsDebugger,
-          debugShowCheckedModeBanner: debugShowCheckedModeBanner,
-          shortcuts: shortcuts,
-          actions: actions,
-          // On web, enable drag scrolling + mouse wheel for all pointer types.
-          // Flutter web defaults to mouse-only scrolling which feels broken
-          // when users expect touch-like drag behavior in embedded webviews.
-          scrollBehavior: scrollBehavior ?? (kIsWeb
-              ? const MaterialScrollBehavior().copyWith(
-                  scrollbars: true,
-                  dragDevices: {
-                    ui.PointerDeviceKind.touch,
-                    ui.PointerDeviceKind.mouse,
-                    ui.PointerDeviceKind.trackpad,
-                  },
-                )
-              : null),
-        );
-      }),
+      child: Builder(
+        builder: (context) {
+          final controller = SintRoot.of(context);
+          return MaterialApp.router(
+            routerConfig: routerConfig,
+            routerDelegate: routerConfig == null
+                ? controller.config.routerDelegate
+                : null,
+            routeInformationParser: routerConfig == null
+                ? controller.config.routeInformationParser
+                : null,
+            backButtonDispatcher: routerConfig == null
+                ? backButtonDispatcher
+                : null,
+            routeInformationProvider: routerConfig == null
+                ? routeInformationProvider
+                : null,
+            key: controller.config.unikey,
+            builder: (context, child) => Directionality(
+              textDirection:
+                  textDirection ??
+                  (rtlLanguages.contains(Sint.locale?.languageCode)
+                      ? TextDirection.rtl
+                      : TextDirection.ltr),
+              child: builder == null
+                  ? (child ?? const Material())
+                  : builder!(context, child ?? const Material()),
+            ),
+            title: title,
+            onGenerateTitle: onGenerateTitle,
+            color: color,
+            theme: controller.config.theme ?? ThemeData.fallback(),
+            darkTheme:
+                controller.config.darkTheme ??
+                controller.config.theme ??
+                ThemeData.fallback(),
+            highContrastTheme: highContrastTheme,
+            highContrastDarkTheme: highContrastDarkTheme,
+            themeMode: controller.config.themeMode,
+            locale: Sint.locale ?? locale,
+            scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
+            localizationsDelegates: localizationsDelegates,
+            localeListResolutionCallback: localeListResolutionCallback,
+            localeResolutionCallback: localeResolutionCallback,
+            supportedLocales: supportedLocales,
+            debugShowMaterialGrid: debugShowMaterialGrid,
+            showPerformanceOverlay: showPerformanceOverlay,
+            checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+            checkerboardOffscreenLayers: checkerboardOffscreenLayers,
+            showSemanticsDebugger: showSemanticsDebugger,
+            debugShowCheckedModeBanner: debugShowCheckedModeBanner,
+            shortcuts: shortcuts,
+            actions: actions,
+            // On web, enable drag scrolling + mouse wheel for all pointer types.
+            // Flutter web defaults to mouse-only scrolling which feels broken
+            // when users expect touch-like drag behavior in embedded webviews.
+            scrollBehavior:
+                scrollBehavior ??
+                (kIsWeb
+                    ? const MaterialScrollBehavior().copyWith(
+                        scrollbars: true,
+                        dragDevices: {
+                          ui.PointerDeviceKind.touch,
+                          ui.PointerDeviceKind.mouse,
+                          ui.PointerDeviceKind.trackpad,
+                        },
+                      )
+                    : null),
+          );
+        },
+      ),
     );
   }
 }

@@ -34,12 +34,7 @@ class Computed<T> extends SintListenable<T> {
 
     final initial = Notifier.instance.append(notifyData, compute);
 
-    instance = Computed._(
-      compute,
-      initial,
-      notifyData,
-      lazy: lazy,
-    );
+    instance = Computed._(compute, initial, notifyData, lazy: lazy);
     return instance;
   }
 

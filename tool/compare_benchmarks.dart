@@ -36,12 +36,14 @@ Map<String, dynamic> compareReports(
       !noiseMultiplier.isFinite ||
       noiseMultiplier < 0) {
     throw ArgumentError(
-        'Budget/noise multiplier must be finite and non-negative');
+      'Budget/noise multiplier must be finite and non-negative',
+    );
   }
   for (final report in [baseline, candidate]) {
     if (report['schemaVersion'] != 2 || report['valid'] != true) {
       throw ArgumentError(
-          'Only complete, valid schema-2 reports can be compared');
+        'Only complete, valid schema-2 reports can be compared',
+      );
     }
   }
   for (final key in comparableMetadata) {
@@ -83,8 +85,9 @@ Map<String, dynamic> compareReports(
       throw ArgumentError('Incomparable configuration: $name');
     }
     List<double> samples(Map<String, dynamic> entry) {
-      final values =
-          (entry['samples'] as List).map((v) => (v as num).toDouble()).toList();
+      final values = (entry['samples'] as List)
+          .map((v) => (v as num).toDouble())
+          .toList();
       if (values.length < 3 || values.any((v) => !v.isFinite || v < 0)) {
         throw ArgumentError('Insufficient/invalid samples for $name');
       }
@@ -114,13 +117,12 @@ Map<String, dynamic> compareReports(
       'status': delta > effectiveBudget
           ? 'regression'
           : delta < -effectiveBudget
-              ? 'improvement'
-              : 'within_budget_or_noise',
+          ? 'improvement'
+          : 'within_budget_or_noise',
     });
   }
   return {
-    'method':
-        'median batch means; max(user budget, MAD noise envelope), not a confidence interval',
+    'method': 'median batch means; max(user budget, MAD noise envelope), not a confidence interval',
     'rows': rows,
     'regressions': rows.where((row) => row['status'] == 'regression').length,
   };
@@ -129,18 +131,21 @@ Map<String, dynamic> compareReports(
 Future<void> main(List<String> arguments) async {
   if (arguments.length < 3 || arguments.contains('--help')) {
     stdout.writeln(
-        'dart run tool/compare_benchmarks.dart BEFORE.json AFTER.json --budget=FRACTION [--noise-multiplier=3] [--fail-on-regression]\n'
-        'Budget must be chosen explicitly. Same host, SDK, harness and workloads are required.\n'
-        'Example --budget=0.05 expresses a project-selected 5% budget, not a universal threshold.');
+      'dart run tool/compare_benchmarks.dart BEFORE.json AFTER.json --budget=FRACTION [--noise-multiplier=3] [--fail-on-regression]\n'
+      'Budget must be chosen explicitly. Same host, SDK, harness and workloads are required.\n'
+      'Example --budget=0.05 expresses a project-selected 5% budget, not a universal threshold.',
+    );
     if (!arguments.contains('--help')) exitCode = 64;
     return;
   }
   try {
-    final budgetOption =
-        arguments.firstWhere((arg) => arg.startsWith('--budget='));
+    final budgetOption = arguments.firstWhere(
+      (arg) => arg.startsWith('--budget='),
+    );
     final noise = arguments.firstWhere(
-        (arg) => arg.startsWith('--noise-multiplier='),
-        orElse: () => '--noise-multiplier=3');
+      (arg) => arg.startsWith('--noise-multiplier='),
+      orElse: () => '--noise-multiplier=3',
+    );
     final report = compareReports(
       jsonDecode(await File(arguments[0]).readAsString()),
       jsonDecode(await File(arguments[1]).readAsString()),

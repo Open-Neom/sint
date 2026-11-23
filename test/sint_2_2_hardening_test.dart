@@ -1,5 +1,6 @@
 import 'dart:async';
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -134,11 +135,11 @@ class _OrderBinding implements BindingsInterface<void> {
 class _ConstTranslations extends Translations {
   @override
   Map<String, Map<String, String>> get keys => const {
-        'en_US': {
-          'hello': 'Hello',
-          'audit': 'Admin @admin / Email @admin_email / Handle @user-name',
-        },
-      };
+    'en_US': {
+      'hello': 'Hello',
+      'audit': 'Admin @admin / Email @admin_email / Handle @user-name',
+    },
+  };
 }
 
 void main() {
@@ -163,49 +164,48 @@ void main() {
   });
 
   group('SINT 2.2 — Pillar I (Injection, Scopes, SmartManagement & Binds)', () {
-    test('detects circular dependencies with StateError and recovers cleanly',
-        () {
-      Sint.lazyPut<_CycleA>(() => _CycleA());
-      Sint.lazyPut<_CycleB>(() => _CycleB());
-
-      expect(
-        () => Sint.find<_CycleA>(),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('Circular dependency detected'),
-          ),
-        ),
-      );
-
-      // Registry state is clean after unwinding; replacing breaks the cycle.
-      Sint.reset();
-      Sint.put<String>('recovered');
-      expect(Sint.find<String>(), 'recovered');
-    });
-
     test(
-      'SmartManagement.keepFactory disposes instance on delete while preserving lazy factory',
+      'detects circular dependencies with StateError and recovers cleanly',
       () {
-        Sint.smartManagement = SmartManagement.keepFactory;
-        Sint.lazyPut<_KeepFactoryController>(() => _KeepFactoryController());
+        Sint.lazyPut<_CycleA>(() => _CycleA());
+        Sint.lazyPut<_CycleB>(() => _CycleB());
 
-        final first = Sint.find<_KeepFactoryController>();
-        expect(first.instanceNumber, 1);
-        expect(first.closed, isFalse);
+        expect(
+          () => Sint.find<_CycleA>(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Circular dependency detected'),
+            ),
+          ),
+        );
 
-        final deleted = Sint.delete<_KeepFactoryController>();
-        expect(deleted, isTrue);
-        expect(first.closed, isTrue);
-        expect(Sint.isRegistered<_KeepFactoryController>(), isTrue);
-        expect(Sint.isPrepared<_KeepFactoryController>(), isTrue);
-
-        final second = Sint.find<_KeepFactoryController>();
-        expect(second.instanceNumber, 2);
-        expect(identical(first, second), isFalse);
+        // Registry state is clean after unwinding; replacing breaks the cycle.
+        Sint.reset();
+        Sint.put<String>('recovered');
+        expect(Sint.find<String>(), 'recovered');
       },
     );
+
+    test('SmartManagement.keepFactory disposes instance on delete while preserving lazy factory', () {
+      Sint.smartManagement = SmartManagement.keepFactory;
+      Sint.lazyPut<_KeepFactoryController>(() => _KeepFactoryController());
+
+      final first = Sint.find<_KeepFactoryController>();
+      expect(first.instanceNumber, 1);
+      expect(first.closed, isFalse);
+
+      final deleted = Sint.delete<_KeepFactoryController>();
+      expect(deleted, isTrue);
+      expect(first.closed, isTrue);
+      expect(Sint.isRegistered<_KeepFactoryController>(), isTrue);
+      expect(Sint.isPrepared<_KeepFactoryController>(), isTrue);
+
+      final second = Sint.find<_KeepFactoryController>();
+      expect(second.instanceNumber, 2);
+      expect(identical(first, second), isFalse);
+    });
 
     testWidgets(
       'Bind.put and Bind.contract survive unmount/remount and support Bind.of<Contract>(context)',
@@ -230,7 +230,9 @@ void main() {
                   builder: (context) {
                     resolvedContract = Bind.of<_AuthContract>(context);
                     resolvedRx = Bind.of<RxInt>(context);
-                    return Text('${resolvedContract?.label}:${resolvedRx?.value}');
+                    return Text(
+                      '${resolvedContract?.label}:${resolvedRx?.value}',
+                    );
                   },
                 ),
               );
@@ -271,9 +273,7 @@ void main() {
               init: () => 'outer-local-0',
               global: false,
               child: MultiBinder(
-                binds: [
-                  Bind.create<String>((_) => 'innermost-local-1'),
-                ],
+                binds: [Bind.create<String>((_) => 'innermost-local-1')],
                 child: Builder(
                   builder: (deepCtx) {
                     innermostValue = Bind.of<String>(deepCtx);
@@ -393,75 +393,68 @@ void main() {
     );
   });
 
-  group('SINT 2.2 — Pillar S (Glitch-Free & Lazy Computed, Workers, Rx & Queue)',
-      () {
-    test(
-      'Diamond Computed graph is glitch-free outside Sint.batch and skips downstream when middle nodes memoize',
-      () {
-        final a = 1.obs;
-        var dRuns = 0;
-        final seenPairs = <(int, int)>[];
+  group('SINT 2.2 — Pillar S (Glitch-Free & Lazy Computed, Workers, Rx & Queue)', () {
+    test('Diamond Computed graph is glitch-free outside Sint.batch and skips downstream when middle nodes memoize', () {
+      final a = 1.obs;
+      var dRuns = 0;
+      final seenPairs = <(int, int)>[];
 
-        final b = Sint.computed(() => a.value * 2);
-        final c = Sint.computed(() => a.value * 10);
-        final d = Sint.computed(() {
-          dRuns++;
-          final pair = (b.value, c.value);
-          seenPairs.add(pair);
-          return pair.$1 + pair.$2;
-        });
+      final b = Sint.computed(() => a.value * 2);
+      final c = Sint.computed(() => a.value * 10);
+      final d = Sint.computed(() {
+        dRuns++;
+        final pair = (b.value, c.value);
+        seenPairs.add(pair);
+        return pair.$1 + pair.$2;
+      });
 
-        expect(d.value, 12);
-        expect(dRuns, 1);
-        expect(seenPairs, [(2, 10)]);
+      expect(d.value, 12);
+      expect(dRuns, 1);
+      expect(seenPairs, [(2, 10)]);
 
-        // Mutate `a` OUTSIDE `Sint.batch`: `d` must evaluate ONCE with (4, 20),
-        // never observing intermediate glitch (4, 10) or (2, 20).
-        a.value = 2;
-        expect(d.value, 24);
-        expect(dRuns, 2);
-        expect(seenPairs, [(2, 10), (4, 20)]);
+      // Mutate `a` OUTSIDE `Sint.batch`: `d` must evaluate ONCE with (4, 20),
+      // never observing intermediate glitch (4, 10) or (2, 20).
+      a.value = 2;
+      expect(d.value, 24);
+      expect(dRuns, 2);
+      expect(seenPairs, [(2, 10), (4, 20)]);
 
-        // Parity diamond where middle nodes memoize equal booleans:
-        final n = 2.obs;
-        var paritySinkRuns = 0;
-        final isEven = Sint.computed(() => n.value.isEven);
-        final modTwoZero = Sint.computed(() => n.value % 2 == 0);
-        final bothEven = Sint.computed(() {
-          paritySinkRuns++;
-          return isEven.value && modTwoZero.value;
-        });
+      // Parity diamond where middle nodes memoize equal booleans:
+      final n = 2.obs;
+      var paritySinkRuns = 0;
+      final isEven = Sint.computed(() => n.value.isEven);
+      final modTwoZero = Sint.computed(() => n.value % 2 == 0);
+      final bothEven = Sint.computed(() {
+        paritySinkRuns++;
+        return isEven.value && modTwoZero.value;
+      });
 
-        expect(bothEven.value, isTrue);
-        expect(paritySinkRuns, 1);
+      expect(bothEven.value, isTrue);
+      expect(paritySinkRuns, 1);
 
-        // 2 -> 4: both middle nodes recompute to `true` (unchanged), so
-        // `bothEven` transitions check -> clean with ZERO recomputations!
-        n.value = 4;
-        expect(bothEven.value, isTrue);
-        expect(paritySinkRuns, 1);
+      // 2 -> 4: both middle nodes recompute to `true` (unchanged), so
+      // `bothEven` transitions check -> clean with ZERO recomputations!
+      n.value = 4;
+      expect(bothEven.value, isTrue);
+      expect(paritySinkRuns, 1);
 
-        d.dispose();
-        c.dispose();
-        b.dispose();
-        bothEven.dispose();
-        modTwoZero.dispose();
-        isEven.dispose();
-      },
-    );
+      d.dispose();
+      c.dispose();
+      b.dispose();
+      bothEven.dispose();
+      modTwoZero.dispose();
+      isEven.dispose();
+    });
 
     testWidgets(
       'Sint.computed(lazy: true) defers unobserved evaluations and settles automatically when observed by Obx',
       (tester) async {
         final count = 1.obs;
         var runs = 0;
-        final expensive = Sint.computed(
-          () {
-            runs++;
-            return count.value * 100;
-          },
-          lazy: true,
-        );
+        final expensive = Sint.computed(() {
+          runs++;
+          return count.value * 100;
+        }, lazy: true);
 
         expect(runs, 1);
         expect(expensive.peek, 100);
@@ -493,8 +486,7 @@ void main() {
       },
     );
 
-    test('SintController.everAll listens synchronously without Streams and cleans up onClose',
-        () {
+    test('SintController.everAll listens synchronously without Streams and cleans up onClose', () {
       final a = 0.obs;
       final b = 'init'.obs;
       final ctrl = _EverAllController(a, b)..onStart();
@@ -511,8 +503,7 @@ void main() {
       expect(ctrl.events, [1, 'next']);
     });
 
-    test('RxFuture and ErrorStatus preserve stackTrace and expose stackTraceOrNull',
-        () async {
+    test('RxFuture and ErrorStatus preserve stackTrace and expose stackTraceOrNull', () async {
       final resource = RxFuture<int>(() async {
         throw ArgumentError('bad input');
       });
@@ -528,131 +519,127 @@ void main() {
       resource.close();
     });
 
-    test(
-      'Rx.trigger fires on first call with initial value, Rx.update notifies in-place, and RxBool/RxInt/RxnBool avoid tracking leaks',
-      () async {
-        final rxInt = 10.obs;
-        final syncTriggered = <int>[];
-        final streamTriggered = <int>[];
-        rxInt.addListener(() => syncTriggered.add(rxInt.peek));
-        final sub = rxInt.listen(streamTriggered.add);
+    test('Rx.trigger fires on first call with initial value, Rx.update notifies in-place, and RxBool/RxInt/RxnBool avoid tracking leaks', () async {
+      final rxInt = 10.obs;
+      final syncTriggered = <int>[];
+      final streamTriggered = <int>[];
+      rxInt.addListener(() => syncTriggered.add(rxInt.peek));
+      final sub = rxInt.listen(streamTriggered.add);
 
-        // First trigger with the same initial value MUST notify both sync and stream listeners.
-        rxInt.trigger(10);
-        rxInt.trigger(10);
-        expect(syncTriggered, [10, 10]);
-        await Future<void>.delayed(Duration.zero);
-        expect(streamTriggered, [10, 10]);
-        await sub.cancel();
+      // First trigger with the same initial value MUST notify both sync and stream listeners.
+      rxInt.trigger(10);
+      rxInt.trigger(10);
+      expect(syncTriggered, [10, 10]);
+      await Future<void>.delayed(Duration.zero);
+      expect(streamTriggered, [10, 10]);
+      await sub.cancel();
 
-        // Assigning equal value skips spurious notification (`trigger` forces it).
-        final rxSame = 5.obs;
-        var sameNotifies = 0;
-        rxSame.addListener(() => sameNotifies++);
-        rxSame.value = 5;
-        expect(sameNotifies, 0);
+      // Assigning equal value skips spurious notification (`trigger` forces it).
+      final rxSame = 5.obs;
+      var sameNotifies = 0;
+      rxSame.addListener(() => sameNotifies++);
+      rxSame.value = 5;
+      expect(sameNotifies, 0);
 
-        // In-place update on identical mutable reference notifies listeners.
-        final box = _MutableBox(1).obs;
-        var boxNotifies = 0;
-        box.addListener(() => boxNotifies++);
-        box.update((val) {
-          val!.count = 99;
-          return val;
-        });
-        expect(box.value.count, 99);
-        expect(boxNotifies, 1);
+      // In-place update on identical mutable reference notifies listeners.
+      final box = _MutableBox(1).obs;
+      var boxNotifies = 0;
+      box.addListener(() => boxNotifies++);
+      box.update((val) {
+        val!.count = 99;
+        return val;
+      });
+      expect(box.value.count, 99);
+      expect(boxNotifies, 1);
 
-        // RxBool.toggle and RxInt.+ inside Computed do NOT subscribe to self.
-        final flag = false.obs;
-        final counter = 1.obs;
-        final driver = 0.obs;
-        var sideEffectRuns = 0;
-        final watcher = Sint.computed(() {
-          sideEffectRuns++;
-          final d = driver.value;
-          if (d > 0) {
-            flag.toggle();
-            counter + 5;
-            return '$d:${counter.peek}';
-          }
-          return '0';
-        });
-        expect(watcher.value, '0');
-        driver.value = 1;
-        expect(watcher.value, '1:6');
-        final runsAfterDriver = sideEffectRuns;
+      // RxBool.toggle and RxInt.+ inside Computed do NOT subscribe to self.
+      final flag = false.obs;
+      final counter = 1.obs;
+      final driver = 0.obs;
+      var sideEffectRuns = 0;
+      final watcher = Sint.computed(() {
+        sideEffectRuns++;
+        final d = driver.value;
+        if (d > 0) {
+          flag.toggle();
+          counter + 5;
+          return '$d:${counter.peek}';
+        }
+        return '0';
+      });
+      expect(watcher.value, '0');
+      driver.value = 1;
+      expect(watcher.value, '1:6');
+      final runsAfterDriver = sideEffectRuns;
 
-        // Mutating `flag` or `counter` must NOT re-trigger `watcher` because
-        // `toggle()` and `operator +` used untracked `peek`.
-        flag.value = false;
-        counter.value = 50;
-        expect(sideEffectRuns, runsAfterDriver);
-        watcher.dispose();
+      // Mutating `flag` or `counter` must NOT re-trigger `watcher` because
+      // `toggle()` and `operator +` used untracked `peek`.
+      flag.value = false;
+      counter.value = 50;
+      expect(sideEffectRuns, runsAfterDriver);
+      watcher.dispose();
 
-        // RxnBool.operator ^ handles null value safely without TypeError.
-        final nullableBool = RxnBool();
-        expect(nullableBool ^ true, isNull);
-        nullableBool.value = true;
-        expect(nullableBool ^ true, isFalse);
-      },
-    );
-
-    test(
-      'RxList/RxSet self-addAll avoid ConcurrentModificationError and RxMap coalesces bulk mutations',
-      () {
-        final list = <int>[1, 2].obs;
-        list.addAll(list);
-        expect(list, [1, 2, 1, 2]);
-
-        final set = <int>{1, 2}.obs;
-        set.addAll(set);
-        expect(set, {1, 2});
-
-        final map = <String, int>{'a': 1, 'b': 2}.obs;
-        var mapNotifies = 0;
-        map.addListener(() => mapNotifies++);
-
-        map.update('a', (v) => v + 10);
-        expect(mapNotifies, 1);
-
-        map.updateAll((k, v) => v * 2);
-        expect(mapNotifies, 2);
-        expect(map, {'a': 22, 'b': 4});
-
-        map.addEntries(const [MapEntry('c', 3), MapEntry('d', 4)]);
-        expect(mapNotifies, 3);
-      },
-    );
-
-    test('SintQueue drains 500 sequential microtasks iteratively in FIFO order',
-        () async {
-      final queue = SintQueue();
-      final order = <int>[];
-      final futures = <Future<int>>[
-        for (var i = 0; i < 500; i++)
-          queue.add<int>(() {
-            order.add(i);
-            return i;
-          }),
-      ];
-
-      final results = await Future.wait(futures);
-      expect(results.length, 500);
-      expect(order.first, 0);
-      expect(order.last, 499);
+      // RxnBool.operator ^ handles null value safely without TypeError.
+      final nullableBool = RxnBool();
+      expect(nullableBool ^ true, isNull);
+      nullableBool.value = true;
+      expect(nullableBool ^ true, isFalse);
     });
+
+    test('RxList/RxSet self-addAll avoid ConcurrentModificationError and RxMap coalesces bulk mutations', () {
+      final list = <int>[1, 2].obs;
+      list.addAll(list);
+      expect(list, [1, 2, 1, 2]);
+
+      final set = <int>{1, 2}.obs;
+      set.addAll(set);
+      expect(set, {1, 2});
+
+      final map = <String, int>{'a': 1, 'b': 2}.obs;
+      var mapNotifies = 0;
+      map.addListener(() => mapNotifies++);
+
+      map.update('a', (v) => v + 10);
+      expect(mapNotifies, 1);
+
+      map.updateAll((k, v) => v * 2);
+      expect(mapNotifies, 2);
+      expect(map, {'a': 22, 'b': 4});
+
+      map.addEntries(const [MapEntry('c', 3), MapEntry('d', 4)]);
+      expect(mapNotifies, 3);
+    });
+
+    test(
+      'SintQueue drains 500 sequential microtasks iteratively in FIFO order',
+      () async {
+        final queue = SintQueue();
+        final order = <int>[];
+        final futures = <Future<int>>[
+          for (var i = 0; i < 500; i++)
+            queue.add<int>(() {
+              order.add(i);
+              return i;
+            }),
+        ];
+
+        final results = await Future.wait(futures);
+        expect(results.length, 500);
+        expect(order.first, 0);
+        expect(order.last, 499);
+      },
+    );
   });
 
-  group('SINT 2.2 — Pillar N (Router 2.0 Middlewares, Params, Outlets & Overlays)',
-      () {
+  group('SINT 2.2 — Pillar N (Router 2.0 Middlewares, Params, Outlets & Overlays)', () {
     testWidgets(
       'offNamed middleware cancellation preserves active stack and redirect to unknown route renders unknownRoute',
       (tester) async {
         await tester.pumpWidget(
           SintMaterialApp.router(
-            routeInformationParser:
-                SintInformationParser(initialRoute: '/home'),
+            routeInformationParser: SintInformationParser(
+              initialRoute: '/home',
+            ),
             unknownRoute: SintPage(
               name: '/404',
               page: () => const Text('CUSTOM_404'),
@@ -682,9 +669,7 @@ void main() {
         expect(find.text('BLOCKED_PAGE'), findsNothing);
 
         // Redirecting to an unregistered route renders `unknownRoute` cleanly.
-        unawaited(
-          Sint.rootController.rootDelegate.toNamed('/broken-redirect'),
-        );
+        unawaited(Sint.rootController.rootDelegate.toNamed('/broken-redirect'));
         await tester.pumpAndSettle();
         expect(find.text('CUSTOM_404'), findsOneWidget);
       },
@@ -732,50 +717,49 @@ void main() {
       },
     );
 
-    test(
-      'RouteParser matches multi-segment :path+ parameters and orders parent bindings before child bindings',
-      () {
-        final order = <String>[];
-        final parser = RouteParser(
-          routes: [
-            SintPage(
-              name: '/docs',
-              page: () => const SizedBox.shrink(),
-              binding: _OrderBinding('parent-single', order),
-              bindings: [_OrderBinding('parent-list', order)],
-              children: [
-                SintPage(
-                  name: '/:slug+',
-                  page: () => const SizedBox.shrink(),
-                  binding: _OrderBinding('child-single', order),
-                  bindings: [_OrderBinding('child-list', order)],
-                ),
-              ],
-            ),
-          ],
-        );
+    test('RouteParser matches multi-segment :path+ parameters and orders parent bindings before child bindings', () {
+      final order = <String>[];
+      final parser = RouteParser(
+        routes: [
+          SintPage(
+            name: '/docs',
+            page: () => const SizedBox.shrink(),
+            binding: _OrderBinding('parent-single', order),
+            bindings: [_OrderBinding('parent-list', order)],
+            children: [
+              SintPage(
+                name: '/:slug+',
+                page: () => const SizedBox.shrink(),
+                binding: _OrderBinding('child-single', order),
+                bindings: [_OrderBinding('child-list', order)],
+              ),
+            ],
+          ),
+        ],
+      );
 
-        final settings = PageSettings(
-          Uri.parse('/docs/guides/v2/getting-started'),
-        );
-        final match = parser.matchRoute(
-          '/docs/guides/v2/getting-started',
-          arguments: settings,
-        );
-        expect(match.route, isNotNull);
-        expect(match.pathParams['slug'], 'guides/v2/getting-started');
-        expect(match.parameters['slug'], 'guides/v2/getting-started');
+      final settings = PageSettings(
+        Uri.parse('/docs/guides/v2/getting-started'),
+      );
+      final match = parser.matchRoute(
+        '/docs/guides/v2/getting-started',
+        arguments: settings,
+      );
+      expect(match.route, isNotNull);
+      expect(match.pathParams['slug'], 'guides/v2/getting-started');
+      expect(match.parameters['slug'], 'guides/v2/getting-started');
 
-        for (final b in match.route!.bindings) {
-          b.dependencies();
-        }
-        match.route!.binding?.dependencies();
-        expect(
-          order,
-          ['parent-list', 'parent-single', 'child-list', 'child-single'],
-        );
-      },
-    );
+      for (final b in match.route!.bindings) {
+        b.dependencies();
+      }
+      match.route!.binding?.dependencies();
+      expect(order, [
+        'parent-list',
+        'parent-single',
+        'child-list',
+        'child-single',
+      ]);
+    });
 
     testWidgets(
       'IndexedRouteBuilder matches segment boundaries and longest prefix without "/" hijacking sibling tabs',
@@ -783,8 +767,9 @@ void main() {
         var currentIndex = -1;
         await tester.pumpWidget(
           SintMaterialApp.router(
-            routeInformationParser:
-                SintInformationParser(initialRoute: '/homework'),
+            routeInformationParser: SintInformationParser(
+              initialRoute: '/homework',
+            ),
             sintPages: [
               SintPage(
                 name: '/',
@@ -820,8 +805,7 @@ void main() {
       },
     );
 
-    test('SintRoute.uri builds typed Uri and SintApp honors custom transitionDuration',
-        () {
+    test('SintRoute.uri builds typed Uri and SintApp honors custom transitionDuration', () {
       const orderRoute = SintRoute<String, bool>('/orders/:id');
       final uri = orderRoute.uri(
         pathParams: {'id': 'ord_9'},
@@ -848,15 +832,16 @@ void main() {
         );
 
         Object? caught;
-        final overlayFuture = Sint.showOverlay<void>(
-          asyncFunction: () async {
-            await Future<void>.delayed(const Duration(milliseconds: 10));
-            throw StateError('overlay boom');
-          },
-          loadingWidget: const Center(child: Text('LOADING_SPINNER')),
-        ).catchError((Object e) {
-          caught = e;
-        });
+        final overlayFuture =
+            Sint.showOverlay<void>(
+              asyncFunction: () async {
+                await Future<void>.delayed(const Duration(milliseconds: 10));
+                throw StateError('overlay boom');
+              },
+              loadingWidget: const Center(child: Text('LOADING_SPINNER')),
+            ).catchError((Object e) {
+              caught = e;
+            });
 
         await tester.pump();
         expect(find.text('LOADING_SPINNER'), findsOneWidget);
@@ -873,39 +858,34 @@ void main() {
     );
   });
 
-  group('SINT 2.2 — Pillar T (Immutable Translations, Lazy Deduplication, trParams & PathTranslator)',
-      () {
-    test(
-      'appendTranslations works after const Translations maps and fires a single notification',
-      () {
-        Sint.addTranslations(_ConstTranslations().keys);
-        Sint.locale = const Locale('en', 'US');
+  group('SINT 2.2 — Pillar T (Immutable Translations, Lazy Deduplication, trParams & PathTranslator)', () {
+    test('appendTranslations works after const Translations maps and fires a single notification', () {
+      Sint.addTranslations(_ConstTranslations().keys);
+      Sint.locale = const Locale('en', 'US');
 
-        var reactiveReads = 0;
-        final translated = Sint.computed(() {
-          reactiveReads++;
-          return '${'hello'.tr}|${'extra'.tr}';
-        });
-        expect(translated.value, 'Hello|extra');
-        expect(reactiveReads, 1);
+      var reactiveReads = 0;
+      final translated = Sint.computed(() {
+        reactiveReads++;
+        return '${'hello'.tr}|${'extra'.tr}';
+      });
+      expect(translated.value, 'Hello|extra');
+      expect(reactiveReads, 1);
 
-        // Must NOT throw UnsupportedError: Cannot modify unmodifiable map,
-        // and must notify reactive `.tr` subscribers ONCE for the whole batch.
-        Sint.appendTranslations(const {
-          'en_US': {'extra': 'Extra Value', 'a': '1', 'b': '2'},
-          'es_MX': {'hello': 'Hola'},
-        });
+      // Must NOT throw UnsupportedError: Cannot modify unmodifiable map,
+      // and must notify reactive `.tr` subscribers ONCE for the whole batch.
+      Sint.appendTranslations(const {
+        'en_US': {'extra': 'Extra Value', 'a': '1', 'b': '2'},
+        'es_MX': {'hello': 'Hola'},
+      });
 
-        expect('hello'.tr, 'Hello');
-        expect('extra'.tr, 'Extra Value');
-        expect(translated.value, 'Hello|Extra Value');
-        expect(reactiveReads, 2);
-        translated.dispose();
-      },
-    );
+      expect('hello'.tr, 'Hello');
+      expect('extra'.tr, 'Extra Value');
+      expect(translated.value, 'Hello|Extra Value');
+      expect(reactiveReads, 2);
+      translated.dispose();
+    });
 
-    test('concurrent ensureLocaleLoaded calls deduplicate in-flight loader execution',
-        () async {
+    test('concurrent ensureLocaleLoaded calls deduplicate in-flight loader execution', () async {
       var loaderCalls = 0;
       Sint.registerLazyTranslations('fr', () async {
         loaderCalls++;
@@ -924,80 +904,71 @@ void main() {
       expect('greeting'.tr, 'Bonjour (fr)');
     });
 
-    test(
-      'trParams avoids prefix-corrupting longer @placeholders while still replacing hyphenated tokens',
-      () {
-        Sint.addTranslations(_ConstTranslations().keys);
-        Sint.locale = const Locale('en', 'US');
+    test('trParams avoids prefix-corrupting longer @placeholders while still replacing hyphenated tokens', () {
+      Sint.addTranslations(_ConstTranslations().keys);
+      Sint.locale = const Locale('en', 'US');
 
-        final rendered = 'audit'.trParams({
-          'admin': 'root',
-          'admin_email': 'ops@openneom.dev',
-          'user-name': 'serzen',
-        });
+      final rendered = 'audit'.trParams({
+        'admin': 'root',
+        'admin_email': 'ops@openneom.dev',
+        'user-name': 'serzen',
+      });
 
-        expect(
-          rendered,
-          'Admin root / Email ops@openneom.dev / Handle serzen',
-        );
-      },
-    );
+      expect(rendered, 'Admin root / Email ops@openneom.dev / Handle serzen');
+    });
 
-    test(
-      'PathTranslator prevents localized segment collisions from hijacking canonical routes and resets cleanly',
-      () {
-        Sint.pathTranslator = PathTranslator.build(
-          translations: const {
-            'fr': {
-              'cat': 'chat',
-              'chat': 'discussion',
-            },
-          },
-          routeSegments: const {'cat', 'chat'},
-        );
-        Sint.locale = const Locale('fr', 'FR');
-        Sint.fallbackLocale = const Locale('en', 'US');
+    test('PathTranslator prevents localized segment collisions from hijacking canonical routes and resets cleanly', () {
+      Sint.pathTranslator = PathTranslator.build(
+        translations: const {
+          'fr': {'cat': 'chat', 'chat': 'discussion'},
+        },
+        routeSegments: const {'cat', 'chat'},
+      );
+      Sint.locale = const Locale('fr', 'FR');
+      Sint.fallbackLocale = const Locale('en', 'US');
 
-        // Canonical `/chat/room-1` must NOT be rewritten to `/cat/room-1`!
-        expect(
-          Sint.pathTranslator!.canonicalizePath('/chat/room-1'),
-          '/chat/room-1',
-        );
-        expect(
-          Sint.pathTranslator!.canonicalizePath('/discussion/room-1'),
-          '/chat/room-1',
-        );
+      // Canonical `/chat/room-1` must NOT be rewritten to `/cat/room-1`!
+      expect(
+        Sint.pathTranslator!.canonicalizePath('/chat/room-1'),
+        '/chat/room-1',
+      );
+      expect(
+        Sint.pathTranslator!.canonicalizePath('/discussion/room-1'),
+        '/chat/room-1',
+      );
 
-        Sint.reset();
-        expect(Sint.locale, isNull);
-        expect(Sint.fallbackLocale, isNull);
-        expect(Sint.pathTranslator, isNull);
-      },
-    );
+      Sint.reset();
+      expect(Sint.locale, isNull);
+      expect(Sint.fallbackLocale, isNull);
+      expect(Sint.pathTranslator, isNull);
+    });
 
-    test(
-      'Binding.dependencies() preserves inferred concrete types on unannotated Bind.put / Bind.lazyPut and rejects dynamic',
-      () {
-        Sint.reset();
-        final binds = _UnannotatedRootBinding().dependencies();
+    test('Binding.dependencies() preserves inferred concrete types on unannotated Bind.put / Bind.lazyPut and rejects dynamic', () {
+      Sint.reset();
+      final binds = _UnannotatedRootBinding().dependencies();
 
-        expect(
-          binds.map((b) => b.boundType).toList(),
-          equals([
-            _UnannotatedAlphaController,
-            _UnannotatedGammaService,
-            _UnannotatedBetaController,
-          ]),
-        );
-        expect(Sint.isRegistered<_UnannotatedAlphaController>(), isTrue);
-        expect(Sint.isRegistered<_UnannotatedGammaService>(), isTrue);
-        expect(Sint.isRegistered<_UnannotatedBetaController>(), isTrue);
-        expect(Sint.find<_UnannotatedBetaController>(), isA<_UnannotatedBetaController>());
-        expect(Sint.find<_UnannotatedGammaService>(), isA<_UnannotatedGammaService>());
+      expect(
+        binds.map((b) => b.boundType).toList(),
+        equals([
+          _UnannotatedAlphaController,
+          _UnannotatedGammaService,
+          _UnannotatedBetaController,
+        ]),
+      );
+      expect(Sint.isRegistered<_UnannotatedAlphaController>(), isTrue);
+      expect(Sint.isRegistered<_UnannotatedGammaService>(), isTrue);
+      expect(Sint.isRegistered<_UnannotatedBetaController>(), isTrue);
+      expect(
+        Sint.find<_UnannotatedBetaController>(),
+        isA<_UnannotatedBetaController>(),
+      );
+      expect(
+        Sint.find<_UnannotatedGammaService>(),
+        isA<_UnannotatedGammaService>(),
+      );
 
-        final dynamic untypedValue = _UnannotatedGammaService();
-        expect(() => Sint.put(untypedValue), throwsArgumentError);
-      },
-    );
+      final dynamic untypedValue = _UnannotatedGammaService();
+      expect(() => Sint.put(untypedValue), throwsArgumentError);
+    });
   });
 }

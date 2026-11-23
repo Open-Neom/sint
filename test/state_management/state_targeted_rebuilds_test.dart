@@ -19,22 +19,28 @@ void main() {
     final controller = Sint.put(_Counter());
     var leftBuilds = 0;
     var rightBuilds = 0;
-    await tester.pumpWidget(Column(children: [
-      SintBuilder<_Counter>(
-          id: 'left',
-          autoRemove: false,
-          builder: (_) {
-            leftBuilds++;
-            return const SizedBox();
-          }),
-      SintBuilder<_Counter>(
-          id: 'right',
-          autoRemove: false,
-          builder: (_) {
-            rightBuilds++;
-            return const SizedBox();
-          }),
-    ]));
+    await tester.pumpWidget(
+      Column(
+        children: [
+          SintBuilder<_Counter>(
+            id: 'left',
+            autoRemove: false,
+            builder: (_) {
+              leftBuilds++;
+              return const SizedBox();
+            },
+          ),
+          SintBuilder<_Counter>(
+            id: 'right',
+            autoRemove: false,
+            builder: (_) {
+              rightBuilds++;
+              return const SizedBox();
+            },
+          ),
+        ],
+      ),
+    );
     expect([leftBuilds, rightBuilds], [1, 1]);
     controller.update(['left']);
     await tester.pump();
@@ -52,28 +58,26 @@ void main() {
     expect([leftBuilds, rightBuilds], [2, 2]);
   });
 
-  testWidgets('Obx detaches inactive branches and cleans up on unmount',
-      (tester) async {
+  testWidgets('Obx detaches inactive branches and cleans up on unmount', (
+    tester,
+  ) async {
     final selectLeft = true.obs;
     final left = 1.obs;
     final right = 10.obs;
     var builds = 0;
     var rendered = 0;
-    await tester.pumpWidget(Obx(() {
-      builds++;
-      rendered = selectLeft.value ? left.value : right.value;
-      return const SizedBox();
-    }));
+    await tester.pumpWidget(
+      Obx(() {
+        builds++;
+        rendered = selectLeft.value ? left.value : right.value;
+        return const SizedBox();
+      }),
+    );
     expect([builds, rendered], [1, 1]);
-    expect([
-      selectLeft.listenersLength,
-      left.listenersLength,
-      right.listenersLength
-    ], [
-      1,
-      1,
-      0
-    ]);
+    expect(
+      [selectLeft.listenersLength, left.listenersLength, right.listenersLength],
+      [1, 1, 0],
+    );
     selectLeft.value = false;
     await tester.pump();
     expect([builds, rendered], [2, 10]);
@@ -85,30 +89,28 @@ void main() {
     await tester.pump();
     expect([builds, rendered], [3, 11]);
     await tester.pumpWidget(const SizedBox());
-    expect([
-      selectLeft.listenersLength,
-      left.listenersLength,
-      right.listenersLength
-    ], [
-      0,
-      0,
-      0
-    ]);
+    expect(
+      [selectLeft.listenersLength, left.listenersLength, right.listenersLength],
+      [0, 0, 0],
+    );
     selectLeft.close();
     left.close();
     right.close();
   });
 
-  testWidgets('Obx batches a burst into one frame and deduplicates reads',
-      (tester) async {
+  testWidgets('Obx batches a burst into one frame and deduplicates reads', (
+    tester,
+  ) async {
     final value = 0.obs;
     var builds = 0;
     var rendered = 0;
-    await tester.pumpWidget(Obx(() {
-      builds++;
-      rendered = value.value + value.value;
-      return const SizedBox();
-    }));
+    await tester.pumpWidget(
+      Obx(() {
+        builds++;
+        rendered = value.value + value.value;
+        return const SizedBox();
+      }),
+    );
     expect(value.listenersLength, 1);
     for (var i = 1; i <= 100; i++) {
       value.value = i;
@@ -146,11 +148,13 @@ void main() {
     final value = 0.obs;
     final second = StreamController<int>();
     var cancelled = false;
-    final first = StreamController<int>(onCancel: () {
-      cancelled = true;
-      expect(value.isDisposed, isTrue);
-      expect(() => value.bindStream(second.stream), throwsStateError);
-    });
+    final first = StreamController<int>(
+      onCancel: () {
+        cancelled = true;
+        expect(value.isDisposed, isTrue);
+        expect(() => value.bindStream(second.stream), throwsStateError);
+      },
+    );
     value.bindStream(first.stream);
     value.close();
     expect(cancelled, isTrue);
@@ -159,14 +163,17 @@ void main() {
     unawaited(second.close());
   });
 
-  testWidgets('Obx releases bindings without closing a reusable Rx',
-      (tester) async {
+  testWidgets('Obx releases bindings without closing a reusable Rx', (
+    tester,
+  ) async {
     final upstream = StreamController<int>();
     final value = 0.obs;
-    await tester.pumpWidget(Obx(() {
-      value.bindStream(upstream.stream);
-      return const SizedBox();
-    }));
+    await tester.pumpWidget(
+      Obx(() {
+        value.bindStream(upstream.stream);
+        return const SizedBox();
+      }),
+    );
     expect(upstream.hasListener, isTrue);
     await tester.pumpWidget(const SizedBox());
     expect(upstream.hasListener, isFalse);

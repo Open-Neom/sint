@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
@@ -51,6 +52,7 @@ NavigatorState? _findMountedNavigator({bool rootNavigator = false}) {
     }
     element.visitChildren(visit);
   }
+
   visit(root);
   return match;
 }
@@ -75,6 +77,7 @@ extension NavigationExtension on SintInterface {
       !_hasMountedSintNavigator(id) &&
       !SintTestMode.active &&
       _findMountedNavigator() != null;
+
   /// **Navigation.push()** shortcut.<br><br>
   ///
   /// Pushes a new `page` to the stack
@@ -99,23 +102,25 @@ extension NavigationExtension on SintInterface {
   ///
   /// By default, SINT will prevent you from push a route that you already in,
   /// if you want to push anyway, set [preventDuplicates] to false
-  Future<T?>? to<T extends Object?>(Widget Function() page,
-      {bool? opaque,
-        Transition? transition,
-        Curve? curve,
-        Duration? duration,
-        String? id,
-        String? routeName,
-        bool fullscreenDialog = false,
-        dynamic arguments,
-        List<BindingsInterface> bindings = const [],
-        bool preventDuplicates = true,
-        bool? popGesture,
-        bool showCupertinoParallax = true,
-        double Function(BuildContext context)? gestureWidth,
-        bool rebuildStack = true,
-        PreventDuplicateHandlingMode preventDuplicateHandlingMode =
-            PreventDuplicateHandlingMode.reorderRoutes}) {
+  Future<T?>? to<T extends Object?>(
+    Widget Function() page, {
+    bool? opaque,
+    Transition? transition,
+    Curve? curve,
+    Duration? duration,
+    String? id,
+    String? routeName,
+    bool fullscreenDialog = false,
+    dynamic arguments,
+    List<BindingsInterface> bindings = const [],
+    bool preventDuplicates = true,
+    bool? popGesture,
+    bool showCupertinoParallax = true,
+    double Function(BuildContext context)? gestureWidth,
+    bool rebuildStack = true,
+    PreventDuplicateHandlingMode preventDuplicateHandlingMode =
+        PreventDuplicateHandlingMode.reorderRoutes,
+  }) {
     if (_useFallbackNavigator(id)) {
       final nav = _findMountedNavigator()!;
       return nav.push<T>(
@@ -163,22 +168,22 @@ extension NavigationExtension on SintInterface {
   ///
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? toNamed<T>(
-      String page, {
-        dynamic arguments,
-        dynamic id,
-        bool preventDuplicates = true,
-        Map<String, String>? parameters,
-        Map<String, String>? pathParams,
-        Map<String, String>? queryParams,
-      }) {
-
+    String page, {
+    dynamic arguments,
+    dynamic id,
+    bool preventDuplicates = true,
+    Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) {
     if (pathParams != null || queryParams != null || parameters != null) {
       // Route-template URL building (1.5.0): substitute `:param` segments
       // and append the query string with correct per-segment encoding.
-      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        ...?parameters,
-        ...?queryParams,
-      });
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: {...?parameters, ...?queryParams},
+      );
     }
 
     if (_useFallbackNavigator(id is String ? id : null)) {
@@ -208,19 +213,19 @@ extension NavigationExtension on SintInterface {
   ///
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? offNamed<T>(
-      String page, {
-        dynamic arguments,
-        String? id,
-        Map<String, String>? parameters,
-        Map<String, String>? pathParams,
-        Map<String, String>? queryParams,
-      }) {
-
+    String page, {
+    dynamic arguments,
+    String? id,
+    Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) {
     if (pathParams != null || queryParams != null || parameters != null) {
-      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        ...?parameters,
-        ...?queryParams,
-      });
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: {...?parameters, ...?queryParams},
+      );
     }
     if (_useFallbackNavigator(id)) {
       return _findMountedNavigator()!.pushReplacementNamed<T, Object?>(
@@ -228,12 +233,8 @@ extension NavigationExtension on SintInterface {
         arguments: arguments,
       );
     }
-    return searchDelegate(id).offNamed(
-      page,
-      arguments: arguments,
-      id: id,
-      parameters: parameters,
-    );
+    return searchDelegate(id)
+        .offNamed(page, arguments: arguments, id: id, parameters: parameters);
   }
 
   /// **Navigation.popUntil()** shortcut.<br><br>
@@ -253,7 +254,9 @@ extension NavigationExtension on SintInterface {
     if (_useFallbackNavigator(id)) {
       _findMountedNavigator()!.popUntil((route) {
         final name = route.settings.name ?? '';
-        return predicate(SintPage(name: name, page: () => const SizedBox.shrink()));
+        return predicate(
+          SintPage(name: name, page: () => const SizedBox.shrink()),
+        );
       });
       return;
     }
@@ -279,19 +282,20 @@ extension NavigationExtension on SintInterface {
   ///
   /// Note: Always put a slash on the route name ('/page1'), to avoid unexpected errors
   Future<T?>? offNamedUntil<T>(
-      String page,
-      bool Function(SintPage<dynamic>)? predicate, {
-        String? id,
-        dynamic arguments,
-        Map<String, String>? parameters,
-        Map<String, String>? pathParams,
-        Map<String, String>? queryParams,
-      }) {
+    String page,
+    bool Function(SintPage<dynamic>)? predicate, {
+    String? id,
+    dynamic arguments,
+    Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) {
     if (pathParams != null || queryParams != null || parameters != null) {
-      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        ...?parameters,
-        ...?queryParams,
-      });
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: {...?parameters, ...?queryParams},
+      );
     }
 
     return searchDelegate(id).offNamedUntil<T>(
@@ -315,19 +319,20 @@ extension NavigationExtension on SintInterface {
   /// `offAndToNamed()` goes to the next page, and removes the previous one.
   /// The route transition animation is different.
   Future<T?>? offAndToNamed<T>(
-      String page, {
-        dynamic arguments,
-        String? id,
-        dynamic result,
-        Map<String, String>? parameters,
-        Map<String, String>? pathParams,
-        Map<String, String>? queryParams,
-      }) {
+    String page, {
+    dynamic arguments,
+    String? id,
+    dynamic result,
+    Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) {
     if (pathParams != null || queryParams != null || parameters != null) {
-      page = resolveRoutePath(page, pathParams: pathParams, queryParams: {
-        ...?parameters,
-        ...?queryParams,
-      });
+      page = resolveRoutePath(
+        page,
+        pathParams: pathParams,
+        queryParams: {...?parameters, ...?queryParams},
+      );
     }
     if (_useFallbackNavigator(id)) {
       return _findMountedNavigator()!.popAndPushNamed<T, dynamic>(
@@ -336,11 +341,8 @@ extension NavigationExtension on SintInterface {
         arguments: arguments,
       );
     }
-    return searchDelegate(id).backAndtoNamed(
-      page,
-      arguments: arguments,
-      result: result,
-    );
+    return searchDelegate(id)
+        .backAndtoNamed(page, arguments: arguments, result: result);
   }
 
   /// **Navigation.removeRoute()** shortcut.<br><br>
@@ -367,20 +369,19 @@ extension NavigationExtension on SintInterface {
   ///
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? offAllNamed<T>(
-      String newRouteName, {
-        dynamic arguments,
-        String? id,
-        Map<String, String>? parameters,
-        Map<String, String>? pathParams,
-        Map<String, String>? queryParams,
-      }) {
+    String newRouteName, {
+    dynamic arguments,
+    String? id,
+    Map<String, String>? parameters,
+    Map<String, String>? pathParams,
+    Map<String, String>? queryParams,
+  }) {
     if (pathParams != null || queryParams != null || parameters != null) {
-      newRouteName = resolveRoutePath(newRouteName,
-          pathParams: pathParams,
-          queryParams: {
-            ...?parameters,
-            ...?queryParams,
-          });
+      newRouteName = resolveRoutePath(
+        newRouteName,
+        pathParams: pathParams,
+        queryParams: {...?parameters, ...?queryParams},
+      );
     }
 
     if (_useFallbackNavigator(id)) {
@@ -401,9 +402,7 @@ extension NavigationExtension on SintInterface {
 
   /// Returns true if a Snackbar, Dialog or BottomSheet is currently OPEN
   bool get isOverlaysOpen =>
-      isSnackbarOpen ||
-      (isDialogOpen ?? false) ||
-      (isBottomSheetOpen ?? false);
+      isSnackbarOpen || (isDialogOpen ?? false) || (isBottomSheetOpen ?? false);
 
   /// Returns true if there is no Snackbar, Dialog or BottomSheet open
   bool get isOverlaysClosed => !isOverlaysOpen;
@@ -417,12 +416,7 @@ extension NavigationExtension on SintInterface {
   ///
   /// It has the advantage of not needing context, so you can call
   /// from your business logic.
-  void back<T>({
-    T? result,
-    bool canPop = true,
-    int times = 1,
-    String? id,
-  }) {
+  void back<T>({T? result, bool canPop = true, int times = 1, String? id}) {
     if (times < 1) {
       times = 1;
     }
@@ -504,9 +498,7 @@ extension NavigationExtension on SintInterface {
     }
   }
 
-  void closeAllDialogsAndBottomSheets(
-    String? id,
-  ) {
+  void closeAllDialogsAndBottomSheets(String? id) {
     // Dialogs and bottomsheets may be interleaved on the navigator stack.
     while (((isDialogOpen ?? false) || (isBottomSheetOpen ?? false)) &&
         searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
@@ -514,9 +506,7 @@ extension NavigationExtension on SintInterface {
     }
   }
 
-  void closeAllDialogs({
-    String? id,
-  }) {
+  void closeAllDialogs({String? id}) {
     while ((isDialogOpen ?? false) &&
         searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
       closeOverlay(id: id);
@@ -539,10 +529,7 @@ extension NavigationExtension on SintInterface {
   }
 
   /// Close the current overlay returning the [result], if provided
-  void closeOverlay<T>({
-    String? id,
-    T? result,
-  }) {
+  void closeOverlay<T>({String? id, T? result}) {
     final nav = resolveNavigator(id: id);
     if (nav != null && nav.canPop()) {
       nav.pop<T>(result);
@@ -607,9 +594,7 @@ extension NavigationExtension on SintInterface {
     return resolveNavigator()?.canPop() ?? false;
   }
 
-  void closeAllBottomSheets({
-    String? id,
-  }) {
+  void closeAllBottomSheets({String? id}) {
     while ((isBottomSheetOpen ?? false) &&
         searchDelegate(id).navigatorKey.currentState?.canPop() == true) {
       searchDelegate(id).navigatorKey.currentState?.pop();
@@ -633,9 +618,12 @@ extension NavigationExtension on SintInterface {
     String? id,
     T? result,
   }) {
-    void handleClose(bool closeCondition, Function closeAllFunction,
-        Function closeSingleFunction,
-        [bool? isOpenCondition]) {
+    void handleClose(
+      bool closeCondition,
+      Function closeAllFunction,
+      Function closeSingleFunction, [
+      bool? isOpenCondition,
+    ]) {
       if (closeCondition) {
         if (closeAll) {
           closeAllFunction();
@@ -647,8 +635,12 @@ extension NavigationExtension on SintInterface {
 
     handleClose(closeSnackbar, closeAllSnackbars, closeCurrentSnackbar);
     handleClose(closeDialog, closeAllDialogs, closeOverlay, isDialogOpen);
-    handleClose(closeBottomSheet, closeAllBottomSheets, closeOverlay,
-        isBottomSheetOpen);
+    handleClose(
+      closeBottomSheet,
+      closeAllBottomSheets,
+      closeOverlay,
+      isBottomSheetOpen,
+    );
   }
 
   /// **Navigation.pushReplacement()** shortcut .<br><br>
@@ -677,20 +669,20 @@ extension NavigationExtension on SintInterface {
   /// By default, SINT will prevent you from push a route that you already in,
   /// if you want to push anyway, set [preventDuplicates] to false
   Future<T?>? off<T>(
-      Widget Function() page, {
-        bool? opaque,
-        Transition? transition,
-        Curve? curve,
-        bool? popGesture,
-        String? id,
-        String? routeName,
-        dynamic arguments,
-        List<BindingsInterface> bindings = const [],
-        bool fullscreenDialog = false,
-        bool preventDuplicates = true,
-        Duration? duration,
-        double Function(BuildContext context)? gestureWidth,
-      }) {
+    Widget Function() page, {
+    bool? opaque,
+    Transition? transition,
+    Curve? curve,
+    bool? popGesture,
+    String? id,
+    String? routeName,
+    dynamic arguments,
+    List<BindingsInterface> bindings = const [],
+    bool fullscreenDialog = false,
+    bool preventDuplicates = true,
+    Duration? duration,
+    double Function(BuildContext context)? gestureWidth,
+  }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
     if (_useFallbackNavigator(id)) {
@@ -723,16 +715,12 @@ extension NavigationExtension on SintInterface {
   }
 
   Future<T?> offUntil<T>(
-      Widget Function() page,
-      bool Function(SintPage) predicate, [
-        Object? arguments,
-        String? id,
-      ]) {
-    return searchDelegate(id).offUntil(
-      page,
-      predicate,
-      arguments,
-    );
+    Widget Function() page,
+    bool Function(SintPage) predicate, [
+    Object? arguments,
+    String? id,
+  ]) {
+    return searchDelegate(id).offUntil(page, predicate, arguments);
   }
 
   ///
@@ -763,20 +751,20 @@ extension NavigationExtension on SintInterface {
   ///
   /// If you're using the [BindingsInterface] api, you must define it here
   Future<T?>? offAll<T>(
-      Widget Function() page, {
-        bool Function(SintPage<dynamic>)? predicate,
-        bool? opaque,
-        bool? popGesture,
-        String? id,
-        String? routeName,
-        dynamic arguments,
-        List<BindingsInterface> bindings = const [],
-        bool fullscreenDialog = false,
-        Transition? transition,
-        Curve? curve,
-        Duration? duration,
-        double Function(BuildContext context)? gestureWidth,
-      }) {
+    Widget Function() page, {
+    bool Function(SintPage<dynamic>)? predicate,
+    bool? opaque,
+    bool? popGesture,
+    String? id,
+    String? routeName,
+    dynamic arguments,
+    List<BindingsInterface> bindings = const [],
+    bool fullscreenDialog = false,
+    Transition? transition,
+    Curve? curve,
+    Duration? duration,
+    double Function(BuildContext context)? gestureWidth,
+  }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
     if (_useFallbackNavigator(id)) {
@@ -861,14 +849,12 @@ extension NavigationExtension on SintInterface {
   /// // Keep AuthController alive during reset:
   /// Sint.toInitial(keep: {AuthController});
   /// ```
-  Future<void> toInitial({
-    Set<Type>? keep,
-    String? id,
-  }) async {
+  Future<void> toInitial({Set<Type>? keep, String? id}) async {
     final delegate = searchDelegate(id);
-    final initialRoute = rootController.config.initialRoute
-        ?? delegate.registeredRoutes.firstOrNull?.name
-        ?? '/';
+    final initialRoute =
+        rootController.config.initialRoute ??
+        delegate.registeredRoutes.firstOrNull?.name ??
+        '/';
 
     // Hard reset: delete all non-permanent dependencies except [keep]
     if (keep != null && keep.isNotEmpty) {

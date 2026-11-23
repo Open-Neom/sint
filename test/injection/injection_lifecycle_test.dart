@@ -68,7 +68,9 @@ void main() {
         () => Sint.find<_Service>(),
         throwsA(
           predicate(
-            (e) => e.toString().contains('_Service') && e.toString().contains('not found'),
+            (e) =>
+                e.toString().contains('_Service') &&
+                e.toString().contains('not found'),
           ),
         ),
       );
@@ -102,8 +104,11 @@ void main() {
 
       Sint.find<_Service>();
       expect(built, 1, reason: 'singleton — should not rebuild');
-      expect(Sint.isPrepared<_Service>(), isFalse,
-          reason: 'after first resolution it is no longer "prepared"');
+      expect(
+        Sint.isPrepared<_Service>(),
+        isFalse,
+        reason: 'after first resolution it is no longer "prepared"',
+      );
     });
 
     test('subsequent lazyPut for the same type is ignored (no replace)', () {
@@ -140,8 +145,11 @@ void main() {
       Sint.delete<_Service>();
       // After fenix delete the registration remains (factory still alive).
       expect(Sint.isRegistered<_Service>(), isTrue);
-      expect(Sint.find<_Service>().name, 'phoenix-2',
-          reason: 'fenix should recreate');
+      expect(
+        Sint.find<_Service>().name,
+        'phoenix-2',
+        reason: 'fenix should recreate',
+      );
     });
 
     test('non-fenix lazyPut: after delete the factory is gone', () {
@@ -190,9 +198,7 @@ void main() {
 
   group('putAsync', () {
     test('putAsync registers the resolved value as singleton', () async {
-      final s = await Sint.putAsync<_Service>(
-        () async => _Service('async'),
-      );
+      final s = await Sint.putAsync<_Service>(() async => _Service('async'));
       expect(s.name, 'async');
       expect(identical(Sint.find<_Service>(), s), isTrue);
     });
@@ -222,8 +228,9 @@ void main() {
   });
 
   group('SintController lifecycle order', () {
-    testWidgets('onInit then onReady are called when find triggers it',
-        (tester) async {
+    testWidgets('onInit then onReady are called when find triggers it', (
+      tester,
+    ) async {
       Sint.lazyPut<_CounterController>(() => _CounterController());
       final c = Sint.find<_CounterController>();
       expect(c.initCount, 1, reason: 'onInit fires on first find');
@@ -267,8 +274,11 @@ void main() {
       Sint.deleteAll();
       expect(Sint.isRegistered<_Service>(), isFalse);
       expect(Sint.isRegistered<_CounterController>(), isFalse);
-      expect(Sint.isRegistered<_Service>(tag: 'p'), isTrue,
-          reason: 'permanent survives plain deleteAll');
+      expect(
+        Sint.isRegistered<_Service>(tag: 'p'),
+        isTrue,
+        reason: 'permanent survives plain deleteAll',
+      );
     });
 
     test('Sint.reset clears even permanent instances', () {

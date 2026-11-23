@@ -59,7 +59,8 @@ class _FourPillarController extends SintController {
 
   late final subtotal = computed(() => items.value * price.value);
   late final finalTotal = computed(
-    () => (subtotal.value + tax.value - discount.value) * sharedMultiplier.value,
+    () =>
+        (subtotal.value + tax.value - discount.value) * sharedMultiplier.value,
   );
 }
 
@@ -86,14 +87,13 @@ class _ImmutableCartState {
     int? tax,
     int? discount,
     String? profileName,
-  }) =>
-      _ImmutableCartState(
-        items: items ?? this.items,
-        price: price ?? this.price,
-        tax: tax ?? this.tax,
-        discount: discount ?? this.discount,
-        profileName: profileName ?? this.profileName,
-      );
+  }) => _ImmutableCartState(
+    items: items ?? this.items,
+    price: price ?? this.price,
+    tax: tax ?? this.tax,
+    discount: discount ?? this.discount,
+    profileName: profileName ?? this.profileName,
+  );
 }
 
 int _simulateWidgetRebuildWork(int seed) {
@@ -108,135 +108,132 @@ void main() {
   tearDown(Sint.reset);
 
   group('4-Pillar SOTA Benchmark Suite (S · I · N · T)', () {
-    test(
-      'Pillar S: 20-Widget Screen Transaction — SINT 2.0 (Fine-Grained batch+computed) vs Coarse ChangeNotifier (Provider) vs Immutable Stream (BLoC)',
-      () async {
-        // 1. SINT 2.0: 19 unrelated signals + 4 transaction signals + 1 Computed total
-        final unrelatedSignals = List<RxInt>.generate(19, (i) => i.obs);
-        final items = 1.obs;
-        final price = 10.obs;
-        final tax = 2.obs;
-        final discount = 1.obs;
-        final total = Sint.computed(
-          () => (items.value * price.value) + tax.value - discount.value,
-        );
+    test('Pillar S: 20-Widget Screen Transaction — SINT 2.0 (Fine-Grained batch+computed) vs Coarse ChangeNotifier (Provider) vs Immutable Stream (BLoC)', () async {
+      // 1. SINT 2.0: 19 unrelated signals + 4 transaction signals + 1 Computed total
+      final unrelatedSignals = List<RxInt>.generate(19, (i) => i.obs);
+      final items = 1.obs;
+      final price = 10.obs;
+      final tax = 2.obs;
+      final discount = 1.obs;
+      final total = Sint.computed(
+        () => (items.value * price.value) + tax.value - discount.value,
+      );
 
-        var sintRebuilds = 0;
-        var sintChecksum = 0;
-        for (final rx in unrelatedSignals) {
-          rx.addListener(() {
-            sintRebuilds++;
-            sintChecksum ^= _simulateWidgetRebuildWork(rx.peek);
-          });
-        }
-        total.addListener(() {
+      var sintRebuilds = 0;
+      var sintChecksum = 0;
+      for (final rx in unrelatedSignals) {
+        rx.addListener(() {
           sintRebuilds++;
-          sintChecksum ^= _simulateWidgetRebuildWork(total.peek);
+          sintChecksum ^= _simulateWidgetRebuildWork(rx.peek);
         });
+      }
+      total.addListener(() {
+        sintRebuilds++;
+        sintChecksum ^= _simulateWidgetRebuildWork(total.peek);
+      });
 
-        var step = 0;
-        final sintResult = await runBench(
-          'four_pillars.s.sint_batched_20_widgets',
-          () {
-            step++;
-            Sint.batch(() {
-              items.value = (step & 7) + 1;
-              price.value = ((step >> 1) & 15) + 10;
-              tax.value = (step & 3) + 1;
-              discount.value = (step & 1);
-            });
-          },
-        );
-
-        var unbatchedStep = 0;
-        final unbatchedResult = await runBench(
-          'four_pillars.s.sint_unbatched_20_widgets',
-          () {
-            unbatchedStep++;
-            items.value = (unbatchedStep & 7) + 1;
-            price.value = ((unbatchedStep >> 1) & 15) + 10;
-            tax.value = (unbatchedStep & 3) + 1;
-            discount.value = (unbatchedStep & 1);
-          },
-        );
-
-        // 2. Coarse ChangeNotifier (Provider pattern): 20 widgets listening to the model
-        final coarse = _CoarseCartModel();
-        var coarseRebuilds = 0;
-        var coarseChecksum = 0;
-        for (var w = 0; w < 20; w++) {
-          coarse.addListener(() {
-            coarseRebuilds++;
-            coarseChecksum ^= _simulateWidgetRebuildWork(coarse.total + w);
+      var step = 0;
+      final sintResult = await runBench(
+        'four_pillars.s.sint_batched_20_widgets',
+        () {
+          step++;
+          Sint.batch(() {
+            items.value = (step & 7) + 1;
+            price.value = ((step >> 1) & 15) + 10;
+            tax.value = (step & 3) + 1;
+            discount.value = (step & 1);
           });
-        }
+        },
+      );
 
-        var coarseStep = 0;
-        final coarseResult = await runBench(
-          'four_pillars.s.coarse_change_notifier_20_widgets',
-          () {
-            coarseStep++;
-            coarse.items = (coarseStep & 7) + 1;
-            coarse.price = ((coarseStep >> 1) & 15) + 10;
-            coarse.tax = (coarseStep & 3) + 1;
-            coarse.discount = (coarseStep & 1);
+      var unbatchedStep = 0;
+      final unbatchedResult = await runBench(
+        'four_pillars.s.sint_unbatched_20_widgets',
+        () {
+          unbatchedStep++;
+          items.value = (unbatchedStep & 7) + 1;
+          price.value = ((unbatchedStep >> 1) & 15) + 10;
+          tax.value = (unbatchedStep & 3) + 1;
+          discount.value = (unbatchedStep & 1);
+        },
+      );
+
+      // 2. Coarse ChangeNotifier (Provider pattern): 20 widgets listening to the model
+      final coarse = _CoarseCartModel();
+      var coarseRebuilds = 0;
+      var coarseChecksum = 0;
+      for (var w = 0; w < 20; w++) {
+        coarse.addListener(() {
+          coarseRebuilds++;
+          coarseChecksum ^= _simulateWidgetRebuildWork(coarse.total + w);
+        });
+      }
+
+      var coarseStep = 0;
+      final coarseResult = await runBench(
+        'four_pillars.s.coarse_change_notifier_20_widgets',
+        () {
+          coarseStep++;
+          coarse.items = (coarseStep & 7) + 1;
+          coarse.price = ((coarseStep >> 1) & 15) + 10;
+          coarse.tax = (coarseStep & 3) + 1;
+          coarse.discount = (coarseStep & 1);
+        },
+      );
+
+      // 3. Immutable State Stream (BLoC / Cubit sync emission pattern): 20 widget listeners
+      var currentState = const _ImmutableCartState(
+        items: 1,
+        price: 10,
+        tax: 2,
+        discount: 1,
+        profileName: 'Serzen',
+      );
+      final streamListeners = <void Function(_ImmutableCartState)>[
+        for (var w = 0; w < 20; w++)
+          (state) {
+            coarseChecksum ^= _simulateWidgetRebuildWork(state.total + w);
           },
-        );
-
-        // 3. Immutable State Stream (BLoC / Cubit sync emission pattern): 20 widget listeners
-        var currentState = const _ImmutableCartState(
-          items: 1,
-          price: 10,
-          tax: 2,
-          discount: 1,
-          profileName: 'Serzen',
-        );
-        final streamListeners = <void Function(_ImmutableCartState)>[
-          for (var w = 0; w < 20; w++)
-            (state) {
-              coarseChecksum ^= _simulateWidgetRebuildWork(state.total + w);
-            },
-        ];
-        void emit(_ImmutableCartState next) {
-          currentState = next;
-          for (var i = 0; i < streamListeners.length; i++) {
-            streamListeners[i](next);
-          }
+      ];
+      void emit(_ImmutableCartState next) {
+        currentState = next;
+        for (var i = 0; i < streamListeners.length; i++) {
+          streamListeners[i](next);
         }
+      }
 
-        var streamStep = 0;
-        final streamResult = await runBench(
-          'four_pillars.s.immutable_state_emit_20_widgets',
-          () {
-            streamStep++;
-            emit(currentState.copyWith(items: (streamStep & 7) + 1));
-            emit(currentState.copyWith(price: ((streamStep >> 1) & 15) + 10));
-            emit(currentState.copyWith(tax: (streamStep & 3) + 1));
-            emit(currentState.copyWith(discount: (streamStep & 1)));
-          },
-        );
+      var streamStep = 0;
+      final streamResult = await runBench(
+        'four_pillars.s.immutable_state_emit_20_widgets',
+        () {
+          streamStep++;
+          emit(currentState.copyWith(items: (streamStep & 7) + 1));
+          emit(currentState.copyWith(price: ((streamStep >> 1) & 15) + 10));
+          emit(currentState.copyWith(tax: (streamStep & 3) + 1));
+          emit(currentState.copyWith(discount: (streamStep & 1)));
+        },
+      );
 
-        expect(sintRebuilds, greaterThan(0));
-        expect(coarseRebuilds, greaterThan(0));
-        expect(sintChecksum, isNot(0));
-        expect(coarseChecksum, isNot(0));
+      expect(sintRebuilds, greaterThan(0));
+      expect(coarseRebuilds, greaterThan(0));
+      expect(sintChecksum, isNot(0));
+      expect(coarseChecksum, isNot(0));
 
-        total.dispose();
-        items.close();
-        price.close();
-        tax.close();
-        discount.close();
-        for (final rx in unrelatedSignals) {
-          rx.close();
-        }
-        coarse.dispose();
+      total.dispose();
+      items.close();
+      price.close();
+      tax.close();
+      discount.close();
+      for (final rx in unrelatedSignals) {
+        rx.close();
+      }
+      coarse.dispose();
 
-        printBenchTable(
-          'Pillar S — 20-Widget Screen 4-Field Transaction (SINT Batched vs SINT Unbatched vs ChangeNotifier vs Immutable State Copy)',
-          [sintResult, unbatchedResult, coarseResult, streamResult],
-        );
-      },
-    );
+      printBenchTable(
+        'Pillar S — 20-Widget Screen 4-Field Transaction (SINT Batched vs SINT Unbatched vs ChangeNotifier vs Immutable State Copy)',
+        [sintResult, unbatchedResult, coarseResult, streamResult],
+      );
+    });
 
     test('Pillar N: SINT 2.0 Multi-Level Trie vs Linear RegExp Router (500 shared-prefix routes)', () async {
       final pages = <SintPage<dynamic>>[
@@ -260,15 +257,12 @@ void main() {
 
       const targetUrl = '/api/v2/module499/item/42?lang=es';
       var trieHits = 0;
-      final trieResult = await runBench(
-        'four_pillars.n.sint_trie_500',
-        () {
-          final match = parser.matchRoute(targetUrl);
-          if (match.route?.parameters?['id'] == '42') {
-            trieHits++;
-          }
-        },
-      );
+      final trieResult = await runBench('four_pillars.n.sint_trie_500', () {
+        final match = parser.matchRoute(targetUrl);
+        if (match.route?.parameters?['id'] == '42') {
+          trieHits++;
+        }
+      });
 
       var linearHits = 0;
       final linearResult = await runBench(
@@ -297,9 +291,7 @@ void main() {
     test('Integrated 4-Pillar Full Cycle (N Route + I DI Find + S Batch/Computed + T i18n)', () async {
       Sint.clearTranslations();
       Sint.addTranslations({
-        'es_ES': {
-          'order_summary': 'Item @id: @total MXN',
-        },
+        'es_ES': {'order_summary': 'Item @id: @total MXN'},
       });
       Sint.locale = const Locale('es', 'ES');
 

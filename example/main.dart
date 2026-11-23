@@ -1,13 +1,14 @@
 /// SINT Example — The Four Pillars (S·I·N·T)
 ///
-/// A minimal counter app demonstrating all four pillars:
-/// - **S**tate: Reactive `.obs` + `SintBuilder` + workers
-/// - **I**njection: `Sint.put()` / `Sint.find()` DI
-/// - **N**avigation: `SintMaterialApp` + named routes + snackbar
-/// - **T**ranslation: `.tr` localized strings
+/// A minimal counter app demonstrating all four pillars on Flutter 3.47+
+/// standalone `material_ui`:
+/// - **S**tate: Reactive `.obs` + `Obx` + `SintBuilder` + zero-Stream workers
+/// - **I**njection: Single-element `MultiBinder` (`binds: [Bind.put(...)]`) + `Sint.find()`
+/// - **N**avigation: `SintApp` + named routes + `SintAppBar` + `Sint.snackbar()`
+/// - **T**ranslation: Reactive `.tr` / `.trParams` localized strings
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:sint/sint.dart';
 
 // ─── Pillar T: Translations ───────────────────────────────────
@@ -36,11 +37,12 @@ class AppTranslations extends Translations {
 
 class CounterController extends SintController {
   final count = 0.obs;
+  late final doubled = computed(() => count.value * 2);
 
   @override
   void onInit() {
     super.onInit();
-    // Worker: fires every time count changes
+    // Zero-Stream synchronous worker: fires every time count changes
     ever(count, (value) {
       if (value % 10 == 0 && value > 0) {
         Sint.snackbar(
@@ -70,12 +72,13 @@ class AppRoutes {
 
 void main() {
   runApp(
-    SintMaterialApp(
+    SintApp(
+      design: SintDesign.material,
       // Pillar N: Navigation config
       title: 'SINT Example',
       initialRoute: AppRoutes.home,
       sintPages: AppRoutes.pages,
-      theme: ThemeData(
+      materialTheme: ThemeData(
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
       ),
@@ -88,10 +91,8 @@ void main() {
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         duration: Duration(seconds: 2),
       ),
-      // Pillar I: Root bindings
-      binds: [
-        Bind.put(() => CounterController()),
-      ],
+      // Pillar I: Root bindings (flattened into a single MultiBinder Element)
+      binds: [Bind.put(CounterController())],
       // Pillar T: Translations
       translations: AppTranslations(),
       locale: const Locale('en', 'US'),
@@ -111,8 +112,8 @@ class HomePage extends StatelessWidget {
     final controller = Sint.find<CounterController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('title'.tr), // Pillar T
+      appBar: SintAppBar(
+        title: 'title'.tr, // Pillar T
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -127,10 +128,12 @@ class HomePage extends StatelessWidget {
             Text('count'.tr, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             // Pillar S: Reactive rebuild on count changes
-            Obx(() => Text(
-              '${controller.count.value}',
-              style: Theme.of(context).textTheme.displayLarge,
-            )),
+            Obx(
+              () => Text(
+                '${controller.count.value} (×2 = ${controller.doubled.value})',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
           ],
         ),
       ),
@@ -153,7 +156,7 @@ class DetailsPage extends StatelessWidget {
     final controller = Sint.find<CounterController>();
 
     return Scaffold(
-      appBar: AppBar(title: Text('details'.tr)),
+      appBar: SintAppBar(title: 'details'.tr),
       body: Center(
         // Pillar S: SintBuilder alternative to Obx
         child: SintBuilder<CounterController>(

@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/injection/src/domain/models/binds.dart';
@@ -40,8 +40,8 @@ class SintPageRoute<T> extends PageRoute<T>
     this.maintainState = true,
     super.fullscreenDialog,
     this.middlewares,
-  })  : bindings = (binding == null) ? bindings : [...bindings, binding],
-        _middlewareRunner = MiddlewareRunner(middlewares);
+  }) : bindings = (binding == null) ? bindings : [...bindings, binding],
+       _middlewareRunner = MiddlewareRunner(middlewares);
 
   @override
   final Duration transitionDuration;
@@ -120,10 +120,7 @@ class SintPageRoute<T> extends PageRoute<T>
     final builtPage = _middlewareRunner.runOnPageBuilt(pageToBuild());
 
     if (collectedBinds.isNotEmpty) {
-      _child = Binds(
-        binds: collectedBinds,
-        child: builtPage,
-      );
+      _child = Binds(binds: collectedBinds, child: builtPage);
     } else {
       _child = builtPage;
     }

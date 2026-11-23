@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
@@ -440,10 +442,7 @@ class SintRootState extends State<SintRoot> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_rootBinds.isNotEmpty) {
-      return Binds(
-        binds: _rootBinds,
-        child: widget.child,
-      );
+      return Binds(binds: _rootBinds, child: widget.child);
     }
     return widget.child;
   }

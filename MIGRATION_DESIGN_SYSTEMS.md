@@ -1,12 +1,12 @@
 # Material and Cupertino migration guide
 
-**Status: SINT 2.0.0 (October 2026).**
-SINT 2.0.0 includes `SintApp` and `SintApp.router` using the standalone
+**Status: SINT 2.2.x (November 2026).**
+SINT 2.x includes `SintApp` and `SintApp.router` using the standalone
 `material_ui` and `cupertino_ui` libraries over a single shared SINT runtime.
 
-This version requires **Flutter >=3.44.0 and Dart >=3.12.0**. These requirements
+This version requires **Flutter >=3.47.0 and Dart ^3.13.0**. These requirements
 apply to all consumers, including applications using `SintMaterialApp` or
-`SintCupertinoApp`, because Pub resolves the new direct dependencies regardless
+`SintCupertinoApp`, because Pub resolves the standalone dependencies regardless
 of which constructor an application uses. Projects staying on older SDKs must
 keep a compatible SINT 1.6.x version until they can upgrade.
 
@@ -20,7 +20,7 @@ separate-adapter proposal retained in the historical roadmap.
 
 | Host | Theme types | Behavior |
 | --- | --- | --- |
-| `SintApp` | `material_ui.ThemeData`, `cupertino_ui.CupertinoThemeData` | Standalone; automatic Cupertino on iOS and Material on other target platforms. |
+| `SintApp` | `material_ui.ThemeData`, `cupertino_ui.CupertinoThemeData` | Standalone; automatic Cupertino on iOS/macOS and Material on other target platforms. |
 | `SintApp(design: SintDesign.material)` | Standalone themes | Material on every platform. |
 | `SintApp(design: SintDesign.cupertino)` | Standalone themes | Cupertino on every platform. |
 | `SintMaterialApp` / `SintCupertinoApp` | Their existing SDK types | Existing SDK integration remains available. |
@@ -36,17 +36,12 @@ state; they do not need platform/theme selection logic.
 
 ## Standalone Material example
 
-Declare `sint` using the development source/version being evaluated, and declare
-`material_ui` and/or `cupertino_ui` as direct app dependencies when importing
-them. For local validation use a `path` dependency pointing at this checkout;
-do not assume the preview is available from pub.dev. The current SINT constraints
-are `material_ui: ">=1.1.1 <1.3.0"` and
-`cupertino_ui: ">=1.0.0 <1.1.0"`; review the resolved versions in the
-application's lockfile. The upper bounds preserve the declared Flutter 3.44
-baseline: clean resolution to Material 1.3.0 / Cupertino 1.1.0 currently fails
-there because those releases use `foundation.awaitNotRequired`, which that
-Flutter version does not export. Re-evaluate these bounds when upstream fixes
-the requirement or SINT deliberately raises its SDK floor.
+Declare `sint: ^2.2.2` in your `pubspec.yaml`, and declare `material_ui`
+(`^1.11.1`) and/or `cupertino_ui` (`^1.1.7`) as direct app dependencies when
+importing them directly. SINT 2.2+ is fully compatible with Flutter 3.47+ and
+Flutter 3.50+ (where `package:flutter/material.dart` and
+`package:flutter/cupertino.dart` are deprecated in favor of the standalone
+packages).
 
 ```dart
 import 'package:flutter/widgets.dart';

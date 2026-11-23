@@ -1,4 +1,3 @@
-
 import 'package:flutter/widgets.dart';
 import 'package:sint/state_manager/src/domain/typedefs/state_typedefs.dart';
 import 'package:sint/state_manager/src/ui/obx_reactive_element.dart';

@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:sint/translation/sint_translation.dart';
 import 'package:sint/navigation/src/domain/enums/transition.dart';
@@ -25,7 +26,8 @@ class Wrapper extends StatelessWidget {
       initialRoute: initialRoute ?? '/',
       translations: WrapperTranslations(),
       locale: WrapperTranslations.locale,
-      sintPages: namedRoutes ??
+      sintPages:
+          namedRoutes ??
           [
             SintPage(
               name: '/',

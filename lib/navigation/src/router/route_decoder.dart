@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart';
+
 import '../../../sint.dart';
 
 class RouteDecoder {
-  const RouteDecoder(
-    this.currentTreeBranch,
-    this.pageSettings,
-  );
+  const RouteDecoder(this.currentTreeBranch, this.pageSettings);
   final List<SintPage> currentTreeBranch;
   final PageSettings? pageSettings;
 
@@ -17,8 +15,10 @@ class RouteDecoder {
     if (!SintRoot.treeInitialized) {
       return RouteDecoder(<SintPage>[], args);
     }
-    final decoder =
-        (Sint.rootController.rootDelegate).matchRoute(location, arguments: args);
+    final decoder = (Sint.rootController.rootDelegate).matchRoute(
+      location,
+      arguments: args,
+    );
     decoder.route = decoder.route?.copyWith(
       completer: null,
       arguments: args,

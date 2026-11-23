@@ -18,7 +18,4 @@
 ///
 /// another pop will change the _activePages stack to:
 /// 1) /home
-enum PopMode {
-  history,
-  page,
-}
+enum PopMode { history, page }

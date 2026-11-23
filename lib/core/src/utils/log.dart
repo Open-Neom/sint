@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../sint_main.dart';
 
 final RegExp _kSintLogInternalTags = RegExp(

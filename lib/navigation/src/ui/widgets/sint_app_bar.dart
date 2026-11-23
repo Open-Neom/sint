@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
 
 import '../../../../core/src/sint_main.dart';
 import '../../domain/extensions/navigation_extensions.dart';
+import '../sint_root.dart';
 
 /// A Sint-aware AppBar that integrates with Sint's routing stack.
 ///
@@ -23,7 +26,6 @@ import '../../domain/extensions/navigation_extensions.dart';
 /// SintAppBar(title: 'shop', actions: [...], fallbackRoute: '/home')
 /// ```
 class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
-
   /// The title text displayed in the AppBar.
   final String title;
 
@@ -94,14 +96,36 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Size.fromHeight(height + bottomHeight);
   }
 
+  bool get _isStandalone =>
+      SintRoot.treeInitialized &&
+      SintRootState.controller.config.useStandaloneDesign;
+
   @override
   Widget build(BuildContext context) {
     final shouldShowBack = showBackButton ?? _shouldShowBackButton(context);
+    final resolvedLeading =
+        leading ?? (shouldShowBack ? _buildBackButton(context) : null);
+    final resolvedTitle = _buildTitle(context);
+
+    if (_isStandalone) {
+      return material.AppBar(
+        leading: resolvedLeading,
+        automaticallyImplyLeading: false,
+        title: resolvedTitle,
+        titleSpacing: titleSpacing,
+        backgroundColor: backgroundColor,
+        elevation: elevation,
+        actions: actions,
+        centerTitle: centerTitle,
+        bottom: bottom,
+        toolbarHeight: height,
+      );
+    }
 
     return AppBar(
-      leading: leading ?? (shouldShowBack ? _buildBackButton(context) : null),
+      leading: resolvedLeading,
       automaticallyImplyLeading: false,
-      title: _buildTitle(context),
+      title: resolvedTitle,
       titleSpacing: titleSpacing,
       backgroundColor: backgroundColor,
       elevation: elevation,
@@ -119,6 +143,14 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Color _resolveForegroundColor(BuildContext context) {
+    if (_isStandalone) {
+      final theme = material.Theme.of(context);
+      final isLight = theme.brightness == Brightness.light;
+      if (isLight) {
+        return theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
+      }
+      return theme.appBarTheme.foregroundColor ?? const Color(0xFFFFFFFF);
+    }
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
     if (isLight) {
@@ -130,11 +162,16 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget _buildTitle(BuildContext context) {
     final displayTitle = capitalize ? _capitalize(title) : title;
     final fg = _resolveForegroundColor(context);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final style = titleStyle ?? TextStyle(
-      color: isLight ? fg : fg.withAlpha(204),
-      fontWeight: FontWeight.bold,
-    );
+    final brightness = _isStandalone
+        ? material.Theme.of(context).brightness
+        : Theme.of(context).brightness;
+    final isLight = brightness == Brightness.light;
+    final style =
+        titleStyle ??
+        TextStyle(
+          color: isLight ? fg : fg.withAlpha(204),
+          fontWeight: FontWeight.bold,
+        );
 
     if (preTitle != null) {
       if (displayTitle.isEmpty) {
@@ -146,7 +183,11 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
           Flexible(child: preTitle!),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(displayTitle, style: style, overflow: TextOverflow.ellipsis),
+            child: Text(
+              displayTitle,
+              style: style,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       );
@@ -157,18 +198,27 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   Widget _buildBackButton(BuildContext context) {
     final fg = _resolveForegroundColor(context);
+    void onPressed() {
+      if (_canSintGoBack()) {
+        Sint.back();
+      } else if (Sint.canPop) {
+        Sint.pop();
+      } else {
+        Sint.offAllNamed(fallbackRoute);
+      }
+    }
+
+    if (_isStandalone) {
+      return material.IconButton(
+        icon: Icon(material.Icons.arrow_back, color: fg),
+        tooltip: 'Back',
+        onPressed: onPressed,
+      );
+    }
     return IconButton(
       icon: Icon(Icons.arrow_back, color: fg),
       tooltip: 'Back',
-      onPressed: () {
-        if (_canSintGoBack()) {
-          Sint.back();
-        } else if (Sint.canPop) {
-          Sint.pop();
-        } else {
-          Sint.offAllNamed(fallbackRoute);
-        }
-      },
+      onPressed: onPressed,
     );
   }
 
@@ -185,8 +235,12 @@ class SintAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (Sint.canPop) return true;
 
     final current = Sint.currentRoute;
-    final isRootRoute = current == '/' || current == '/root'
-        || current == '/home' || current == '/login' || current.isEmpty;
+    final isRootRoute =
+        current == '/' ||
+        current == '/root' ||
+        current == '/home' ||
+        current == '/login' ||
+        current.isEmpty;
 
     if (isRootRoute) return false;
 

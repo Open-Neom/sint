@@ -1,7 +1,9 @@
 import 'dart:ui' as ui;
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/sint_injection.dart';
@@ -25,8 +27,10 @@ import 'package:sint/navigation/src/domain/models/config_data.dart';
 /// use `SintApp`. See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 class SintCupertinoApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
-  @Deprecated('Use initialRoute + sintPages instead. '
-      'home will be removed in SINT 3.0.0.')
+  @Deprecated(
+    'Use initialRoute + sintPages instead. '
+    'home will be removed in SINT 3.0.0.',
+  )
   final Widget? home;
   final Map<String, WidgetBuilder>? routes;
   final String? initialRoute;
@@ -142,11 +146,11 @@ class SintCupertinoApp extends StatelessWidget {
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
-  })  : routeInformationProvider = null,
-        backButtonDispatcher = null,
-        routeInformationParser = null,
-        routerDelegate = null,
-        routerConfig = null;
+  }) : routeInformationProvider = null,
+       backButtonDispatcher = null,
+       routeInformationParser = null,
+       routerDelegate = null,
+       routerConfig = null;
 
   /// Creates a router app using SDK Cupertino types.
   ///
@@ -203,14 +207,14 @@ class SintCupertinoApp extends StatelessWidget {
     this.globalMiddlewares = const [],
     this.navigatorObservers,
     this.unknownRoute,
-  })  : navigatorKey = null,
-        onGenerateRoute = null,
-        // ignore: deprecated_member_use_from_same_package
-        home = null,
-        onGenerateInitialRoutes = null,
-        onUnknownRoute = null,
-        routes = null,
-        initialRoute = null;
+  }) : navigatorKey = null,
+       onGenerateRoute = null,
+       // ignore: deprecated_member_use_from_same_package
+       home = null,
+       onGenerateInitialRoutes = null,
+       onUnknownRoute = null,
+       routes = null,
+       initialRoute = null;
 
   @override
   Widget build(BuildContext context) {
@@ -252,59 +256,65 @@ class SintCupertinoApp extends StatelessWidget {
         defaultPopGesture: popGesture,
         defaultOpaqueRoute: opaqueRoute ?? true,
       ),
-      child: Builder(builder: (context) {
-        final controller = SintRoot.of(context);
-        return CupertinoApp.router(
-          routerConfig: routerConfig,
-          routerDelegate:
-              routerConfig == null ? controller.config.routerDelegate : null,
-          routeInformationParser: routerConfig == null
-              ? controller.config.routeInformationParser
-              : null,
-          backButtonDispatcher:
-              routerConfig == null ? backButtonDispatcher : null,
-          routeInformationProvider:
-              routerConfig == null ? routeInformationProvider : null,
-          key: controller.config.unikey,
-          builder: (context, child) => Directionality(
-            textDirection: textDirection ??
-                (rtlLanguages.contains(Sint.locale?.languageCode)
-                    ? TextDirection.rtl
-                    : TextDirection.ltr),
-            child: builder == null
-                ? (child ?? const Material())
-                : builder!(context, child ?? const Material()),
-          ),
-          title: title,
-          onGenerateTitle: onGenerateTitle,
-          color: color,
-          theme: theme,
-          locale: Sint.locale ?? locale,
-          localizationsDelegates: localizationsDelegates,
-          localeListResolutionCallback: localeListResolutionCallback,
-          localeResolutionCallback: localeResolutionCallback,
-          supportedLocales: supportedLocales,
-          showPerformanceOverlay: showPerformanceOverlay,
-          checkerboardRasterCacheImages: checkerboardRasterCacheImages,
-          checkerboardOffscreenLayers: checkerboardOffscreenLayers,
-          showSemanticsDebugger: showSemanticsDebugger,
-          debugShowCheckedModeBanner: debugShowCheckedModeBanner,
-          shortcuts: shortcuts,
-          actions: actions,
-          scrollBehavior:
-              scrollBehavior ??
-              (kIsWeb
-                  ? const CupertinoScrollBehavior().copyWith(
-                      scrollbars: true,
-                      dragDevices: {
-                        ui.PointerDeviceKind.touch,
-                        ui.PointerDeviceKind.mouse,
-                        ui.PointerDeviceKind.trackpad,
-                      },
-                    )
-                  : null),
-        );
-      }),
+      child: Builder(
+        builder: (context) {
+          final controller = SintRoot.of(context);
+          return CupertinoApp.router(
+            routerConfig: routerConfig,
+            routerDelegate: routerConfig == null
+                ? controller.config.routerDelegate
+                : null,
+            routeInformationParser: routerConfig == null
+                ? controller.config.routeInformationParser
+                : null,
+            backButtonDispatcher: routerConfig == null
+                ? backButtonDispatcher
+                : null,
+            routeInformationProvider: routerConfig == null
+                ? routeInformationProvider
+                : null,
+            key: controller.config.unikey,
+            builder: (context, child) => Directionality(
+              textDirection:
+                  textDirection ??
+                  (rtlLanguages.contains(Sint.locale?.languageCode)
+                      ? TextDirection.rtl
+                      : TextDirection.ltr),
+              child: builder == null
+                  ? (child ?? const Material())
+                  : builder!(context, child ?? const Material()),
+            ),
+            title: title,
+            onGenerateTitle: onGenerateTitle,
+            color: color,
+            theme: theme,
+            locale: Sint.locale ?? locale,
+            localizationsDelegates: localizationsDelegates,
+            localeListResolutionCallback: localeListResolutionCallback,
+            localeResolutionCallback: localeResolutionCallback,
+            supportedLocales: supportedLocales,
+            showPerformanceOverlay: showPerformanceOverlay,
+            checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+            checkerboardOffscreenLayers: checkerboardOffscreenLayers,
+            showSemanticsDebugger: showSemanticsDebugger,
+            debugShowCheckedModeBanner: debugShowCheckedModeBanner,
+            shortcuts: shortcuts,
+            actions: actions,
+            scrollBehavior:
+                scrollBehavior ??
+                (kIsWeb
+                    ? const CupertinoScrollBehavior().copyWith(
+                        scrollbars: true,
+                        dragDevices: {
+                          ui.PointerDeviceKind.touch,
+                          ui.PointerDeviceKind.mouse,
+                          ui.PointerDeviceKind.trackpad,
+                        },
+                      )
+                    : null),
+          );
+        },
+      ),
     );
   }
 }

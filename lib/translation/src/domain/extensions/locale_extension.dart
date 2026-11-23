@@ -27,8 +27,7 @@ extension LocalesIntl on SintInterface {
 
   set onMissingTranslationKey(
     void Function(String key, Locale? locale)? callback,
-  ) =>
-      _intlHost.onMissingKey = callback;
+  ) => _intlHost.onMissingKey = callback;
 
   /// URL path translator (built when `translateEndpoints: true`).
   PathTranslator? get pathTranslator => _intlHost.pathTranslator;

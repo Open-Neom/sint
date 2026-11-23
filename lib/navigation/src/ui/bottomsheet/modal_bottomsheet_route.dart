@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:sint/navigation/src/router/router_report_manager.dart';
 import 'package:sint/navigation/src/ui/bottomsheet/modal_bottomsheet_layout.dart';
@@ -32,6 +33,7 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   }
   final bool? isPersistent;
   final WidgetBuilder? builder;
+
   /// An optional theme from `package:flutter/material.dart`.
   ///
   /// See [SintModalBottomSheetRoute] for the planned migration notice.
@@ -82,16 +84,20 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
   @override
   AnimationController createAnimationController() {
     assert(animationController == null);
-    animationController =
-        BottomSheet.createAnimationController(navigator!.overlay!);
+    animationController = BottomSheet.createAnimationController(
+      navigator!.overlay!,
+    );
     animationController!.duration = enterBottomSheetDuration;
     animationController!.reverseDuration = exitBottomSheetDuration;
     return animationController!;
   }
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation,
-      Animation<double> secondaryAnimation) {
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
     final sheetTheme =
         theme?.bottomSheetTheme ?? Theme.of(context).bottomSheetTheme;
     // By definition, the bottom sheet is aligned to the bottom of the page
@@ -100,11 +106,13 @@ class SintModalBottomSheetRoute<T> extends PopupRoute<T> {
       context: context,
       removeTop: removeTop,
       child: Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: _SintModalBottomSheet<T>(
           route: this,
-          backgroundColor: backgroundColor ??
+          backgroundColor:
+              backgroundColor ??
               sheetTheme.modalBackgroundColor ??
               sheetTheme.backgroundColor,
           elevation:
@@ -143,7 +151,8 @@ class _SintModalBottomSheet<T> extends StatefulWidget {
   final bool enableDrag;
 
   @override
-  _SintModalBottomSheetState<T> createState() => _SintModalBottomSheetState<T>();
+  _SintModalBottomSheetState<T> createState() =>
+      _SintModalBottomSheetState<T>();
 }
 
 class _SintModalBottomSheetState<T> extends State<_SintModalBottomSheet<T>> {
@@ -179,15 +188,32 @@ class _SintModalBottomSheetState<T> extends State<_SintModalBottomSheet<T>> {
           explicitChildNodes: true,
           child: ClipRect(
             child: CustomSingleChildLayout(
-                delegate: SintModalBottomSheetLayout(
-                    animationValue, widget.isScrollControlled),
-                child: widget.isPersistent == false
-                    ? BottomSheet(
+              delegate: SintModalBottomSheetLayout(
+                animationValue,
+                widget.isScrollControlled,
+              ),
+              child: widget.isPersistent == false
+                  ? BottomSheet(
+                      animationController: widget.route!.animationController,
+                      onClosing: () {
+                        if (widget.route!.isCurrent) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      builder: widget.route!.builder!,
+                      backgroundColor: widget.backgroundColor,
+                      elevation: widget.elevation,
+                      shape: widget.shape,
+                      clipBehavior: widget.clipBehavior,
+                      enableDrag: widget.enableDrag,
+                    )
+                  : Scaffold(
+                      bottomSheet: BottomSheet(
                         animationController: widget.route!.animationController,
                         onClosing: () {
-                          if (widget.route!.isCurrent) {
-                            Navigator.pop(context);
-                          }
+                          // if (widget.route.isCurrent) {
+                          //   Navigator.pop(context);
+                          // }
                         },
                         builder: widget.route!.builder!,
                         backgroundColor: widget.backgroundColor,
@@ -195,24 +221,9 @@ class _SintModalBottomSheetState<T> extends State<_SintModalBottomSheet<T>> {
                         shape: widget.shape,
                         clipBehavior: widget.clipBehavior,
                         enableDrag: widget.enableDrag,
-                      )
-                    : Scaffold(
-                        bottomSheet: BottomSheet(
-                          animationController:
-                              widget.route!.animationController,
-                          onClosing: () {
-                            // if (widget.route.isCurrent) {
-                            //   Navigator.pop(context);
-                            // }
-                          },
-                          builder: widget.route!.builder!,
-                          backgroundColor: widget.backgroundColor,
-                          elevation: widget.elevation,
-                          shape: widget.shape,
-                          clipBehavior: widget.clipBehavior,
-                          enableDrag: widget.enableDrag,
-                        ),
-                      )),
+                      ),
+                    ),
+            ),
           ),
         );
       },

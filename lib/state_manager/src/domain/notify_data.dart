@@ -137,8 +137,8 @@ class NotifyData {
   /// rebuilds.
   void trackExternal(Listenable listenable) {
     if (_isDisposed) return;
-    final tracked =
-        (_externalSubscriptions ??= HashMap<Listenable, Disposer>.identity());
+    final tracked = (_externalSubscriptions ??=
+        HashMap<Listenable, Disposer>.identity());
     if (!tracked.containsKey(listenable)) {
       listenable.addListener(updater);
       tracked[listenable] = () => listenable.removeListener(updater);

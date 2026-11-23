@@ -2,6 +2,7 @@
 // High-Fidelity Infrastructure for Open Neom
 // ignore_for_file: avoid_print
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -11,20 +12,22 @@ void main() {
   tearDown(() => Sint.reset());
 
   testWidgets('Benchmark: Dynamic URL Parameter Parsing', (tester) async {
-    print('\n${'='*50}');
+    print('\n${'=' * 50}');
     print('SINT PILLAR N: DYNAMIC ROUTING LESSON');
     print('Philosophy: "Do the right things"');
     print('Infrastructure: Open Neom Standard');
-    print('='*50 + '\n');
+    print('=' * 50 + '\n');
 
     // STEP 0: Settle initial environment
-    await tester.pumpWidget(SintMaterialApp(
-      initialRoute: '/',
-      sintPages: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/user/:id/profile', page: () => Container()),
-      ],
-    ));
+    await tester.pumpWidget(
+      SintMaterialApp(
+        initialRoute: '/',
+        sintPages: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/user/:id/profile', page: () => Container()),
+        ],
+      ),
+    );
     await tester.pumpAndSettle();
 
     print('[STEP 1] Testing Complex URL Parsing and Pattern Matching');
@@ -46,12 +49,12 @@ void main() {
     final totalTime = timer.elapsedMicroseconds;
     final avgTime = totalTime / iterations;
 
-    print('\n${'-'*30}');
+    print('\n${'-' * 30}');
     print('BENCHMARK: URL Parsing & Pattern Matching');
     print('Iterations: $iterations complex URLs');
     print('Total Time: ${totalTime}us');
     print('Avg Speed:  ${avgTime.toStringAsFixed(4)}us/parsing');
-    print('-'*30);
+    print('-' * 30);
 
     // STEP 2: Verifying Parameter Retrieval
     print('\n[STEP 2] Verifying Parameter Retrieval from Global State');
@@ -60,10 +63,14 @@ void main() {
     expect(Sint.parameters['id'], '${iterations - 1}');
     expect(Sint.parameters['session'], 'active');
 
-    print('Success: Dynamic parameter "id" (${Sint.parameters['id']}) captured correctly.');
-    print('Success: Query parameter "session" (${Sint.parameters['session']}) captured correctly.');
+    print(
+      'Success: Dynamic parameter "id" (${Sint.parameters['id']}) captured correctly.',
+    );
+    print(
+      'Success: Query parameter "session" (${Sint.parameters['session']}) captured correctly.',
+    );
 
     print('\n[FINAL VALIDATION] High-fidelity routing verified for Open Neom.');
-    print('='*50 + '\n');
+    print('=' * 50 + '\n');
   });
 }

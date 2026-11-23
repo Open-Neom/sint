@@ -1,5 +1,20 @@
 # Changelog - sint
 
+## [2.2.2] - 2026-11-22
+
+### Flutter 3.50 / Dart 3.14 Clean Analysis (160/160 Pub Points Target) & SDK Decoupling
+- **Removed 49 Deprecated `flutter/material.dart` & `flutter/cupertino.dart` Imports**: Decoupled Pillar I (`injection`), Pillar S (`state_manager`), the core router (`sint_delegate`, `sint_page`, `sint_page_route`, `sint_middleware`, `page_redirect`, `middleware_runner`), all 11 transition helpers, gesture widgets, and snackbar/overlay controllers to pure `package:flutter/widgets.dart`, retaining explicit `// ignore: deprecated_member_use` only on the 14 intentional `SINT 2.x` legacy SDK compatibility bridge files.
+- **Standalone `example/main.dart` & Formatting**: Modernized `example/main.dart` to `SintApp` + `package:material_ui/material_ui.dart` + `SintAppBar` + `computed()` (fixing `Bind.put(CounterController())` instantiation), updated `MIGRATION_DESIGN_SYSTEMS.md` and `lib/sint.dart` notices, upgraded `material_ui: ^1.11.1`, `cupertino_ui: ^1.1.7`, `web: ^1.1.2`, and `fake_async: ^1.3.3`, and formatted all 194 Dart source files (`dart format`).
+
+### Pillar N — Standalone `SintApp` Parity, Zero-Allocation Transitions & Leak-Free Snackbars
+- **Zero-Leak `SnackbarController` & Standalone `SintSnackBar`**: Disposed `_curvedAnimation` and removed animation status listeners on `removeOverlay()`, switched optional backdrop blur/color animations to lazy `controller.drive(CurveTween(...))` (only allocated when `overlayBlur > 0`), stopped ticking an unused pulse `AnimationController` when `SintSnackBar.icon` is not an `Icon`, skipped post-frame `FutureBuilder<Size>` layout reads when `barBlur == 0 && leftBarIndicatorColor == null`, switched `MediaQuery.of(context)` to granular `MediaQuery.viewInsetsOf` / `paddingOf`, and rendered `material_ui.Material` / `LinearProgressIndicator` on standalone `SintApp`.
+- **`MaterialApp` Fallback Parity for `Sint.snackbar()` & `Sint.showOverlay()`**: Guarded `SnackbarExtension`, `SnackbarController` (with a resettable fallback queue cleared by `Sint.reset()`), and `OverlayExtension` with `SintRoot.treeInitialized` + `Sint.resolveNavigator()`, so all SINT overlays work safely inside standalone `MaterialApp` widget tests.
+- **Zero-Allocation `const` Transitions, `SintAppBar` Standalone Parity & `RouteData` Modal Detection**: Converted all 11 transition classes to `const` with static `Tween<Offset>`s, deduplicated `SintBackGestureDetector`, honored `material_ui.Theme.of(context).pageTransitionsTheme` and `cupertino_ui` parallax inside `SintApp(enableLegacyCompatibility: false)`, added standalone `material_ui.AppBar` / `IconButton` / `Theme` support to `SintAppBar`, and extended `RouteData.ofRoute` to classify `material_ui.DialogRoute`, `cupertino_ui.CupertinoDialogRoute`, and `cupertino_ui.CupertinoModalPopupRoute`.
+
+### Pillar I & S — Downward Generic Type Hardening & Dynamic ID Group Pruning
+- **Type-Safe `Bind.*` Inside `List<Bind>` & `dynamic` Guard**: `Bind.put`, `Bind.putContract`, `Bind.lazyPut`, `Bind.contract`, `Bind.create`, and `Bind.spawn` return `Bind<dynamic>` on their static signature so downward context from `List<Bind>` never coerces unannotated `<S>` to `dynamic`, while `_insert<S>` explicitly rejects accidental `dynamic` registrations with `ArgumentError`.
+- **Automatic `ListNotifier._updatersGroupIds` Pruning**: `addListenerId` / `removeListenerId` now remove empty dynamic ID groups on unmount, preventing unbounded `HashMap` growth in long-lived `SintService` / `SintController` instances.
+
 ## [2.2.1] - 2026-11-15
 
 ### Pillar N — Full `Navigator` Compatibility Extensions (`maybePop`, `canPop`, `resolveNavigator`) & Host Fallback

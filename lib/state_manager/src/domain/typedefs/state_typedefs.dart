@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/lifecycle.dart';
 
 typedef WidgetCallback = Widget Function();
@@ -9,4 +9,6 @@ typedef SintStateUpdate = VoidCallback;
 
 typedef InitBuilder<T> = T Function();
 
-typedef SintControllerBuilder<T extends SintLifeCycleMixin> = Widget Function(T controller);
+typedef SintControllerBuilder<T extends SintLifeCycleMixin> = Widget Function(
+  T controller,
+);

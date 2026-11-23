@@ -41,18 +41,19 @@ void main() {
 
   group('typed identity and legacy key compatibility', () {
     test(
-        'colliding type/tag strings cannot register, find, or delete each other',
-        () {
-      final tagged = Sint.put<_Foo>(_Foo(), tag: 'Bar');
-      expect(Sint.isRegistered<_FooBar>(), isFalse);
-      expect(Sint.findOrNull<_FooBar>(), isNull);
-      expect(Sint.delete<_FooBar>(), isFalse);
-      final untagged = Sint.put<_FooBar>(_FooBar());
-      expect(Sint.find<_Foo>(tag: 'Bar'), same(tagged));
-      expect(Sint.find<_FooBar>(), same(untagged));
-      expect(Sint.delete<_Foo>(tag: 'Bar'), isTrue);
-      expect(Sint.find<_FooBar>(), same(untagged));
-    });
+      'colliding type/tag strings cannot register, find, or delete each other',
+      () {
+        final tagged = Sint.put<_Foo>(_Foo(), tag: 'Bar');
+        expect(Sint.isRegistered<_FooBar>(), isFalse);
+        expect(Sint.findOrNull<_FooBar>(), isNull);
+        expect(Sint.delete<_FooBar>(), isFalse);
+        final untagged = Sint.put<_FooBar>(_FooBar());
+        expect(Sint.find<_Foo>(tag: 'Bar'), same(tagged));
+        expect(Sint.find<_FooBar>(), same(untagged));
+        expect(Sint.delete<_Foo>(tag: 'Bar'), isTrue);
+        expect(Sint.find<_FooBar>(), same(untagged));
+      },
+    );
 
     test('null and empty tags are independent through reload and delete', () {
       Sint.lazyPut<_Tracked>(() => _Tracked());
@@ -67,26 +68,30 @@ void main() {
       expect(Sint.find<_Tracked>(), same(untagged));
     });
 
-    test('ambiguous legacy mutations fail before changing either registration',
-        () {
-      final first = Sint.put<_Foo>(_Foo(), tag: 'Bar');
-      final second = Sint.put<_FooBar>(_FooBar());
-      expect(() => Sint.delete(key: '_FooBar'), throwsStateError);
-      expect(() => Sint.reload(key: '_FooBar'), throwsStateError);
-      expect(() => Sint.markAsDirty(key: '_FooBar'), throwsStateError);
-      expect(Sint.find<_Foo>(tag: 'Bar'), same(first));
-      expect(Sint.find<_FooBar>(), same(second));
-      // A failed dirty operation must not permit replacement either.
-      expect(Sint.put<_Foo>(_Foo(), tag: 'Bar'), same(first));
-      final keys = InjectionExtension.registeredKeys.toList();
-      expect(keys.toSet().length, 2);
-      expect(keys.map(InjectionExtension.registeredTypeForKey).toSet(),
-          {_Foo, _FooBar});
-      for (final key in keys) {
-        expect(Sint.delete(key: key), isTrue);
-      }
-      expect(InjectionExtension.registeredKeys, isEmpty);
-    });
+    test(
+      'ambiguous legacy mutations fail before changing either registration',
+      () {
+        final first = Sint.put<_Foo>(_Foo(), tag: 'Bar');
+        final second = Sint.put<_FooBar>(_FooBar());
+        expect(() => Sint.delete(key: '_FooBar'), throwsStateError);
+        expect(() => Sint.reload(key: '_FooBar'), throwsStateError);
+        expect(() => Sint.markAsDirty(key: '_FooBar'), throwsStateError);
+        expect(Sint.find<_Foo>(tag: 'Bar'), same(first));
+        expect(Sint.find<_FooBar>(), same(second));
+        // A failed dirty operation must not permit replacement either.
+        expect(Sint.put<_Foo>(_Foo(), tag: 'Bar'), same(first));
+        final keys = InjectionExtension.registeredKeys.toList();
+        expect(keys.toSet().length, 2);
+        expect(keys.map(InjectionExtension.registeredTypeForKey).toSet(), {
+          _Foo,
+          _FooBar,
+        });
+        for (final key in keys) {
+          expect(Sint.delete(key: key), isTrue);
+        }
+        expect(InjectionExtension.registeredKeys, isEmpty);
+      },
+    );
 
     test('unambiguous historical keys remain supported', () {
       Sint.put<_Foo>(_Foo(), tag: 'x');
@@ -175,24 +180,30 @@ void main() {
       expect(Sint.isPrepared<_Tracked>(), isTrue);
     });
 
-    test('old route disposal cannot erase reentrant registration in onClose',
-        () {
-      final router = RouterReportManager.instance;
-      final oldRoute = Object();
-      final newRoute = Object();
-      late _Tracked current;
-      router.reportCurrentRoute(oldRoute);
-      final old = Sint.put<_Tracked>(_Tracked(close: () {
-        router.reportCurrentRoute(newRoute);
-        current = Sint.put<_Tracked>(_Tracked());
-      }));
-      router.reportRouteDispose(oldRoute);
-      expect(old.closeCount, 1);
-      expect(Sint.find<_Tracked>(), same(current));
-      expect(current.closeCount, 0);
-      router.reportRouteDispose(newRoute);
-      expect(current.closeCount, 1);
-    });
+    test(
+      'old route disposal cannot erase reentrant registration in onClose',
+      () {
+        final router = RouterReportManager.instance;
+        final oldRoute = Object();
+        final newRoute = Object();
+        late _Tracked current;
+        router.reportCurrentRoute(oldRoute);
+        final old = Sint.put<_Tracked>(
+          _Tracked(
+            close: () {
+              router.reportCurrentRoute(newRoute);
+              current = Sint.put<_Tracked>(_Tracked());
+            },
+          ),
+        );
+        router.reportRouteDispose(oldRoute);
+        expect(old.closeCount, 1);
+        expect(Sint.find<_Tracked>(), same(current));
+        expect(current.closeCount, 0);
+        router.reportRouteDispose(newRoute);
+        expect(current.closeCount, 1);
+      },
+    );
 
     test('fenix onClose can revive without returning the closing instance', () {
       final router = RouterReportManager.instance;
@@ -204,12 +215,13 @@ void main() {
       Sint.lazyPut<_Tracked>(() {
         final first = built.isEmpty;
         final controller = _Tracked(
-            close: first
-                ? () {
-                    router.reportCurrentRoute(newRoute);
-                    revived = Sint.find<_Tracked>();
-                  }
-                : null);
+          close: first
+              ? () {
+                  router.reportCurrentRoute(newRoute);
+                  revived = Sint.find<_Tracked>();
+                }
+              : null,
+        );
         built.add(controller);
         return controller;
       }, fenix: true);
@@ -251,50 +263,56 @@ void main() {
       expect(InjectionExtension.registeredKeys, isEmpty);
     });
 
-    test('reloadAll closes old resources without leaving stale route ownership',
-        () {
-      final router = RouterReportManager.instance;
-      final oldRoute = Object();
-      final newRoute = Object();
-      router.reportCurrentRoute(oldRoute);
-      Sint.lazyPut<_Tracked>(() => _Tracked());
-      final old = Sint.find<_Tracked>();
-      Sint.reloadAll();
-      expect(old.closeCount, 1);
-      router.reportCurrentRoute(newRoute);
-      final current = Sint.find<_Tracked>();
-      router.reportRouteDispose(oldRoute);
-      expect(current.closeCount, 0);
-      router.reportRouteDispose(newRoute);
-      expect(current.closeCount, 1);
-    });
+    test(
+      'reloadAll closes old resources without leaving stale route ownership',
+      () {
+        final router = RouterReportManager.instance;
+        final oldRoute = Object();
+        final newRoute = Object();
+        router.reportCurrentRoute(oldRoute);
+        Sint.lazyPut<_Tracked>(() => _Tracked());
+        final old = Sint.find<_Tracked>();
+        Sint.reloadAll();
+        expect(old.closeCount, 1);
+        router.reportCurrentRoute(newRoute);
+        final current = Sint.find<_Tracked>();
+        router.reportRouteDispose(oldRoute);
+        expect(current.closeCount, 0);
+        router.reportRouteDispose(newRoute);
+        expect(current.closeCount, 1);
+      },
+    );
   });
 
-  test('failed lazy construction can retry initialization and route linking',
-      () {
-    final router = RouterReportManager.instance;
-    final route = Object();
-    router.reportCurrentRoute(route);
-    var attempts = 0;
-    Sint.lazyPut<_Tracked>(() {
-      if (attempts++ == 0) throw StateError('temporary failure');
-      return _Tracked();
-    });
-    expect(() => Sint.find<_Tracked>(), throwsStateError);
-    expect(Sint.isPrepared<_Tracked>(), isTrue);
-    final controller = Sint.find<_Tracked>();
-    expect(controller.initCount, 1);
-    router.reportRouteDispose(route);
-    expect(controller.closeCount, 1);
-  });
+  test(
+    'failed lazy construction can retry initialization and route linking',
+    () {
+      final router = RouterReportManager.instance;
+      final route = Object();
+      router.reportCurrentRoute(route);
+      var attempts = 0;
+      Sint.lazyPut<_Tracked>(() {
+        if (attempts++ == 0) throw StateError('temporary failure');
+        return _Tracked();
+      });
+      expect(() => Sint.find<_Tracked>(), throwsStateError);
+      expect(Sint.isPrepared<_Tracked>(), isTrue);
+      final controller = Sint.find<_Tracked>();
+      expect(controller.initCount, 1);
+      router.reportRouteDispose(route);
+      expect(controller.closeCount, 1);
+    },
+  );
 
   test('a throwing onClose does not abandon the other route dependencies', () {
     final router = RouterReportManager.instance;
     final route = Object();
     router.reportCurrentRoute(route);
     final failure = StateError('close failed');
-    final throwing = Sint.put<_Tracked>(_Tracked(close: () => throw failure),
-        tag: 'throwing');
+    final throwing = Sint.put<_Tracked>(
+      _Tracked(close: () => throw failure),
+      tag: 'throwing',
+    );
     final other = Sint.put<_Tracked>(_Tracked(), tag: 'other');
     expect(() => router.reportRouteDispose(route), throwsA(same(failure)));
     expect(throwing.closeCount, 1);
@@ -309,9 +327,13 @@ void main() {
     final route = Object();
     router.reportCurrentRoute(route);
     var attempts = 0;
-    Sint.lazyPut<_Tracked>(() => _Tracked(initialize: () {
+    Sint.lazyPut<_Tracked>(
+      () => _Tracked(
+        initialize: () {
           if (attempts++ == 0) throw StateError('initialization failed');
-        }));
+        },
+      ),
+    );
     expect(() => Sint.find<_Tracked>(), throwsStateError);
     expect(Sint.isPrepared<_Tracked>(), isTrue);
     final controller = Sint.find<_Tracked>();
@@ -321,28 +343,34 @@ void main() {
     expect(controller.closeCount, 1);
   });
 
-  test('spawn cleanup can reenter route reporting without concurrent mutation',
-      () {
-    final router = RouterReportManager.instance;
-    final firstRoute = Object();
-    final secondRoute = Object();
-    var closing = false;
-    _Tracked? spawnedDuringClose;
-    router.reportCurrentRoute(firstRoute);
-    Sint.spawn<_Tracked>(() => _Tracked(close: () {
-          if (closing) return;
-          closing = true;
-          router.reportCurrentRoute(secondRoute);
-          spawnedDuringClose = Sint.find<_Tracked>();
-        }));
-    final first = Sint.find<_Tracked>();
-    router.reportRouteWillDispose(firstRoute);
-    router.reportRouteDispose(firstRoute);
-    expect(first.closeCount, 1);
-    expect(spawnedDuringClose!.closeCount, 0);
-    router.reportRouteDispose(secondRoute);
-    expect(spawnedDuringClose!.closeCount, 1);
-  });
+  test(
+    'spawn cleanup can reenter route reporting without concurrent mutation',
+    () {
+      final router = RouterReportManager.instance;
+      final firstRoute = Object();
+      final secondRoute = Object();
+      var closing = false;
+      _Tracked? spawnedDuringClose;
+      router.reportCurrentRoute(firstRoute);
+      Sint.spawn<_Tracked>(
+        () => _Tracked(
+          close: () {
+            if (closing) return;
+            closing = true;
+            router.reportCurrentRoute(secondRoute);
+            spawnedDuringClose = Sint.find<_Tracked>();
+          },
+        ),
+      );
+      final first = Sint.find<_Tracked>();
+      router.reportRouteWillDispose(firstRoute);
+      router.reportRouteDispose(firstRoute);
+      expect(first.closeCount, 1);
+      expect(spawnedDuringClose!.closeCount, 0);
+      router.reportRouteDispose(secondRoute);
+      expect(spawnedDuringClose!.closeCount, 1);
+    },
+  );
 
   test('replace and lazyReplace override a fenix factory', () {
     Sint.lazyPut<_Tracked>(() => _Tracked(), fenix: true);

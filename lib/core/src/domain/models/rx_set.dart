@@ -7,7 +7,7 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 class RxSet<E> extends SintListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
   RxSet([Set<E> initial = const {}])
-      : super(initial.isEmpty ? <E>{} : Set<E>.of(initial));
+    : super(initial.isEmpty ? <E>{} : Set<E>.of(initial));
 
   RxSet._(super.initial);
 

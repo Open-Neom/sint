@@ -2,7 +2,7 @@
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
@@ -41,7 +41,7 @@ abstract class Bind<T> extends StatelessWidget {
       dispose,
       didChangeDependencies;
   final void Function(Binder<T> oldWidget, BindElement<T> state)?
-      didUpdateWidget;
+  didUpdateWidget;
 
   final Widget? child;
 
@@ -112,10 +112,7 @@ abstract class Bind<T> extends StatelessWidget {
     List<Type>? aliases,
   }) {
     final isPermanent = permanent ?? (dependency is SintService);
-    final extraTypes = <Type>[
-      if (I != S) I,
-      ...?aliases,
-    ];
+    final extraTypes = <Type>[if (I != S) I, ...?aliases];
     void register() {
       Sint.putContract<S, I>(
         dependency,
@@ -188,10 +185,7 @@ abstract class Bind<T> extends StatelessWidget {
   }) {
     final isPermanent =
         permanent ?? (builder is InstanceBuilderCallback<SintService>);
-    final extraTypes = <Type>[
-      if (I != S) I,
-      ...?aliases,
-    ];
+    final extraTypes = <Type>[if (I != S) I, ...?aliases];
     void register() {
       Sint.contract<S, I>(
         builder,
@@ -250,13 +244,12 @@ abstract class Bind<T> extends StatelessWidget {
     String? tag,
     bool? permanent,
     List<Type>? aliases,
-  }) =>
-      Sint.putAsync<S>(
-        asyncBuilder,
-        tag: tag,
-        permanent: permanent,
-        aliases: aliases,
-      );
+  }) => Sint.putAsync<S>(
+    asyncBuilder,
+    tag: tag,
+    permanent: permanent,
+    aliases: aliases,
+  );
 
   static Future<I> putContractAsync<S, I extends S>(
     Future<I> Function() asyncBuilder, {
@@ -264,14 +257,13 @@ abstract class Bind<T> extends StatelessWidget {
     bool? permanent,
     bool? isDefault,
     List<Type>? aliases,
-  }) =>
-      Sint.putContractAsync<S, I>(
-        asyncBuilder,
-        tag: tag,
-        permanent: permanent,
-        isDefault: isDefault,
-        aliases: aliases,
-      );
+  }) => Sint.putContractAsync<S, I>(
+    asyncBuilder,
+    tag: tag,
+    permanent: permanent,
+    isDefault: isDefault,
+    aliases: aliases,
+  );
 
   static S find<S>({String? tag}) => Sint.find<S>(tag: tag);
 
@@ -322,28 +314,23 @@ abstract class Bind<T> extends StatelessWidget {
     void Function(BindElement<T> state)? dispose,
     void Function(BindElement<T> state)? didChangeDependencies,
     void Function(Binder<T> oldWidget, BindElement<T> state)? didUpdateWidget,
-  }) =>
-      _FactoryBind<T>(
-        init: init,
-        create: create,
-        global: global,
-        autoRemove: autoRemove,
-        assignId: assignId,
-        initState: initState,
-        filter: filter,
-        tag: tag,
-        dispose: dispose,
-        id: id,
-        didChangeDependencies: didChangeDependencies,
-        didUpdateWidget: didUpdateWidget,
-        child: child,
-      );
+  }) => _FactoryBind<T>(
+    init: init,
+    create: create,
+    global: global,
+    autoRemove: autoRemove,
+    assignId: assignId,
+    initState: initState,
+    filter: filter,
+    tag: tag,
+    dispose: dispose,
+    id: id,
+    didChangeDependencies: didChangeDependencies,
+    didUpdateWidget: didUpdateWidget,
+    child: child,
+  );
 
-  static T of<T>(
-    BuildContext context, {
-    bool rebuild = false,
-    String? tag,
-  }) {
+  static T of<T>(BuildContext context, {bool rebuild = false, String? tag}) {
     var inheritedElement =
         context.getElementForInheritedWidgetOfExactType<Binder<T>>()
             as BindElement<T>?;
@@ -418,7 +405,7 @@ class _FactoryBind<T> extends Bind<T> {
       didChangeDependencies;
   @override
   final void Function(Binder<T> oldWidget, BindElement<T> state)?
-      didUpdateWidget;
+  didUpdateWidget;
 
   final VoidCallback? onMount;
   final VoidCallback? onUnmount;

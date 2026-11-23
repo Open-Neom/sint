@@ -233,13 +233,16 @@ void main() {
     test('listas anidadas iguales', () {
       const eq = DeepCollectionEquality();
       expect(
-        eq.equals([
-          [1, 2],
-          [3, 4],
-        ], [
-          [1, 2],
-          [3, 4],
-        ]),
+        eq.equals(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 4],
+          ],
+        ),
         isTrue,
       );
     });
@@ -247,11 +250,14 @@ void main() {
     test('mapas anidados con listas iguales', () {
       const eq = DeepCollectionEquality();
       expect(
-        eq.equals({
-          'k': [1, 2],
-        }, {
-          'k': [1, 2],
-        }),
+        eq.equals(
+          {
+            'k': [1, 2],
+          },
+          {
+            'k': [1, 2],
+          },
+        ),
         isTrue,
       );
     });

@@ -2,6 +2,7 @@
 // High-Fidelity Infrastructure for Open Neom
 // ignore_for_file: avoid_print
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/core/sint_core.dart';
@@ -12,34 +13,36 @@ class AuthMiddleware extends SintMiddleware {
   Future<RouteDecoder?> redirectDelegate(RouteDecoder decoder) async {
     final path = decoder.pageSettings?.uri.path;
 
-    return path == '/private'
-        ? RouteDecoder.fromRoute('/login')
-        : decoder;
+    return path == '/private' ? RouteDecoder.fromRoute('/login') : decoder;
   }
 }
 
 void main() {
   testWidgets('Benchmark: Middleware Interception Latency', (tester) async {
-    print('\n${'='*50}');
+    print('\n${'=' * 50}');
     print('SINT PILLAR N: MIDDLEWARE ARCHITECTURE LESSON');
     print('Philosophy: "Do the right things"');
     print('Infrastructure: Open Neom Standard');
-    print('='*50 + '\n');
+    print('=' * 50 + '\n');
 
-    await tester.pumpWidget(SintMaterialApp(
-      initialRoute: '/',
-      sintPages: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/login', page: () => Container()),
-        SintPage(
+    await tester.pumpWidget(
+      SintMaterialApp(
+        initialRoute: '/',
+        sintPages: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/login', page: () => Container()),
+          SintPage(
             name: '/private',
             page: () => Container(),
-            middlewares: [AuthMiddleware()]
-        ),
-      ],
-    ));
+            middlewares: [AuthMiddleware()],
+          ),
+        ],
+      ),
+    );
 
-    print('[STEP 1] Measuring Middleware Redirect Latency (Using Path Discovery)');
+    print(
+      '[STEP 1] Measuring Middleware Redirect Latency (Using Path Discovery)',
+    );
     final timer = Stopwatch()..start();
 
     // Trigger navigation to a protected route
@@ -56,13 +59,15 @@ void main() {
     expect(Sint.currentRoute, '/login');
 
     final totalTime = timer.elapsedMicroseconds;
-    print('\n${'-'*30}');
+    print('\n${'-' * 30}');
     print('BENCHMARK RESULTS (Open Neom Standard)');
     print('Total Interception Time: ${totalTime}us');
     print('Note: SINT handles redirects without heavy object name lookups.');
-    print('-'*30);
+    print('-' * 30);
 
-    print('\n[FINAL VALIDATION] Success: Navigation history preserved correctly.');
-    print('='*50 + '\n');
+    print(
+      '\n[FINAL VALIDATION] Success: Navigation history preserved correctly.',
+    );
+    print('=' * 50 + '\n');
   });
 }

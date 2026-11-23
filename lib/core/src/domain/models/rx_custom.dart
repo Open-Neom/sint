@@ -1,4 +1,3 @@
-
 import 'package:sint/core/src/domain/models/rx_impl.dart';
 
 /// Foundation class used for custom `Types` outside the common native Dart

@@ -22,23 +22,27 @@ Future<String> command(String executable, List<String> arguments) async {
 Future<void> main(List<String> arguments) async {
   if (arguments.contains('--help')) {
     stdout.writeln(
-        'dart run tool/benchmark_runner.dart [--full] [--output=build/benchmarks/run.json] [--machine-id=NAME]\n'
-        'Runs serial flutter-test JIT batches, without coverage. --full increases warmup/round duration.\n'
-        'Run baseline and candidate on the same idle host/SDK; repeat in alternating order.');
+      'dart run tool/benchmark_runner.dart [--full] [--output=build/benchmarks/run.json] [--machine-id=NAME]\n'
+      'Runs serial flutter-test JIT batches, without coverage. --full increases warmup/round duration.\n'
+      'Run baseline and candidate on the same idle host/SDK; repeat in alternating order.',
+    );
     return;
   }
   String option(String name, String fallback) => arguments
-      .firstWhere((arg) => arg.startsWith('$name='),
-          orElse: () => '$name=$fallback')
+      .firstWhere(
+        (arg) => arg.startsWith('$name='),
+        orElse: () => '$name=$fallback',
+      )
       .substring(name.length + 1);
   final outputPath = option('--output', 'build/benchmarks/run.json');
   final full = arguments.contains('--full');
-  final flutter =
-      jsonDecode(await command('flutter', ['--version', '--machine']));
+  final flutter = jsonDecode(
+    await command('flutter', ['--version', '--machine']),
+  );
   final manifest = <String, String>{};
   for (final file in [
     'test/benchmarks/bench_harness.dart',
-    ...benchmarkFiles
+    ...benchmarkFiles,
   ]) {
     manifest[file] = await command('git', ['hash-object', file]);
   }
@@ -72,33 +76,38 @@ Future<void> main(List<String> arguments) async {
       '--no-pub',
       '--machine',
       '--concurrency=1',
-      ...benchmarkFiles
+      ...benchmarkFiles,
     ],
   };
   final file = File(outputPath);
   await file.parent.create(recursive: true);
   final log = File('$outputPath.log').openWrite();
   final results = <Map<String, dynamic>>[];
-  final process = await Process.start('flutter',
-      ['test', '--no-pub', '--machine', '--concurrency=1', ...benchmarkFiles],
-      environment: {'SINT_BENCH_FULL': full.toString()});
+  final process = await Process.start(
+    'flutter',
+    ['test', '--no-pub', '--machine', '--concurrency=1', ...benchmarkFiles],
+    environment: {'SINT_BENCH_FULL': full.toString()},
+  );
   final stderrDone = process.stderr.transform(utf8.decoder).forEach((line) {
     log.write(line);
     stderr.write(line);
   });
-  await for (final line in process.stdout
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())) {
+  await for (final line
+      in process.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())) {
     log.writeln(line);
     try {
       final event = jsonDecode(line);
       final message = event is Map ? event['message'] : null;
       if (message is String && message.startsWith('SINT_BENCH_JSON ')) {
-        final result =
-            Map<String, dynamic>.from(jsonDecode(message.substring(16)));
+        final result = Map<String, dynamic>.from(
+          jsonDecode(message.substring(16)),
+        );
         results.add(result);
         stdout.writeln(
-            '${result['name']}: ${result['medianBatchUs']} batch-mean µs/op');
+          '${result['name']}: ${result['medianBatchUs']} batch-mean µs/op',
+        );
       } else if (event is Map && event['type'] == 'error') {
         stderr.writeln(event['error']);
       }
@@ -109,17 +118,20 @@ Future<void> main(List<String> arguments) async {
   final testExitCode = await process.exitCode;
   await stderrDone;
   await log.close();
-  final valid = testExitCode == 0 &&
+  final valid =
+      testExitCode == 0 &&
       results.length == expectedScenarioCount &&
       results.map((result) => result['name']).toSet().length == results.length;
-  await file.writeAsString(const JsonEncoder.withIndent('  ').convert({
-    'schemaVersion': 2,
-    'valid': valid,
-    'metadata': metadata,
-    'results': results,
-    'finishedAtUtc': DateTime.now().toUtc().toIso8601String(),
-    'testExitCode': testExitCode,
-  }));
+  await file.writeAsString(
+    const JsonEncoder.withIndent('  ').convert({
+      'schemaVersion': 2,
+      'valid': valid,
+      'metadata': metadata,
+      'results': results,
+      'finishedAtUtc': DateTime.now().toUtc().toIso8601String(),
+      'testExitCode': testExitCode,
+    }),
+  );
   stdout.writeln('Saved $outputPath and $outputPath.log. Valid: $valid');
   if (!valid) exitCode = 1;
 }

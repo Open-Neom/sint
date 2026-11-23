@@ -107,8 +107,12 @@ mixin RxObjectMixin<T> on SintListenable<T> {
   /// added benefit that it primes the stream with the current [value], rather
   /// than waiting for the next [value]. This should not be called in `onInit`
   /// or anywhere else during the build process.
-  StreamSubscription<T> listenAndPump(void Function(T event) onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<T> listenAndPump(
+    void Function(T event) onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     final subscription = listen(
       onData,
       onError: onError,
@@ -128,8 +132,10 @@ mixin RxObjectMixin<T> on SintListenable<T> {
   void bindStream(Stream<T> stream) {
     if (isDisposed) throw StateError('Cannot bind a stream to a disposed Rx');
     late StreamSubscription<T> sub;
-    sub = stream.listen((va) => value = va,
-        onDone: () => _boundStreams?.remove(sub));
+    sub = stream.listen(
+      (va) => value = va,
+      onDone: () => _boundStreams?.remove(sub),
+    );
     (_boundStreams ??= <StreamSubscription<T>>{}).add(sub);
     reportAdd(() {
       if (_boundStreams?.remove(sub) ?? false) sub.cancel();

@@ -10,9 +10,7 @@ class RouteParser {
   /// Takes a snapshot of the supplied flat route table. Subsequent changes
   /// should use [routes], [addRoute], or [removeRoute]; changing the original
   /// list does not change this parser's table.
-  RouteParser({
-    required List<SintPage> routes,
-  }) {
+  RouteParser({required List<SintPage> routes}) {
     this.routes = _RouteList(<SintPage>[], () {
       _indexDirty = true;
       _patternsDirty = true;
@@ -38,7 +36,10 @@ class RouteParser {
   final List<_IndexedRoute> _wildcardRoutes = [];
   final Map<String, String> _patternOwners = {};
 
-  static List<String> _extractSegments(String routeOrPath, {bool stripQuery = false}) {
+  static List<String> _extractSegments(
+    String routeOrPath, {
+    bool stripQuery = false,
+  }) {
     var end = routeOrPath.length;
     if (stripQuery) {
       final qIndex = routeOrPath.indexOf('?');
@@ -99,7 +100,8 @@ class RouteParser {
         ? (segments.isEmpty ? '/' : '/${segments.join('/')}')
         : null;
     final name = route.name;
-    final bool hasFixedSegmentCount = isPureLiteral ||
+    final bool hasFixedSegmentCount =
+        isPureLiteral ||
         (!name.contains('?') &&
             !name.contains('*') &&
             !name.contains('+') &&
@@ -198,7 +200,10 @@ class RouteParser {
     if (!_patternsDirty) return;
     _patternOwners.clear();
     for (final existing in routes) {
-      _patternOwners.putIfAbsent(existing.path.regex.pattern, () => existing.name);
+      _patternOwners.putIfAbsent(
+        existing.path.regex.pattern,
+        () => existing.name,
+      );
     }
     _patternsDirty = false;
   }
@@ -244,8 +249,10 @@ class RouteParser {
           !cleanPath.contains('//')) {
         return cleanPath;
       }
-      final cache =
-          cachedPrefixPaths ??= List<String?>.filled(totalSegments + 1, null);
+      final cache = cachedPrefixPaths ??= List<String?>.filled(
+        totalSegments + 1,
+        null,
+      );
       final existing = cache[depth];
       if (existing != null) return existing;
       final built = depth == 1
@@ -370,10 +377,7 @@ class RouteParser {
       } else if (parsedParams.isEmpty) {
         mergedParams = Map<String, String>.of(rawQueryParams);
       } else {
-        mergedParams = <String, String>{
-          ...rawQueryParams,
-          ...parsedParams,
-        };
+        mergedParams = <String, String>{...rawQueryParams, ...parsedParams};
       }
 
       if (arguments != null) {
@@ -400,10 +404,7 @@ class RouteParser {
         } else if (mergedParams.isEmpty) {
           pageParams = Map<String, String>.of(existingParams);
         } else {
-          pageParams = <String, String>{
-            ...existingParams,
-            ...mergedParams,
-          };
+          pageParams = <String, String>{...existingParams, ...mergedParams};
         }
         return page.copyWith(
           key: ValueKey(matchedPath),
@@ -413,10 +414,7 @@ class RouteParser {
         );
       });
 
-      return RouteDecoder(
-        mappedTreeBranch,
-        arguments,
-      );
+      return RouteDecoder(mappedTreeBranch, arguments);
     }
 
     if (arguments != null) {
@@ -427,10 +425,7 @@ class RouteParser {
     }
 
     //route not found
-    return RouteDecoder(
-      <SintPage>[],
-      arguments,
-    );
+    return RouteDecoder(<SintPage>[], arguments);
   }
 
   void addRoutes<T>(List<SintPage<T>> sintPages) {
@@ -534,8 +529,7 @@ class RouteParser {
       // decodeQueryComponent): '+' is a literal plus in a path segment,
       // and '%2F' decodes to '/' after the segment split. Malformed '%'
       // sequences fall back to the raw segment instead of throwing ArgumentError.
-      params[key] =
-          group.contains('%') ? _safeDecodeComponent(group) : group;
+      params[key] = group.contains('%') ? _safeDecodeComponent(group) : group;
     }
     return params;
   }
@@ -554,7 +548,7 @@ class RouteParser {
 /// through []=; growing operations are overridden for non-nullable entries.
 class _RouteList extends ListBase<SintPage> {
   _RouteList(List<SintPage> routes, this._onChanged)
-      : _values = List<SintPage>.of(routes);
+    : _values = List<SintPage>.of(routes);
 
   final List<SintPage> _values;
   final void Function() _onChanged;

@@ -2,25 +2,30 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_status.dart';
 import 'package:sint/navigation/src/domain/enums/snack_hover_state.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar.dart';
+import 'package:sint/navigation/src/ui/snackbar/snackbar_queue.dart';
 import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/domain/navigation_typedef.dart';
 
 class SnackbarController {
+  static final SnackBarQueue _fallbackQueue = SnackBarQueue();
+
+  static SnackBarQueue get _activeQueue => SintRoot.treeInitialized
+      ? SintRootState.controller.config.snackBarQueue
+      : _fallbackQueue;
+
   final key = GlobalKey<SintSnackBarState>();
 
-  static bool get isSnackbarBeingShown =>
-      SintRoot.treeInitialized &&
-      SintRootState.controller.config.snackBarQueue.isJobInProgress;
+  static bool get isSnackbarBeingShown => _activeQueue.isJobInProgress;
 
-  late Animation<double> _filterBlurAnimation;
-  late Animation<Color?> _filterColorAnimation;
+  Animation<double>? _filterBlurAnimation;
+  Animation<Color?>? _filterColorAnimation;
 
   final SintSnackBar snackbar;
   final _transitionCompleter = Completer();
@@ -38,6 +43,7 @@ class SnackbarController {
   /// The animation that drives the route's transition and the previous route's
   /// forward transition.
   late final Animation<Alignment> _animation;
+  CurvedAnimation? _curvedAnimation;
 
   /// The animation controller that the route uses to drive the transitions.
   ///
@@ -70,7 +76,7 @@ class SnackbarController {
   /// Only one SintSnackBar will be displayed at a time, and this method returns
   /// a future to when the snackbar disappears.
   Future<void> show() {
-    return SintRootState.controller.config.snackBarQueue.addJob(this);
+    return _activeQueue.addJob(this);
   }
 
   void _cancelTimer() {
@@ -101,8 +107,12 @@ class SnackbarController {
 
   void _configureOverlay() {
     if (_isDisposed) return;
-    final resolvedOverlay = Sint.key.currentState?.overlay;
-    _isTesting = Sint.overlayContext == null ||
+    final resolvedOverlay = SintRoot.treeInitialized
+        ? Sint.key.currentState?.overlay
+        : Sint.resolveNavigator(rootNavigator: true)?.overlay;
+    final overlayCtx = Sint.overlayContext ?? resolvedOverlay?.context;
+    _isTesting =
+        overlayCtx == null ||
         resolvedOverlay == null ||
         !resolvedOverlay.mounted;
     if (_isTesting) {
@@ -127,8 +137,10 @@ class SnackbarController {
     _hasController = true;
     _configureAlignment(snackbar.snackPosition);
     _snackbarStatus = snackbar.snackbarStatus;
-    _filterBlurAnimation = _createBlurFilterAnimation();
-    _filterColorAnimation = _createColorOverlayColor();
+    if (snackbar.overlayBlur > 0.0) {
+      _filterBlurAnimation = _createBlurFilterAnimation();
+      _filterColorAnimation = _createColorOverlayColor();
+    }
     _animation = _createAnimation();
     _animation.addStatusListener(_handleStatusChanged);
     _configureTimer();
@@ -152,23 +164,29 @@ class SnackbarController {
   /// the transition controlled by the animation controller created by
   /// `createAnimationController()`.
   Animation<Alignment> _createAnimation() {
-    assert(!_transitionCompleter.isCompleted,
-        'Cannot create a animation from a disposed snackbar');
-    return AlignmentTween(begin: _initialAlignment, end: _endAlignment).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: snackbar.forwardAnimationCurve,
-        reverseCurve: snackbar.reverseAnimationCurve,
-      ),
+    assert(
+      !_transitionCompleter.isCompleted,
+      'Cannot create a animation from a disposed snackbar',
     );
+    _curvedAnimation = CurvedAnimation(
+      parent: controller,
+      curve: snackbar.forwardAnimationCurve,
+      reverseCurve: snackbar.reverseAnimationCurve,
+    );
+    return AlignmentTween(
+      begin: _initialAlignment,
+      end: _endAlignment,
+    ).animate(_curvedAnimation!);
   }
 
   /// Called to create the animation controller that will drive the transitions
   /// to this route from the previous one, and back to the previous route
   /// from this one.
   AnimationController _createAnimationController() {
-    assert(!_transitionCompleter.isCompleted,
-        'Cannot create a animationController from a disposed snackbar');
+    assert(
+      !_transitionCompleter.isCompleted,
+      'Cannot create a animationController from a disposed snackbar',
+    );
     assert(snackbar.animationDuration >= Duration.zero);
     return AnimationController(
       duration: snackbar.animationDuration,
@@ -177,32 +195,25 @@ class SnackbarController {
     );
   }
 
+  static final Animatable<double> _overlayFilterCurve = CurveTween(
+    curve: const Interval(0.0, 0.35, curve: Curves.easeInOutCirc),
+  );
+
   Animation<double> _createBlurFilterAnimation() {
-    return Tween(begin: 0.0, end: snackbar.overlayBlur).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(
-          0.0,
-          0.35,
-          curve: Curves.easeInOutCirc,
-        ),
-      ),
-    );
+    return controller
+        .drive(_overlayFilterCurve)
+        .drive(Tween<double>(begin: 0.0, end: snackbar.overlayBlur));
   }
 
   Animation<Color?> _createColorOverlayColor() {
-    return ColorTween(
-            begin: const Color(0x00000000), end: snackbar.overlayColor)
-        .animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(
-          0.0,
-          0.35,
-          curve: Curves.easeInOutCirc,
-        ),
-      ),
-    );
+    return controller
+        .drive(_overlayFilterCurve)
+        .drive(
+          ColorTween(
+            begin: const Color(0x00000000),
+            end: snackbar.overlayColor,
+          ),
+        );
   }
 
   Iterable<OverlayEntry> _createOverlayEntries(Widget child) {
@@ -217,16 +228,16 @@ class SnackbarController {
               }
             },
             child: AnimatedBuilder(
-              animation: _filterBlurAnimation,
+              animation: _filterBlurAnimation!,
               builder: (context, child) {
                 return BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: max(0.001, _filterBlurAnimation.value),
-                    sigmaY: max(0.001, _filterBlurAnimation.value),
+                    sigmaX: max(0.001, _filterBlurAnimation!.value),
+                    sigmaY: max(0.001, _filterBlurAnimation!.value),
                   ),
                   child: Container(
                     constraints: const BoxConstraints.expand(),
-                    color: _filterColorAnimation.value,
+                    color: _filterColorAnimation?.value,
                   ),
                 );
               },
@@ -255,20 +266,23 @@ class SnackbarController {
   }
 
   Widget _getBodyWidget() {
-    return Builder(builder: (_) {
-      return MouseRegion(
-        onEnter: (_) =>
-            snackbar.onHover?.call(snackbar, SnackHoverState.entered),
-        onExit: (_) => snackbar.onHover?.call(snackbar, SnackHoverState.exited),
-        child: GestureDetector(
-          behavior: snackbar.hitTestBehavior ?? HitTestBehavior.deferToChild,
-          onTap: snackbar.onTap != null
-              ? () => snackbar.onTap?.call(snackbar)
-              : null,
-          child: snackbar,
-        ),
-      );
-    });
+    return Builder(
+      builder: (_) {
+        return MouseRegion(
+          onEnter: (_) =>
+              snackbar.onHover?.call(snackbar, SnackHoverState.entered),
+          onExit: (_) =>
+              snackbar.onHover?.call(snackbar, SnackHoverState.exited),
+          child: GestureDetector(
+            behavior: snackbar.hitTestBehavior ?? HitTestBehavior.deferToChild,
+            onTap: snackbar.onTap != null
+                ? () => snackbar.onTap?.call(snackbar)
+                : null,
+            child: snackbar,
+          ),
+        );
+      },
+    );
   }
 
   DismissDirection _getDefaultDismissDirection() {
@@ -300,10 +314,7 @@ class SnackbarController {
   }
 
   Widget _getSnackbarContainer(Widget child) {
-    return Container(
-      margin: snackbar.margin,
-      child: child,
-    );
+    return Container(margin: snackbar.margin, child: child);
   }
 
   void _handleStatusChanged(AnimationStatus status) {
@@ -324,7 +335,7 @@ class SnackbarController {
         if (_overlayEntries.isNotEmpty) _overlayEntries.first.opaque = false;
         break;
       case AnimationStatus.dismissed:
-        assert(!_overlayEntries.first.opaque);
+        assert(_overlayEntries.isEmpty || !_overlayEntries.first.opaque);
         _currentStatus = SnackbarStatus.closed;
         _snackbarStatus?.call(_currentStatus);
         removeOverlay();
@@ -368,6 +379,9 @@ class SnackbarController {
     }
 
     if (_hasController) {
+      _animation.removeStatusListener(_handleStatusChanged);
+      _curvedAnimation?.dispose();
+      _curvedAnimation = null;
       controller.dispose();
     }
     _overlayEntries.clear();
@@ -382,12 +396,16 @@ class SnackbarController {
   }
 
   static Future<void> cancelAllSnackbars() async {
-    if (!SintRoot.treeInitialized) return;
-    await SintRootState.controller.config.snackBarQueue.cancelAllJobs();
+    await _activeQueue.cancelAllJobs();
   }
 
   static Future<void> closeCurrentSnackbar() async {
-    if (!SintRoot.treeInitialized) return;
-    await SintRootState.controller.config.snackBarQueue.closeCurrentJob();
+    await _activeQueue.closeCurrentJob();
+  }
+
+  /// Disposes any pending fallback snackbar controllers created without a
+  /// mounted [SintRoot] (e.g. during `Sint.reset()` between widget tests).
+  static void disposeFallbackQueue() {
+    _fallbackQueue.disposeControllers();
   }
 }

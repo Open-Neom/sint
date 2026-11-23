@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart' as legacy;
 import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart' as material;

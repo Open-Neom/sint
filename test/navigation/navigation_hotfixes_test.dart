@@ -4,6 +4,7 @@
 //  - Fix 5: offAllNamed completes pending navigation futures
 //  - Fix 6: removeLastHistory no longer recurses infinitely
 //  - Fix 7: optional route params ('/user/:id?') don't crash on absence
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -14,24 +15,31 @@ void main() {
 
   group('Fix 7 — optional route params', () {
     test("'/user/:id?' matches '/user' without crashing", () {
-      final parser = RouteParser(routes: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/user/:id?', page: () => Container()),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/user/:id?', page: () => Container()),
+        ],
+      );
 
       final decoder = parser.matchRoute('/user');
 
-      expect(decoder.route, isNotNull,
-          reason: 'optional param absent must still match the route');
+      expect(
+        decoder.route,
+        isNotNull,
+        reason: 'optional param absent must still match the route',
+      );
       expect(decoder.route!.name, '/user');
       expect(decoder.route!.parameters, isNot(contains('id')));
     });
 
     test("'/user/:id?' matches '/user/42' and captures the param", () {
-      final parser = RouteParser(routes: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/user/:id?', page: () => Container()),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/user/:id?', page: () => Container()),
+        ],
+      );
 
       final decoder = parser.matchRoute('/user/42');
 
@@ -40,10 +48,12 @@ void main() {
     });
 
     test("'/user/:id?' matches '/user/' (trailing slash) without crashing", () {
-      final parser = RouteParser(routes: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/user/:id?', page: () => Container()),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/user/:id?', page: () => Container()),
+        ],
+      );
 
       final decoder = parser.matchRoute('/user/');
 
@@ -52,10 +62,12 @@ void main() {
     });
 
     test('required params still parse as before', () {
-      final parser = RouteParser(routes: [
-        SintPage(name: '/', page: () => Container()),
-        SintPage(name: '/user/:id/profile', page: () => Container()),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          SintPage(name: '/', page: () => Container()),
+          SintPage(name: '/user/:id/profile', page: () => Container()),
+        ],
+      );
 
       final decoder = parser.matchRoute('/user/abc123/profile');
 
@@ -74,18 +86,24 @@ void main() {
   });
 
   group('Unknown routes', () {
-    testWidgets('programmatic navigation preserves the rejected URL',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        unknownRoute: SintPage(
-          name: '/not-found',
-          page: () => Scaffold(body: Text(Sint.currentRoute)),
+    testWidgets('programmatic navigation preserves the rejected URL', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          unknownRoute: SintPage(
+            name: '/not-found',
+            page: () => Scaffold(body: Text(Sint.currentRoute)),
+          ),
+          sintPages: [
+            SintPage(
+              name: '/',
+              page: () => const Scaffold(body: Text('home')),
+            ),
+          ],
         ),
-        sintPages: [
-          SintPage(name: '/', page: () => const Scaffold(body: Text('home'))),
-        ],
-      ));
+      );
       await tester.pumpAndSettle();
 
       Sint.toNamed('/reading/legacy-owner/legacy-book');
@@ -97,16 +115,28 @@ void main() {
   });
 
   group('Fix 5 — offAllNamed completes pending futures', () {
-    testWidgets('future of a route removed by offAllNamed completes',
-        (tester) async {
-      await tester.pumpWidget(SintMaterialApp(
-        initialRoute: '/',
-        sintPages: [
-          SintPage(name: '/', page: () => const Scaffold(body: Text('home'))),
-          SintPage(name: '/a', page: () => const Scaffold(body: Text('a'))),
-          SintPage(name: '/b', page: () => const Scaffold(body: Text('b'))),
-        ],
-      ));
+    testWidgets('future of a route removed by offAllNamed completes', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        SintMaterialApp(
+          initialRoute: '/',
+          sintPages: [
+            SintPage(
+              name: '/',
+              page: () => const Scaffold(body: Text('home')),
+            ),
+            SintPage(
+              name: '/a',
+              page: () => const Scaffold(body: Text('a')),
+            ),
+            SintPage(
+              name: '/b',
+              page: () => const Scaffold(body: Text('b')),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       final pending = Sint.toNamed('/a');

@@ -5,9 +5,4 @@
 /// with the full snackbar display,
 /// [SnackbarStatus.closing] Starts with the closing animation and ends
 /// with the full snackbar dispose.
-enum SnackbarStatus {
-  open,
-  closed,
-  opening,
-  closing
-}
+enum SnackbarStatus { open, closed, opening, closing }

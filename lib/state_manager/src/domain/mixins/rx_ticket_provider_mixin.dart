@@ -1,9 +1,7 @@
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:sint/state_manager/src/engine/sint_controller.dart';
-
 
 /// Used like `TickerProviderMixin` but only with Sint Controllers.
 /// Simplifies multiple AnimationController creation inside SintController.
@@ -36,8 +34,11 @@ mixin SintTickerProviderStateMixin on SintController implements TickerProvider {
   @override
   Ticker createTicker(TickerCallback onTick) {
     _tickers ??= <_WidgetTicker>{};
-    final result = _WidgetTicker(onTick, this,
-        debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null);
+    final result = _WidgetTicker(
+      onTick,
+      this,
+      debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
+    );
     _tickers!.add(result);
     return result;
   }

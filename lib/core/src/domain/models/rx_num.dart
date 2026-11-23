@@ -1,5 +1,3 @@
-
-
 import 'package:sint/core/src/domain/models/rx_custom.dart';
 
 extension RxNumExt<T extends num> on Rx<T> {

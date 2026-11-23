@@ -1,9 +1,8 @@
-
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-
-class DirectionalityDragGestureRecognizer extends HorizontalDragGestureRecognizer {
+class DirectionalityDragGestureRecognizer
+    extends HorizontalDragGestureRecognizer {
   final ValueGetter<bool> popGestureEnable;
   final ValueGetter<bool> hasbackGestureController;
   final bool isRTL;

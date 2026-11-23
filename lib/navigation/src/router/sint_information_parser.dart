@@ -10,17 +10,16 @@ import 'package:sint/translation/sint_translation.dart';
 import 'package:sint/navigation/src/router/route_decoder.dart';
 
 class SintInformationParser extends RouteInformationParser<RouteDecoder> {
-  factory SintInformationParser.createInformationParser(
-      {String initialRoute = '/'}) {
+  factory SintInformationParser.createInformationParser({
+    String initialRoute = '/',
+  }) {
     return SintInformationParser(initialRoute: initialRoute);
   }
 
   final String initialRoute;
   bool _consumedInitialRoute = false;
 
-  SintInformationParser({
-    required this.initialRoute,
-  }) {
+  SintInformationParser({required this.initialRoute}) {
     Sint.log('SintInformationParser is created !');
   }
   @override
@@ -91,11 +90,7 @@ const int _kMaxRouteStateDepth = 32;
 
 @visibleForTesting
 Object? sanitizeRouteInformationState(Object? state) {
-  return _isJsonSafeRouteInformationState(
-    state,
-    HashSet<Object>.identity(),
-    0,
-  )
+  return _isJsonSafeRouteInformationState(state, HashSet<Object>.identity(), 0)
       ? state
       : null;
 }

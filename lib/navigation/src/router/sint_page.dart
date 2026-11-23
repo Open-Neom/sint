@@ -3,7 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/domain/interfaces/bindings_interface.dart';
 import 'package:sint/navigation/src/domain/enums/prevent_duplicate_handling_mode.dart';
@@ -88,13 +88,12 @@ class SintPage<T> extends Page<T> {
     super.canPop,
     super.onPopInvoked = _defaultPopInvokedHandler,
     super.restorationId,
-  })  : path = path ?? RouteTemplate.compile(name),
-        assert(name.startsWith('/'),
-            'It is necessary to start route name [$name] with a slash: /$name'),
-        super(
-          key: key ?? ValueKey(name),
-          name: name,
-        );
+  }) : path = path ?? RouteTemplate.compile(name),
+       assert(
+         name.startsWith('/'),
+         'It is necessary to start route name [$name] with a slash: /$name',
+       ),
+       super(key: key ?? ValueKey(name), name: name);
 
   SintPage<T> copyWith({
     LocalKey? key,

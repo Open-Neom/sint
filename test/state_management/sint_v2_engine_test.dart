@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -63,26 +64,29 @@ void main() {
   });
 
   group('SINT 2.0 — Synchronous Batching (Sint.batch)', () {
-    test('coalesces multiple updates on the same Rx and across nested batches', () {
-      final counter = 0.obs;
-      final observed = <int>[];
-      counter.addListener(() => observed.add(counter.value));
+    test(
+      'coalesces multiple updates on the same Rx and across nested batches',
+      () {
+        final counter = 0.obs;
+        final observed = <int>[];
+        counter.addListener(() => observed.add(counter.value));
 
-      final result = Sint.batch(() {
-        counter.value = 1;
-        counter.value = 2;
-        Sint.batch(() {
-          counter.value = 3;
-          counter.value = 4;
+        final result = Sint.batch(() {
+          counter.value = 1;
+          counter.value = 2;
+          Sint.batch(() {
+            counter.value = 3;
+            counter.value = 4;
+          });
+          expect(observed, isEmpty);
+          counter.value = 5;
+          return 'done';
         });
-        expect(observed, isEmpty);
-        counter.value = 5;
-        return 'done';
-      });
 
-      expect(result, 'done');
-      expect(observed, [5]);
-    });
+        expect(result, 'done');
+        expect(observed, [5]);
+      },
+    );
   });
 
   group('SINT 2.0 — Memoized Derived State (Sint.computed / Computed<T>)', () {
@@ -226,14 +230,17 @@ void main() {
   });
 
   group('SINT 2.0 — Multi-Level Prefix Route Indexing & PathDecoded Reuse', () {
-    test('SintPage.copyWith reuses compiled PathDecoded when name is unchanged', () {
-      final page = SintPage(name: '/users/:id', page: () => const SizedBox());
-      final copy = page.copyWith(title: 'User Profile');
-      expect(identical(page.path, copy.path), isTrue);
+    test(
+      'SintPage.copyWith reuses compiled PathDecoded when name is unchanged',
+      () {
+        final page = SintPage(name: '/users/:id', page: () => const SizedBox());
+        final copy = page.copyWith(title: 'User Profile');
+        expect(identical(page.path, copy.path), isTrue);
 
-      final renamed = page.copyWith(name: '/accounts/:id');
-      expect(identical(page.path, renamed.path), isFalse);
-    });
+        final renamed = page.copyWith(name: '/accounts/:id');
+        expect(identical(page.path, renamed.path), isFalse);
+      },
+    );
 
     test('RouteParser multi-level literal trie preserves precedence and registration order', () {
       final parser = RouteParser(
@@ -308,33 +315,36 @@ void main() {
       derived.dispose();
     });
 
-    test('SintController.computed, everSync, and autoDispose clean up on onClose', () {
-      final globalCounter = 1.obs;
-      final controller = _TestScopedController(globalCounter);
-      controller.onStart();
+    test(
+      'SintController.computed, everSync, and autoDispose clean up on onClose',
+      () {
+        final globalCounter = 1.obs;
+        final controller = _TestScopedController(globalCounter);
+        controller.onStart();
 
-      expect(controller.localRx.value, 0);
-      expect(controller.doubled.value, 2);
-      expect(controller.syncEvents, isEmpty);
+        expect(controller.localRx.value, 0);
+        expect(controller.doubled.value, 2);
+        expect(controller.syncEvents, isEmpty);
 
-      Sint.batch(() {
-        globalCounter.value = 3;
-        globalCounter.value = 5;
-      });
+        Sint.batch(() {
+          globalCounter.value = 3;
+          globalCounter.value = 5;
+        });
 
-      // Coalesced batch fires everSync once with 5, and updates scoped computed.
-      expect(controller.syncEvents, [5]);
-      expect(controller.doubled.value, 10);
+        // Coalesced batch fires everSync once with 5, and updates scoped computed.
+        expect(controller.syncEvents, [5]);
+        expect(controller.doubled.value, 10);
 
-      // Closing the controller disposes scoped computed, everSync, and autoDisposed Rx.
-      controller.onDelete();
-      expect(controller.doubled.isDisposed, isTrue);
-      expect(controller.localRx.isDisposed, isTrue);
-      expect(globalCounter.listenersLength, 0);
+        // Closing the controller disposes scoped computed, everSync, and autoDisposed Rx.
+        controller.onDelete();
+        expect(controller.doubled.isDisposed, isTrue);
+        expect(controller.localRx.isDisposed, isTrue);
+        expect(globalCounter.listenersLength, 0);
 
-      globalCounter.value = 9;
-      expect(controller.syncEvents, [5]);
-    });
+        globalCounter.value = 9;
+        expect(controller.syncEvents, [5]);
+      },
+    );
   });
 }
 

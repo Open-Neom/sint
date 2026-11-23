@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -10,17 +11,16 @@ SintPage _page(
   BindingsInterface? binding,
   bool inheritParentPath = true,
   String? title,
-}) =>
-    SintPage(
-      name: name,
-      page: () => const SizedBox(),
-      children: children,
-      middlewares: middlewares,
-      bindings: bindings,
-      binding: binding,
-      inheritParentPath: inheritParentPath,
-      title: title,
-    );
+}) => SintPage(
+  name: name,
+  page: () => const SizedBox(),
+  children: children,
+  middlewares: middlewares,
+  bindings: bindings,
+  binding: binding,
+  inheritParentPath: inheritParentPath,
+  title: title,
+);
 
 class _Middleware extends SintMiddleware {}
 
@@ -57,25 +57,38 @@ void main() {
       expect(parser.matchRoute('/second/details').route, isNotNull);
 
       parser.removeRoute(second);
-      expect(
-          parser.routes.map((page) => page.name), ['/first', '/first/details']);
+      expect(parser.routes.map((page) => page.name), [
+        '/first',
+        '/first/details',
+      ]);
       expect(parser.matchRoute('/first/details').route, isNotNull);
       expect(parser.matchRoute('/second/details').route, isNull);
     });
 
-    test('absolute child paths are inherited correctly by their descendants',
-        () {
-      final root = _page('/root', children: [
-        _page('/detached',
-            inheritParentPath: false, children: [_page('/leaf')]),
-      ]);
-      final parser = RouteParser(routes: [])..addRoute(root);
-      expect(parser.routes.map((page) => page.name),
-          ['/root', '/detached', '/detached/leaf']);
-      expect(parser.matchRoute('/detached/leaf').route, isNotNull);
-      parser.removeRoute(root);
-      expect(parser.routes, isEmpty);
-    });
+    test(
+      'absolute child paths are inherited correctly by their descendants',
+      () {
+        final root = _page(
+          '/root',
+          children: [
+            _page(
+              '/detached',
+              inheritParentPath: false,
+              children: [_page('/leaf')],
+            ),
+          ],
+        );
+        final parser = RouteParser(routes: [])..addRoute(root);
+        expect(parser.routes.map((page) => page.name), [
+          '/root',
+          '/detached',
+          '/detached/leaf',
+        ]);
+        expect(parser.matchRoute('/detached/leaf').route, isNotNull);
+        parser.removeRoute(root);
+        expect(parser.routes, isEmpty);
+      },
+    );
 
     test('inherits ancestor middleware and bindings once per descendant', () {
       final rootMiddleware = _Middleware();
@@ -84,22 +97,32 @@ void main() {
       final rootBinding = _Binding();
       final childBinding = _Binding();
       final leafBinding = _Binding();
-      final root = _page('/root',
-          middlewares: [rootMiddleware],
-          binding: rootBinding,
-          children: [
-            _page('/child',
-                middlewares: [childMiddleware],
-                binding: childBinding,
-                children: [
-                  _page('/leaf',
-                      middlewares: [leafMiddleware], binding: leafBinding),
-                ]),
-          ]);
+      final root = _page(
+        '/root',
+        middlewares: [rootMiddleware],
+        binding: rootBinding,
+        children: [
+          _page(
+            '/child',
+            middlewares: [childMiddleware],
+            binding: childBinding,
+            children: [
+              _page(
+                '/leaf',
+                middlewares: [leafMiddleware],
+                binding: leafBinding,
+              ),
+            ],
+          ),
+        ],
+      );
       final parser = RouteParser(routes: [])..addRoute(root);
       final leaf = parser.routes.last;
-      expect(
-          leaf.middlewares, [leafMiddleware, childMiddleware, rootMiddleware]);
+      expect(leaf.middlewares, [
+        leafMiddleware,
+        childMiddleware,
+        rootMiddleware,
+      ]);
       expect(leaf.bindings, [rootBinding, childBinding]);
       expect(leaf.binding, same(leafBinding));
     });
@@ -123,19 +146,23 @@ void main() {
       expect(parser.matchRoute('/old').route, isNull);
     });
 
-    test('replacing a page with an equal Page key refreshes its builder data',
-        () {
-      final parser = RouteParser(routes: [_page('/page', title: 'old')]);
-      expect(parser.matchRoute('/page').route!.title, 'old');
-      parser.routes[0] = _page('/page', title: 'new');
-      expect(parser.matchRoute('/page').route!.title, 'new');
-    });
+    test(
+      'replacing a page with an equal Page key refreshes its builder data',
+      () {
+        final parser = RouteParser(routes: [_page('/page', title: 'old')]);
+        expect(parser.matchRoute('/page').route!.title, 'old');
+        parser.routes[0] = _page('/page', title: 'new');
+        expect(parser.matchRoute('/page').route!.title, 'new');
+      },
+    );
 
     test('same-size reordering preserves first-wins behavior', () {
-      final parser = RouteParser(routes: [
-        _page('/:id', title: 'first'),
-        _page('/:name', title: 'second'),
-      ]);
+      final parser = RouteParser(
+        routes: [
+          _page('/:id', title: 'first'),
+          _page('/:name', title: 'second'),
+        ],
+      );
       expect(parser.matchRoute('/42').route!.title, 'first');
       parser.routes.setAll(0, parser.routes.reversed.toList());
       expect(parser.matchRoute('/42').route!.title, 'second');
@@ -189,8 +216,10 @@ void main() {
       final settings = PageSettings(Uri.parse('/user/42'));
       parser.matchRoute('/user/42', arguments: settings);
       expect(settings.pathParams, {'id': '42'});
-      expect(parser.matchRoute('/missing?tab=posts', arguments: settings).route,
-          isNull);
+      expect(
+        parser.matchRoute('/missing?tab=posts', arguments: settings).route,
+        isNull,
+      );
       expect(settings.pathParams, isEmpty);
       expect(settings.params, {'tab': 'posts'});
     });
@@ -211,8 +240,10 @@ void main() {
     });
 
     test('resolves dotted parameters and their optional separators', () {
-      expect(resolveRoutePath('/file.:ext', pathParams: {'ext': 'pdf'}),
-          '/file.pdf');
+      expect(
+        resolveRoutePath('/file.:ext', pathParams: {'ext': 'pdf'}),
+        '/file.pdf',
+      );
       expect(resolveRoutePath('/file.:ext?', pathParams: {}), '/file');
       final parser = RouteParser(routes: [_page('/file.:ext?')]);
       expect(parser.matchRoute('/file').route, isNotNull);
@@ -223,26 +254,39 @@ void main() {
     test('an omitted optional root parameter resolves to the root path', () {
       final url = resolveRoutePath('/:id?', pathParams: {});
       expect(url, '/');
-      expect(RouteParser(routes: [_page('/:id?')]).matchRoute(url).route,
-          isNotNull);
+      expect(
+        RouteParser(routes: [_page('/:id?')]).matchRoute(url).route,
+        isNotNull,
+      );
     });
 
     test('distinguishes optional markers, existing queries and fragments', () {
       expect(
-          resolveRoutePath('/user/:id?lang=es#details',
-              pathParams: {'id': '42'}, queryParams: {'tab': 'posts'}),
-          '/user/42?lang=es&tab=posts#details');
+        resolveRoutePath(
+          '/user/:id?lang=es#details',
+          pathParams: {'id': '42'},
+          queryParams: {'tab': 'posts'},
+        ),
+        '/user/42?lang=es&tab=posts#details',
+      );
       expect(
-          resolveRoutePath('/user/:id??lang=es#details',
-              pathParams: {'id': '42'}),
-          '/user/42?lang=es#details');
-      expect(resolveRoutePath('/user/:id?#details', pathParams: {}),
-          '/user#details');
+        resolveRoutePath(
+          '/user/:id??lang=es#details',
+          pathParams: {'id': '42'},
+        ),
+        '/user/42?lang=es#details',
+      );
+      expect(
+        resolveRoutePath('/user/:id?#details', pathParams: {}),
+        '/user#details',
+      );
     });
 
     test('keeps unresolved required params and encodes values per segment', () {
-      expect(resolveRoutePath('/user/:id', pathParams: {'other': 'x'}),
-          '/user/:id');
+      expect(
+        resolveRoutePath('/user/:id', pathParams: {'other': 'x'}),
+        '/user/:id',
+      );
       final url = resolveRoutePath('/user/:id', pathParams: {'id': 'a/b +ñ'});
       expect(url, '/user/a%2Fb%20%2B%C3%B1');
       final parser = RouteParser(routes: [_page('/user/:id')]);
@@ -254,12 +298,16 @@ void main() {
     test('wildcards capture raw slashes and decode encoded values once', () {
       final parser = RouteParser(routes: [_page('/docs/:path*')]);
       var settings = PageSettings(Uri.parse('/docs/a/b'));
-      expect(parser.matchRoute(settings.name, arguments: settings).route,
-          isNotNull);
+      expect(
+        parser.matchRoute(settings.name, arguments: settings).route,
+        isNotNull,
+      );
       expect(settings.pathParams, {'path': 'a/b'});
       expect(parser.matchRoute('/docs').route, isNull);
-      final encoded =
-          resolveRoutePath('/docs/:path*', pathParams: {'path': 'a/%2Fb'});
+      final encoded = resolveRoutePath(
+        '/docs/:path*',
+        pathParams: {'path': 'a/%2Fb'},
+      );
       expect(encoded, '/docs/a%2F%252Fb');
       settings = PageSettings(Uri.parse(encoded));
       parser.matchRoute(encoded, arguments: settings);
@@ -269,8 +317,10 @@ void main() {
     test('pattern captures do not shift subsequent parameter positions', () {
       const template = r'/code/:part((ab|cd)\d+)/:id';
       final parser = RouteParser(routes: [_page(template)]);
-      final url =
-          resolveRoutePath(template, pathParams: {'part': 'ab12', 'id': '42'});
+      final url = resolveRoutePath(
+        template,
+        pathParams: {'part': 'ab12', 'id': '42'},
+      );
       expect(url, '/code/ab12/42');
       final settings = PageSettings(Uri.parse(url));
       expect(parser.matchRoute(url, arguments: settings).route, isNotNull);
@@ -278,33 +328,41 @@ void main() {
       expect(parser.matchRoute('/code/xx12/42').route, isNull);
     });
 
-    test('literal punctuation is escaped while custom patterns remain active',
-        () {
-      final parser = RouteParser(routes: [
-        _page('/assets/file.json'),
-        _page('/assets/a+b(1)'),
-        _page(r'/assets/:id(\d+)'),
-      ]);
-      expect(parser.matchRoute('/assets/file.json').route, isNotNull);
-      expect(parser.matchRoute('/assets/fileXjson').route, isNull);
-      expect(parser.matchRoute('/assets/a+b(1)').route, isNotNull);
-      expect(parser.matchRoute('/assets/aaab1').route, isNull);
-      expect(parser.matchRoute('/assets/123').route, isNotNull);
-      expect(parser.matchRoute('/assets/abc').route, isNull);
-    });
+    test(
+      'literal punctuation is escaped while custom patterns remain active',
+      () {
+        final parser = RouteParser(
+          routes: [
+            _page('/assets/file.json'),
+            _page('/assets/a+b(1)'),
+            _page(r'/assets/:id(\d+)'),
+          ],
+        );
+        expect(parser.matchRoute('/assets/file.json').route, isNotNull);
+        expect(parser.matchRoute('/assets/fileXjson').route, isNull);
+        expect(parser.matchRoute('/assets/a+b(1)').route, isNotNull);
+        expect(parser.matchRoute('/assets/aaab1').route, isNull);
+        expect(parser.matchRoute('/assets/123').route, isNotNull);
+        expect(parser.matchRoute('/assets/abc').route, isNull);
+      },
+    );
 
-    test('first-segment precedence remains literal, pattern, param, wildcard',
-        () {
-      final parser = RouteParser(routes: [
-        _page('/:path*', title: 'wildcard'),
-        _page('/:name', title: 'param'),
-        _page(r'/:id(\d+)', title: 'pattern'),
-        _page('/new', title: 'literal'),
-      ]);
-      expect(parser.matchRoute('/new').route!.title, 'literal');
-      expect(parser.matchRoute('/42').route!.title, 'pattern');
-      expect(parser.matchRoute('/someone').route!.title, 'param');
-      expect(parser.matchRoute('/several/segments').route!.title, 'wildcard');
-    });
+    test(
+      'first-segment precedence remains literal, pattern, param, wildcard',
+      () {
+        final parser = RouteParser(
+          routes: [
+            _page('/:path*', title: 'wildcard'),
+            _page('/:name', title: 'param'),
+            _page(r'/:id(\d+)', title: 'pattern'),
+            _page('/new', title: 'literal'),
+          ],
+        );
+        expect(parser.matchRoute('/new').route!.title, 'literal');
+        expect(parser.matchRoute('/42').route!.title, 'pattern');
+        expect(parser.matchRoute('/someone').route!.title, 'param');
+        expect(parser.matchRoute('/several/segments').route!.title, 'wildcard');
+      },
+    );
   });
 }

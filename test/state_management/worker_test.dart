@@ -15,8 +15,11 @@ class _TestController extends SintController {
     ever<int>(count, everEvents.add);
     once<int>(count, onceEvents.add);
     debounce<int>(count, debounceEvents.add, duration: debounceDur);
-    interval<int>(count, intervalEvents.add,
-        duration: const Duration(seconds: 1));
+    interval<int>(
+      count,
+      intervalEvents.add,
+      duration: const Duration(seconds: 1),
+    );
   }
 }
 
@@ -49,8 +52,11 @@ void main() {
       c.count.value = 20;
       c.count.value = 30;
       await Future<void>.delayed(Duration.zero);
-      expect(c.onceEvents.length, 1,
-          reason: 'once should fire exactly once and then cancel');
+      expect(
+        c.onceEvents.length,
+        1,
+        reason: 'once should fire exactly once and then cancel',
+      );
     });
   });
 
@@ -122,9 +128,13 @@ void main() {
         c.onDelete();
         async.elapse(const Duration(milliseconds: 500));
 
-        expect(c.debounceEvents, isEmpty,
-            reason: 'debounce callback must never fire on a disposed '
-                'controller');
+        expect(
+          c.debounceEvents,
+          isEmpty,
+          reason:
+              'debounce callback must never fire on a disposed '
+              'controller',
+        );
       });
     });
 
@@ -148,8 +158,9 @@ void main() {
         c.count.value = 2; // listeners are cancelled — nothing may fire
         async.elapse(const Duration(seconds: 2));
 
-        expect(c.intervalEvents, [1],
-            reason: 'interval must not fire after the controller is disposed');
+        expect(c.intervalEvents, [
+          1,
+        ], reason: 'interval must not fire after the controller is disposed');
       });
     });
   });
@@ -166,8 +177,11 @@ void main() {
       c.everEvents.clear();
       c.count.value = 999;
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(c.everEvents, isEmpty,
-          reason: 'after onClose, ever should not fire');
+      expect(
+        c.everEvents,
+        isEmpty,
+        reason: 'after onClose, ever should not fire',
+      );
     });
 
     test('integration: Sint.delete triggers worker cleanup', () async {

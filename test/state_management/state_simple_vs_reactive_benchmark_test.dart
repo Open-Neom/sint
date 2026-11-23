@@ -10,10 +10,10 @@ void main() {
     const int iterations = 50000;
 
     test('Benchmark: update() vs .obs assignment', () async {
-      print('\n${'='*50}');
+      print('\n${'=' * 50}');
       print('SINT PILLAR S: SIMPLE VS REACTIVE LESSON');
       print('Infrastructure: Open Neom Standard');
-      print('='*50 + '\n');
+      print('=' * 50 + '\n');
 
       final controller = Sint.put(SimpleController());
       final rxValue = 0.obs;
@@ -40,13 +40,13 @@ void main() {
       final simpleAvg = timerSimple.elapsedMicroseconds / iterations;
       final rxAvg = timerRx.elapsedMicroseconds / iterations;
 
-      print('\n${'-'*30}');
+      print('\n${'-' * 30}');
       print('BENCHMARK RESULTS (Open Neom Standard)');
       print('Simple Update Avg: ${simpleAvg.toStringAsFixed(4)}us/op');
       print('Reactive Rx Avg:   ${rxAvg.toStringAsFixed(4)}us/op');
       print('Note: Simple state is often faster for batch processing.');
-      print('-'*30);
-      print('='*50 + '\n');
+      print('-' * 30);
+      print('=' * 50 + '\n');
     });
   });
 }

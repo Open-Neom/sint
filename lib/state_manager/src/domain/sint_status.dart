@@ -32,8 +32,7 @@ sealed class SintStatus<T> with Equality {
     Object message, {
     T? previousData,
     StackTrace? stackTrace,
-  }) =>
-      ErrorStatus<T, Object>(message, previousData, stackTrace);
+  }) => ErrorStatus<T, Object>(message, previousData, stackTrace);
 
   factory SintStatus.empty() => EmptyStatus<T>();
 
@@ -59,15 +58,15 @@ sealed class SintStatus<T> with Equality {
     required R Function(Object error) error,
     required R Function() empty,
     R Function()? custom,
-  }) =>
-      switch (this) {
-        SuccessStatus(:final data) => success(data),
-        ErrorStatus<Object?, Object?>(error: final err) =>
-          error(err ?? 'Unknown error'),
-        LoadingStatus() => loading(),
-        EmptyStatus() => empty(),
-        CustomStatus() => (custom ?? empty)(),
-      };
+  }) => switch (this) {
+    SuccessStatus(:final data) => success(data),
+    ErrorStatus<Object?, Object?>(error: final err) => error(
+      err ?? 'Unknown error',
+    ),
+    LoadingStatus() => loading(),
+    EmptyStatus() => empty(),
+    CustomStatus() => (custom ?? empty)(),
+  };
 
   /// Partial pattern matching with a required [orElse] fallback.
   ///
@@ -84,22 +83,24 @@ sealed class SintStatus<T> with Equality {
     R Function()? empty,
     R Function()? custom,
     required R Function() orElse,
-  }) =>
-      switch (this) {
-        SuccessStatus(:final data) when success != null => success(data),
-        ErrorStatus(error: final err) when error != null =>
-          error(err ?? 'Unknown error'),
-        LoadingStatus() when loading != null => loading(),
-        EmptyStatus() when empty != null => empty(),
-        CustomStatus() when custom != null => custom(),
-        _ => orElse(),
-      };
+  }) => switch (this) {
+    SuccessStatus(:final data) when success != null => success(data),
+    ErrorStatus(error: final err) when error != null => error(
+      err ?? 'Unknown error',
+    ),
+    LoadingStatus() when loading != null => loading(),
+    EmptyStatus() when empty != null => empty(),
+    CustomStatus() when custom != null => custom(),
+    _ => orElse(),
+  };
 
   // ─── Convenience Getters ──────────────────────────────────
 
   bool get isLoading => this is LoadingStatus<T>;
-  bool get isRefreshing =>
-      switch (this) { LoadingStatus(previousData: _?) => true, _ => false };
+  bool get isRefreshing => switch (this) {
+    LoadingStatus(previousData: _?) => true,
+    _ => false,
+  };
   bool get isSuccess => this is SuccessStatus<T>;
   bool get isError => this is ErrorStatus<T, Object?>;
   bool get isEmpty => this is EmptyStatus<T>;
@@ -107,24 +108,24 @@ sealed class SintStatus<T> with Equality {
   /// Returns the data if [isSuccess], or retained `previousData` during
   /// [SintStatus.refreshing] / [SintStatus.error], otherwise `null`.
   T? get dataOrNull => switch (this) {
-        SuccessStatus(:final data) => data,
-        LoadingStatus(:final previousData) => previousData,
-        ErrorStatus<T, Object?>(:final previousData) => previousData,
-        ErrorStatus<Object?, Object?>() => null,
-        EmptyStatus() || CustomStatus() => null,
-      };
+    SuccessStatus(:final data) => data,
+    LoadingStatus(:final previousData) => previousData,
+    ErrorStatus<T, Object?>(:final previousData) => previousData,
+    ErrorStatus<Object?, Object?>() => null,
+    EmptyStatus() || CustomStatus() => null,
+  };
 
   /// Returns the error if [isError], otherwise `null`.
   Object? get errorOrNull => switch (this) {
-        ErrorStatus(:final error) => error,
-        _ => null,
-      };
+    ErrorStatus(:final error) => error,
+    _ => null,
+  };
 
   /// Returns the captured [StackTrace] if [isError], otherwise `null`.
   StackTrace? get stackTraceOrNull => switch (this) {
-        ErrorStatus(:final stackTrace) => stackTrace,
-        _ => null,
-      };
+    ErrorStatus(:final stackTrace) => stackTrace,
+    _ => null,
+  };
 }
 
 class CustomStatus<T> extends SintStatus<T> {

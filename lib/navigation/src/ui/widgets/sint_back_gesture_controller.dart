@@ -1,9 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 import 'package:sint/navigation/src/utils/navigation_constants.dart';
@@ -51,12 +50,18 @@ class SintBackGestureController<T> {
       // We want to cap the animation time, but we want to use a linear curve
       // to determine it.
       final droppedPageForwardAnimationTime = min(
-        lerpDouble(kMaxMidSwipePageForwardAnimationTime, 0, controller.value)!
-            .floor(), kMaxPageBackAnimationTime,
+        lerpDouble(
+          kMaxMidSwipePageForwardAnimationTime,
+          0,
+          controller.value,
+        )!.floor(),
+        kMaxPageBackAnimationTime,
       );
-      controller.animateTo(1.0,
-          duration: Duration(milliseconds: droppedPageForwardAnimationTime),
-          curve: animationCurve);
+      controller.animateTo(
+        1.0,
+        duration: Duration(milliseconds: droppedPageForwardAnimationTime),
+        curve: animationCurve,
+      );
     } else {
       // This route is destined to pop at this point. Reuse navigator's pop.
       Sint.back();
@@ -66,11 +71,15 @@ class SintBackGestureController<T> {
       if (controller.isAnimating) {
         // Otherwise, use a custom popping animation duration and curve.
         final droppedPageBackAnimationTime = lerpDouble(
-            0, kMaxMidSwipePageForwardAnimationTime, controller.value)!
-            .floor();
-        controller.animateBack(0.0,
-            duration: Duration(milliseconds: droppedPageBackAnimationTime),
-            curve: animationCurve);
+          0,
+          kMaxMidSwipePageForwardAnimationTime,
+          controller.value,
+        )!.floor();
+        controller.animateBack(
+          0.0,
+          duration: Duration(milliseconds: droppedPageBackAnimationTime),
+          curve: animationCurve,
+        );
       }
     }
 
@@ -88,5 +97,4 @@ class SintBackGestureController<T> {
       navigator.didStopUserGesture();
     }
   }
-
 }

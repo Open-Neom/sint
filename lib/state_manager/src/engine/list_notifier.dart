@@ -316,7 +316,15 @@ class ListNotifier extends Listenable {
   }
 
   void removeListenerId(Object id, VoidCallback listener) {
-    _updatersGroupIds?[id]?.removeListener(listener);
+    final groups = _updatersGroupIds;
+    final group = groups?[id];
+    if (group == null) return;
+    group.removeListener(listener);
+    if (!group.isDisposed &&
+        group.listenersLength == 0 &&
+        group._notificationDepth == 0) {
+      groups!.remove(id);
+    }
   }
 
   Disposer addListenerId(Object? key, SintStateUpdate listener) {
@@ -324,8 +332,19 @@ class ListNotifier extends Listenable {
       throw StateError('Cannot add a listener to a disposed ListNotifier.');
     }
     final groups = _updatersGroupIds ??= HashMap<Object?, ListNotifier>();
-    groups[key] ??= ListNotifier();
-    return groups[key]!.addListener(listener);
+    final group = groups[key] ??= ListNotifier();
+    final remove = group.addListener(listener);
+    return () {
+      remove();
+      final currentGroups = _updatersGroupIds;
+      if (currentGroups != null &&
+          identical(currentGroups[key], group) &&
+          !group.isDisposed &&
+          group.listenersLength == 0 &&
+          group._notificationDepth == 0) {
+        currentGroups.remove(key);
+      }
+    };
   }
 }
 

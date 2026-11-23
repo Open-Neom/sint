@@ -48,20 +48,20 @@ class BenchResult {
       median(samples.map((value) => (value - medianBatchUs).abs()).toList());
 
   Map<String, Object> toJson() => {
-        'schemaVersion': benchmarkSchemaVersion,
-        'name': name,
-        'metric': 'batch_mean_us_per_operation',
-        'iterationsPerRound': iterations,
-        'rounds': rounds,
-        'totalOperations': totalOperations,
-        'warmupOperations': warmupOperations,
-        'configuration': configuration,
-        'samples': samples,
-        'medianBatchUs': medianBatchUs,
-        'madBatchUs': madBatchUs,
-        'minBatchUs': minBatchUs,
-        'maxBatchUs': maxBatchUs,
-      };
+    'schemaVersion': benchmarkSchemaVersion,
+    'name': name,
+    'metric': 'batch_mean_us_per_operation',
+    'iterationsPerRound': iterations,
+    'rounds': rounds,
+    'totalOperations': totalOperations,
+    'warmupOperations': warmupOperations,
+    'configuration': configuration,
+    'samples': samples,
+    'medianBatchUs': medianBatchUs,
+    'madBatchUs': madBatchUs,
+    'minBatchUs': minBatchUs,
+    'maxBatchUs': maxBatchUs,
+  };
 }
 
 /// Synchronous operations with time-based warmup and batch calibration.
@@ -179,10 +179,12 @@ Future<BenchResult> runPreparedBench(
       stopwatch.stop();
       verify();
       if (batch >= warmups) {
-        samples.add(stopwatch.elapsedTicks *
-            1000000 /
-            stopwatch.frequency /
-            operationsPerBatch);
+        samples.add(
+          stopwatch.elapsedTicks *
+              1000000 /
+              stopwatch.frequency /
+              operationsPerBatch,
+        );
       }
     } finally {
       await cleanup();
@@ -208,10 +210,12 @@ void printBenchTable(String title, List<BenchResult> results) {
   print('\n$title — batch means in µs/op (not operation latency percentiles)');
   print('| Scenario | Median | MAD | Min | Max |');
   for (final result in results) {
-    print('| ${result.name} | ${result.medianBatchUs.toStringAsFixed(4)} | '
-        '${result.madBatchUs.toStringAsFixed(4)} | '
-        '${result.minBatchUs.toStringAsFixed(4)} | '
-        '${result.maxBatchUs.toStringAsFixed(4)} |');
+    print(
+      '| ${result.name} | ${result.medianBatchUs.toStringAsFixed(4)} | '
+      '${result.madBatchUs.toStringAsFixed(4)} | '
+      '${result.minBatchUs.toStringAsFixed(4)} | '
+      '${result.maxBatchUs.toStringAsFixed(4)} |',
+    );
     print('SINT_BENCH_JSON ${jsonEncode(result.toJson())}');
   }
 }

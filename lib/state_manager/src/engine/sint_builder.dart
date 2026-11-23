@@ -17,7 +17,7 @@ class SintBuilder<T extends SintController> extends StatelessWidget {
       dispose,
       didChangeDependencies;
   final void Function(Binder<T> oldWidget, BindElement<T> state)?
-      didUpdateWidget;
+  didUpdateWidget;
   final T? init;
 
   const SintBuilder({
@@ -51,10 +51,12 @@ class SintBuilder<T extends SintController> extends StatelessWidget {
       lazy: false,
       didChangeDependencies: didChangeDependencies,
       didUpdateWidget: didUpdateWidget,
-      child: Builder(builder: (context) {
-        final controller = Bind.of<T>(context, rebuild: true);
-        return builder(controller);
-      }),
+      child: Builder(
+        builder: (context) {
+          final controller = Bind.of<T>(context, rebuild: true);
+          return builder(controller);
+        },
+      ),
     );
   }
 }

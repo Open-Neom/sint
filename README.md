@@ -47,7 +47,13 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 
 ---
 
-## What's New in 2.2.1
+## What's New in 2.2.2
+
+- **Flutter 3.50 / Dart 3.14 Clean Analysis & Standalone Decoupling**: Removed 49 legacy `flutter/material.dart` / `flutter/cupertino.dart` imports across Pillar I, Pillar S, router internals, transitions, and `example/main.dart` (upgraded to `SintApp` + `material_ui`), keeping `SintMaterialApp` / `SintCupertinoApp` 100% backwards compatible in `2.x` with zero static analysis or formatting warnings.
+- **Leak-Free Snackbars, Zero-Allocation Transitions & Standalone `SintAppBar` Parity**: Eliminated `CurvedAnimation` and unused icon-pulse ticker leaks in `Sint.snackbar()`, extended `MaterialApp` fallback parity to `Sint.snackbar()` and `Sint.showOverlay()`, converted all 11 transitions to `const` with static `Tween`s, honored `materialTheme.pageTransitionsTheme`, added standalone `material_ui` rendering to `SintAppBar`, and recognized standalone `material_ui` / `cupertino_ui` modal routes in `RouteData`.
+- **DI Type-Inference Hardening & Dynamic ID Group Pruning**: Prevented `List<Bind>` downward context from coercing unannotated `Bind.put` / `Bind.lazyPut` to `dynamic` (rejecting accidental `dynamic` registrations with `ArgumentError`), and automatically pruned empty `ListNotifier` dynamic ID groups on unmount.
+
+### Highlights from 2.2.1
 
 - **Full `Navigator`-Free Compatibility (`Sint.maybePop`, `Sint.canPop`, Safe `Sint.pop` & `Sint.resolveNavigator`)**: Adds context-free `Sint.maybePop<T>([result, id])` (closing active overlays first, honoring `PopScope(canPop: false)`, and safely returning `false` on root routes), `Sint.canPop`, and `canPop()`-guarded `Sint.pop<T>([result])` so modular Flutter codebases never need direct `Navigator.*` calls.
 - **Automatic `MaterialApp` / `CupertinoApp` Host & Widget-Test Fallback**: Reusable UI modules calling `Sint.to`, `Sint.off`, `Sint.toNamed`, `Sint.offNamed`, `Sint.back`, `Sint.pop`, `Sint.maybePop`, `Sint.canPop`, `Sint.dialog`, or `Sint.bottomSheet` resolve `SintDelegate` in $O(1)$ inside `SintMaterialApp` / `SintApp`, and automatically fall back to a mounted host `NavigatorState` when tested inside standalone `MaterialApp` / `CupertinoApp` harnesses.
@@ -78,7 +84,7 @@ SINT focuses strictly on four foundational pillars—no HTTP client, validators,
 
 ```yaml
 dependencies:
-  sint: ^2.2.1
+  sint: ^2.2.2
 ```
 
 ```dart
@@ -167,7 +173,7 @@ Building an equivalent 4-pillar feature (Reactive State + Derived Value + Scoped
 
 ## Migrating from GetX
 
-1. Replace `get:` with `sint: ^2.2.1` in `pubspec.yaml`.
+1. Replace `get:` with `sint: ^2.2.2` in `pubspec.yaml`.
 2. Replace `import 'package:get/get.dart';` with `import 'package:sint/sint.dart';`.
 3. **Zero-friction compatibility in `2.x`**: Existing `Get.`, `GetxController`, `GetMaterialApp`, `GetPage`, `GetBuilder`, and `GetRouterOutlet` calls continue to compile with `@Deprecated` notices so you can migrate to `Sint*` symbols incrementally before `3.0.0`.
 

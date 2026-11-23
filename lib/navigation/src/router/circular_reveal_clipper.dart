@@ -1,7 +1,7 @@
 import 'dart:math' show sqrt, max;
 import 'dart:ui' show lerpDouble;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class CircularRevealClipper extends CustomClipper<Path> {
   final double fraction;
@@ -20,19 +20,19 @@ class CircularRevealClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    final center = centerAlignment?.alongSize(size) ??
+    final center =
+        centerAlignment?.alongSize(size) ??
         centerOffset ??
         Offset(size.width / 2, size.height / 2);
     final minRadius = this.minRadius ?? 0;
     final maxRadius = this.maxRadius ?? calcMaxRadius(size, center);
 
-    return Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: center,
-          radius: lerpDouble(minRadius, maxRadius, fraction)!,
-        ),
-      );
+    return Path()..addOval(
+      Rect.fromCircle(
+        center: center,
+        radius: lerpDouble(minRadius, maxRadius, fraction)!,
+      ),
+    );
   }
 
   @override

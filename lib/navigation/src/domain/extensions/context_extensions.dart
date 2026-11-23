@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
@@ -7,7 +8,8 @@ extension ContextExt on BuildContext {
   material.ThemeData get materialTheme => material.Theme.of(this);
 
   /// The standalone Cupertino theme for widgets below [SintApp].
-  cupertino.CupertinoThemeData get cupertinoTheme => cupertino.CupertinoTheme.of(this);
+  cupertino.CupertinoThemeData get cupertinoTheme =>
+      cupertino.CupertinoTheme.of(this);
 
   /// The standalone Material text styles.
   material.TextTheme get materialTextTheme => materialTheme.textTheme;
@@ -166,14 +168,10 @@ extension ContextExt on BuildContext {
   /// and less than 1200 return [tablet] value.
   /// if the device width is less than 300  return [watch] value.
   /// in other cases return [mobile] value.
-  T responsiveValue<T>({
-    T? watch,
-    T? mobile,
-    T? tablet,
-    T? desktop,
-  }) {
+  T responsiveValue<T>({T? watch, T? mobile, T? tablet, T? desktop}) {
     assert(
-        watch != null || mobile != null || tablet != null || desktop != null);
+      watch != null || mobile != null || tablet != null || desktop != null,
+    );
 
     var deviceWidth = mediaQuerySize.width;
     //big screen width can display smaller sizes
@@ -183,12 +181,7 @@ extension ContextExt on BuildContext {
       if (deviceWidth >= 300) mobile, //mobile is allowed
       watch, //watch is allowed
     ].whereType<T>();
-    final looseValues = [
-      watch,
-      mobile,
-      tablet,
-      desktop,
-    ].whereType<T>();
+    final looseValues = [watch, mobile, tablet, desktop].whereType<T>();
     return strictValues.firstOrNull ?? looseValues.first;
   }
 }

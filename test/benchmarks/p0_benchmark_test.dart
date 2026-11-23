@@ -4,6 +4,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
+
 import 'bench_harness.dart';
 
 class P0BenchController extends SintController {}
@@ -31,26 +32,31 @@ void main() {
         printBenchTable('RxInt synchronous callback delivery', [result]);
       });
 
-      test('ValueNotifier with $listeners listeners validates delivery',
-          () async {
-        final notifier = ValueNotifier<int>(0);
-        var updates = 0;
-        var delivered = 0;
-        for (var i = 0; i < listeners; i++) {
-          notifier.addListener(() {
-            delivered++;
-          });
-        }
-        final result = await runBench(
-            'state.value_notifier.sync.listeners=$listeners', () {
-          notifier.value = ++updates;
-        });
-        expect(notifier.value, result.totalOperations);
-        expect(delivered, updates * listeners);
-        notifier.dispose();
-        printBenchTable(
-            'ValueNotifier synchronous callback delivery', [result]);
-      });
+      test(
+        'ValueNotifier with $listeners listeners validates delivery',
+        () async {
+          final notifier = ValueNotifier<int>(0);
+          var updates = 0;
+          var delivered = 0;
+          for (var i = 0; i < listeners; i++) {
+            notifier.addListener(() {
+              delivered++;
+            });
+          }
+          final result = await runBench(
+            'state.value_notifier.sync.listeners=$listeners',
+            () {
+              notifier.value = ++updates;
+            },
+          );
+          expect(notifier.value, result.totalOperations);
+          expect(delivered, updates * listeners);
+          notifier.dispose();
+          printBenchTable('ValueNotifier synchronous callback delivery', [
+            result,
+          ]);
+        },
+      );
     }
 
     test('Controller.update validates callback count', () async {
@@ -60,7 +66,9 @@ void main() {
         delivered++;
       });
       final result = await runBench(
-          'state.controller.update.listeners=1', controller.update);
+        'state.controller.update.listeners=1',
+        controller.update,
+      );
       expect(delivered, result.totalOperations);
       controller.dispose();
       printBenchTable('Manual synchronous notification', [result]);
@@ -86,12 +94,14 @@ void main() {
   test('Hot typed/tagged lookup validates instance identity', () async {
     final expected = Sint.put(P0BenchController(), tag: 'p0');
     var matches = 0;
-    final result =
-        await runBench('di.find.hot.tagged.controller.registry=1', () {
-      if (identical(Sint.find<P0BenchController>(tag: 'p0'), expected)) {
-        matches++;
-      }
-    });
+    final result = await runBench(
+      'di.find.hot.tagged.controller.registry=1',
+      () {
+        if (identical(Sint.find<P0BenchController>(tag: 'p0'), expected)) {
+          matches++;
+        }
+      },
+    );
     expect(matches, result.totalOperations);
     printBenchTable('Hot dependency lookup', [result]);
   });

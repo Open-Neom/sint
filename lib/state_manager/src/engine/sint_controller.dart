@@ -36,7 +36,6 @@ import 'list_notifier.dart';
 /// }
 /// ```
 abstract class SintController extends ListNotifier with SintLifeCycleMixin {
-
   // ─── Workers & Scoped Reactive Resources ──────────────────
   // Reactive listeners and resources with automatic lifecycle management.
 

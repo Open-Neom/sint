@@ -1,8 +1,10 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/navigation/src/ui/widgets/sint_back_gesture_controller.dart';
+
 import 'directionality_drag_gesture_recognizer.dart';
+
 import 'package:sint/navigation/src/domain/extensions/context_extensions.dart';
 
 class SintBackGestureDetector<T> extends StatefulWidget {
@@ -29,7 +31,8 @@ class SintBackGestureDetector<T> extends StatefulWidget {
       SintBackGestureDetectorState<T>();
 }
 
-class SintBackGestureDetectorState<T> extends State<SintBackGestureDetector<T>> {
+class SintBackGestureDetectorState<T>
+    extends State<SintBackGestureDetector<T>> {
   SintBackGestureController<T>? _backGestureController;
 
   void _handleDragStart(DragStartDetails details) {
@@ -49,9 +52,11 @@ class SintBackGestureDetectorState<T> extends State<SintBackGestureDetector<T>> 
   void _handleDragEnd(DragEndDetails details) {
     assert(mounted);
     assert(_backGestureController != null);
-    _backGestureController!.dragEnd(_convertToLogical(
-      details.velocity.pixelsPerSecond.dx / context.size!.width,
-    ));
+    _backGestureController!.dragEnd(
+      _convertToLogical(
+        details.velocity.pixelsPerSecond.dx / context.size!.width,
+      ),
+    );
     _backGestureController = null;
   }
 
@@ -80,24 +85,26 @@ class SintBackGestureDetectorState<T> extends State<SintBackGestureDetector<T>> 
       behavior: HitTestBehavior.translucent,
       gestures: {
         DirectionalityDragGestureRecognizer:
-        GestureRecognizerFactoryWithHandlers<
-            DirectionalityDragGestureRecognizer>(
+            GestureRecognizerFactoryWithHandlers<
+              DirectionalityDragGestureRecognizer
+            >(
               () {
-            final directionality = Directionality.of(context);
-            return DirectionalityDragGestureRecognizer(
-              debugOwner: this,
-              isRTL: directionality == TextDirection.rtl,
-              isLTR: directionality == TextDirection.ltr,
-              hasbackGestureController: () => _backGestureController != null,
-              popGestureEnable: widget.popGestureEnable,
-            );
-          },
+                final directionality = Directionality.of(context);
+                return DirectionalityDragGestureRecognizer(
+                  debugOwner: this,
+                  isRTL: directionality == TextDirection.rtl,
+                  isLTR: directionality == TextDirection.ltr,
+                  hasbackGestureController: () =>
+                      _backGestureController != null,
+                  popGestureEnable: widget.popGestureEnable,
+                );
+              },
               (directionalityDragGesture) => directionalityDragGesture
-            ..onStart = _handleDragStart
-            ..onUpdate = _handleDragUpdate
-            ..onEnd = _handleDragEnd
-            ..onCancel = _handleDragCancel,
-        )
+                ..onStart = _handleDragStart
+                ..onUpdate = _handleDragUpdate
+                ..onEnd = _handleDragEnd
+                ..onCancel = _handleDragCancel,
+            ),
       },
     );
 

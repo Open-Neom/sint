@@ -176,19 +176,25 @@ void main() {
       expect(SintStatus<int>.empty().errorOrNull, isNull);
     });
 
-    test('flags isLoading/isSuccess/isError/isEmpty son mutuamente exclusivos', () {
-      final states = [
-        SintStatus<int>.loading(),
-        SintStatus<int>.success(1),
-        SintStatus<int>.error('x'),
-        SintStatus<int>.empty(),
-      ];
-      for (final s in states) {
-        final flags = [s.isLoading, s.isSuccess, s.isError, s.isEmpty];
-        expect(flags.where((f) => f).length, 1,
-            reason: 'Exactly one flag should be true for $s');
-      }
-    });
+    test(
+      'flags isLoading/isSuccess/isError/isEmpty son mutuamente exclusivos',
+      () {
+        final states = [
+          SintStatus<int>.loading(),
+          SintStatus<int>.success(1),
+          SintStatus<int>.error('x'),
+          SintStatus<int>.empty(),
+        ];
+        for (final s in states) {
+          final flags = [s.isLoading, s.isSuccess, s.isError, s.isEmpty];
+          expect(
+            flags.where((f) => f).length,
+            1,
+            reason: 'Exactly one flag should be true for $s',
+          );
+        }
+      },
+    );
   });
 
   group('SintStatus equality (Equality mixin)', () {
@@ -207,10 +213,7 @@ void main() {
     });
 
     test('dos LoadingStatus son iguales (sin estado interno)', () {
-      expect(
-        SintStatus<int>.loading(),
-        equals(SintStatus<int>.loading()),
-      );
+      expect(SintStatus<int>.loading(), equals(SintStatus<int>.loading()));
     });
 
     test('dos ErrorStatus con mismo error son iguales', () {

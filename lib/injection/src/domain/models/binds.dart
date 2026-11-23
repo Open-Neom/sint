@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/bind.dart';
 import 'package:sint/injection/src/ui/multi_binder.dart';
 
@@ -6,11 +6,8 @@ class Binds extends StatelessWidget {
   final List<Bind<dynamic>> binds;
   final Widget child;
 
-  Binds({
-    super.key,
-    required this.binds,
-    required this.child,
-  }) : assert(binds.isNotEmpty);
+  Binds({super.key, required this.binds, required this.child})
+    : assert(binds.isNotEmpty);
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +19,7 @@ class Binds extends StatelessWidget {
       }
     }
     if (fastPathAll) {
-      return MultiBinder(
-        binds: binds,
-        child: child,
-      );
+      return MultiBinder(binds: binds, child: child);
     }
 
     // Mixed path: group contiguous flattenable runs into single MultiBinder

@@ -11,27 +11,33 @@ void main() {
   tearDown(Sint.reset);
 
   group('Sint 1.6.1 - Pillar I: O(1) Route-Dispose DI Optimization', () {
-    test('delete by String key cleans up _typeSingl registry without generic type', () {
-      Sint.put<_SampleService>(_SampleService('test1'));
-      expect(Sint.isRegistered<_SampleService>(), isTrue);
+    test(
+      'delete by String key cleans up _typeSingl registry without generic type',
+      () {
+        Sint.put<_SampleService>(_SampleService('test1'));
+        expect(Sint.isRegistered<_SampleService>(), isTrue);
 
-      // Simulate RouterReportManager which invokes Sint.delete(key: element)
-      final key = '_SampleService';
-      final deleted = Sint.delete(key: key);
-      expect(deleted, isTrue);
-      expect(Sint.isRegistered<_SampleService>(), isFalse);
-      expect(() => Sint.find<_SampleService>(), throwsA(isA<String>()));
-    });
+        // Simulate RouterReportManager which invokes Sint.delete(key: element)
+        final key = '_SampleService';
+        final deleted = Sint.delete(key: key);
+        expect(deleted, isTrue);
+        expect(Sint.isRegistered<_SampleService>(), isFalse);
+        expect(() => Sint.find<_SampleService>(), throwsA(isA<String>()));
+      },
+    );
 
-    test('delete by String key with tag cleans up tagged _typeSingl registry', () {
-      Sint.put<_SampleService>(_SampleService('tagged'), tag: 'custom_tag');
-      expect(Sint.isRegistered<_SampleService>(tag: 'custom_tag'), isTrue);
+    test(
+      'delete by String key with tag cleans up tagged _typeSingl registry',
+      () {
+        Sint.put<_SampleService>(_SampleService('tagged'), tag: 'custom_tag');
+        expect(Sint.isRegistered<_SampleService>(tag: 'custom_tag'), isTrue);
 
-      final key = '_SampleServicecustom_tag';
-      final deleted = Sint.delete(key: key);
-      expect(deleted, isTrue);
-      expect(Sint.isRegistered<_SampleService>(tag: 'custom_tag'), isFalse);
-    });
+        final key = '_SampleServicecustom_tag';
+        final deleted = Sint.delete(key: key);
+        expect(deleted, isTrue);
+        expect(Sint.isRegistered<_SampleService>(tag: 'custom_tag'), isFalse);
+      },
+    );
   });
 
   group('Sint 1.6.1 - Pillar S: RxList Conditional assign and assignAll', () {
@@ -94,17 +100,20 @@ void main() {
       expect(notifications, 2);
     });
 
-    test('RxSet.removeAll does not notify when removing non-existent elements', () {
-      final set = <int>{1, 2, 3}.obs;
-      var notifications = 0;
-      set.addListener(() => notifications++);
+    test(
+      'RxSet.removeAll does not notify when removing non-existent elements',
+      () {
+        final set = <int>{1, 2, 3}.obs;
+        var notifications = 0;
+        set.addListener(() => notifications++);
 
-      set.removeAll([4, 5]);
-      expect(notifications, 0);
+        set.removeAll([4, 5]);
+        expect(notifications, 0);
 
-      set.removeAll([2]);
-      expect(notifications, 1);
-      expect(set, {1, 3});
-    });
+        set.removeAll([2]);
+        expect(notifications, 1);
+        expect(set, {1, 3});
+      },
+    );
   });
 }

@@ -3,10 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'route_template.dart';
 
 class PageSettings extends RouteSettings {
-  PageSettings(
-    this.uri, [
-    Object? arguments,
-  ]) : super(arguments: arguments);
+  PageSettings(this.uri, [Object? arguments]) : super(arguments: arguments);
 
   @override
   String get name => '$uri';
@@ -34,14 +31,8 @@ class PageSettings extends RouteSettings {
   @override
   String toString() => name;
 
-  PageSettings copy({
-    Uri? uri,
-    Object? arguments,
-  }) {
-    return PageSettings(
-      uri ?? this.uri,
-      arguments ?? this.arguments,
-    );
+  PageSettings copy({Uri? uri, Object? arguments}) {
+    return PageSettings(uri ?? this.uri, arguments ?? this.arguments);
   }
 
   @override
@@ -83,8 +74,10 @@ String resolveRoutePath(
   if (pathParams != null) {
     final cleanPathParams = <String, String>{
       for (final e in pathParams.entries)
-        e.key.replaceAll(_kRouteControlOrBidi, ''):
-            e.value.replaceAll(_kRouteControlOrBidi, ''),
+        e.key.replaceAll(_kRouteControlOrBidi, ''): e.value.replaceAll(
+          _kRouteControlOrBidi,
+          '',
+        ),
     };
     resolved = RouteTemplate.parse(resolved).resolve(cleanPathParams);
   }
@@ -93,16 +86,19 @@ String resolveRoutePath(
     final cleanQueryParams = <String, String>{
       for (final e in queryParams.entries)
         if (e.key.replaceAll(_kRouteControlOrBidi, '').isNotEmpty)
-          e.key.replaceAll(_kRouteControlOrBidi, ''):
-              e.value.replaceAll(_kRouteControlOrBidi, ''),
+          e.key.replaceAll(_kRouteControlOrBidi, ''): e.value.replaceAll(
+            _kRouteControlOrBidi,
+            '',
+          ),
     };
     if (cleanQueryParams.isEmpty) return resolved;
     final uri = Uri.tryParse(resolved);
     if (uri != null) {
-      resolved = uri.replace(queryParameters: {
-        ...uri.queryParameters,
-        ...cleanQueryParams,
-      }).toString();
+      resolved = uri
+          .replace(
+            queryParameters: {...uri.queryParameters, ...cleanQueryParams},
+          )
+          .toString();
     } else {
       final base = resolved.split('?').first.split('#').first;
       resolved = Uri(path: base, queryParameters: cleanQueryParams).toString();

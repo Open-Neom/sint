@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:ui';
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/navigation/src/domain/navigation_typedef.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_status.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_style.dart';
 import 'package:sint/navigation/src/domain/extensions/snackbar_extension.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_controller.dart';
 import 'package:sint/navigation/src/domain/enums/row_style.dart';
 
@@ -265,61 +268,65 @@ class SintSnackBarState extends State<SintSnackBar>
     }
   }
 
+  bool get _isStandalone =>
+      SintRoot.treeInitialized &&
+      SintRootState.controller.config.useStandaloneDesign;
+
   @override
   Widget build(BuildContext context) {
-    return Align(
-      heightFactor: 1.0,
-      child: Material(
-        color: widget.snackStyle == SnackStyle.floating
-            ? Colors.transparent
-            : widget.backgroundColor,
-        child: SafeArea(
-          minimum: widget.snackPosition == SnackPosition.bottom
-              ? EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom)
-              : EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-          bottom: widget.snackPosition == SnackPosition.bottom,
-          top: widget.snackPosition == SnackPosition.top,
-          left: false,
-          right: false,
-          child: Stack(
-            children: [
-              FutureBuilder<Size>(
-                future: _boxHeightCompleter.future,
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    if (widget.barBlur == 0) {
-                      return _emptyWidget;
-                    }
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                            sigmaX: widget.barBlur, sigmaY: widget.barBlur),
-                        child: Container(
-                          height: snapshot.data!.height,
-                          width: snapshot.data!.width,
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius:
-                                BorderRadius.circular(widget.borderRadius),
+    final color = widget.snackStyle == SnackStyle.floating
+        ? const Color(0x00000000)
+        : widget.backgroundColor;
+    final safeChild = SafeArea(
+      minimum: widget.snackPosition == SnackPosition.bottom
+          ? EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom)
+          : EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+      bottom: widget.snackPosition == SnackPosition.bottom,
+      top: widget.snackPosition == SnackPosition.top,
+      left: false,
+      right: false,
+      child: Stack(
+        children: [
+          if (widget.barBlur > 0)
+            FutureBuilder<Size>(
+              future: _boxHeightCompleter.future,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(widget.borderRadius),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: widget.barBlur,
+                        sigmaY: widget.barBlur,
+                      ),
+                      child: Container(
+                        height: snapshot.data!.height,
+                        width: snapshot.data!.width,
+                        decoration: BoxDecoration(
+                          color: const Color(0x00000000),
+                          borderRadius: BorderRadius.circular(
+                            widget.borderRadius,
                           ),
                         ),
                       ),
-                    );
-                  } else {
-                    return _emptyWidget;
-                  }
-                },
-              ),
-              if (widget.userInputForm != null)
-                _containerWithForm()
-              else
-                _containerWithoutForm()
-            ],
-          ),
-        ),
+                    ),
+                  );
+                }
+                return _emptyWidget;
+              },
+            ),
+          if (widget.userInputForm != null)
+            _containerWithForm()
+          else
+            _containerWithoutForm(),
+        ],
       ),
+    );
+    return Align(
+      heightFactor: 1.0,
+      child: _isStandalone
+          ? material.Material(color: color, child: safeChild)
+          : Material(color: color, child: safeChild),
     );
   }
 
@@ -339,19 +346,22 @@ class SintSnackBarState extends State<SintSnackBar>
     super.initState();
 
     assert(
-        widget.userInputForm != null ||
-            ((widget.message != null && widget.message!.isNotEmpty) ||
-                widget.messageText != null),
-        '''
-You need to either use message[String], or messageText[Widget] or define a userInputForm[Form] in SintSnackBar''');
+      widget.userInputForm != null ||
+          ((widget.message != null && widget.message!.isNotEmpty) ||
+              widget.messageText != null),
+      '''
+You need to either use message[String], or messageText[Widget] or define a userInputForm[Form] in SintSnackBar''',
+    );
 
     _isTitlePresent = (widget.title != null || widget.titleText != null);
     _messageTopMargin = _isTitlePresent ? 6.0 : widget.padding.top;
 
-    _configureLeftBarFuture();
+    if (widget.barBlur > 0 || widget.leftBarIndicatorColor != null) {
+      _configureLeftBarFuture();
+    }
     _configureProgressIndicatorAnimation();
 
-    if (widget.icon != null && widget.shouldIconPulse) {
+    if (widget.icon is Icon && widget.shouldIconPulse) {
       _configurePulseAnimation();
     }
 
@@ -381,18 +391,16 @@ You need to either use message[String], or messageText[Widget] or define a userI
   }
 
   void _configureLeftBarFuture() {
-    SintEngine.instance.addPostFrameCallback(
-      (_) {
-        if (!mounted || _boxHeightCompleter.isCompleted) return;
-        final keyContext = _backgroundBoxKey.currentContext;
-        if (keyContext != null) {
-          final box = keyContext.findRenderObject() as RenderBox?;
-          if (box != null && box.hasSize) {
-            _boxHeightCompleter.complete(box.size);
-          }
+    SintEngine.instance.addPostFrameCallback((_) {
+      if (!mounted || _boxHeightCompleter.isCompleted) return;
+      final keyContext = _backgroundBoxKey.currentContext;
+      if (keyContext != null) {
+        final box = keyContext.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize) {
+          _boxHeightCompleter.complete(box.size);
         }
-      },
-    );
+      }
+    });
   }
 
   void _configureProgressIndicatorAnimation() {
@@ -401,13 +409,17 @@ You need to either use message[String], or messageText[Widget] or define a userI
       widget.progressIndicatorController!.addListener(_updateProgress);
 
       _progressAnimation = CurvedAnimation(
-          curve: Curves.linear, parent: widget.progressIndicatorController!);
+        curve: Curves.linear,
+        parent: widget.progressIndicatorController!,
+      );
     }
   }
 
   void _configurePulseAnimation() {
-    _fadeController =
-        AnimationController(vsync: this, duration: _pulseAnimationDuration);
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: _pulseAnimationDuration,
+    );
     _fadeAnimation = Tween(
       begin: _initialOpacity,
       end: _finalOpacity,
@@ -437,15 +449,16 @@ You need to either use message[String], or messageText[Widget] or define a userI
         boxShadow: widget.boxShadows,
         borderRadius: BorderRadius.circular(widget.borderRadius),
         border: widget.borderColor != null
-            ? Border.all(
-                color: widget.borderColor!,
-                width: widget.borderWidth!,
-              )
+            ? Border.all(color: widget.borderColor!, width: widget.borderWidth!)
             : null,
       ),
       child: Padding(
         padding: const EdgeInsets.only(
-            left: 8.0, right: 8.0, bottom: 8.0, top: 16.0),
+          left: 8.0,
+          right: 8.0,
+          bottom: 8.0,
+          top: 16.0,
+        ),
         child: FocusScope(
           node: _focusNode,
           autofocus: true,
@@ -481,11 +494,19 @@ You need to either use message[String], or messageText[Widget] or define a userI
         mainAxisSize: MainAxisSize.min,
         children: [
           widget.showProgressIndicator
-              ? LinearProgressIndicator(
-                  value: _progressAnimation?.value,
-                  backgroundColor: widget.progressIndicatorBackgroundColor,
-                  valueColor: widget.progressIndicatorValueColor,
-                )
+              ? (_isStandalone
+                    ? material.LinearProgressIndicator(
+                        value: _progressAnimation?.value,
+                        backgroundColor:
+                            widget.progressIndicatorBackgroundColor,
+                        valueColor: widget.progressIndicatorValueColor,
+                      )
+                    : LinearProgressIndicator(
+                        value: _progressAnimation?.value,
+                        backgroundColor:
+                            widget.progressIndicatorBackgroundColor,
+                        valueColor: widget.progressIndicatorValueColor,
+                      ))
               : _emptyWidget,
           Row(
             mainAxisSize: MainAxisSize.max,
@@ -493,8 +514,9 @@ You need to either use message[String], or messageText[Widget] or define a userI
               _buildLeftBarIndicator(),
               if (_rowStyle == RowStyle.icon || _rowStyle == RowStyle.all)
                 ConstrainedBox(
-                  constraints:
-                      BoxConstraints.tightFor(width: 42.0 + iconPadding),
+                  constraints: BoxConstraints.tightFor(
+                    width: 42.0 + iconPadding,
+                  ),
                   child: _getIcon(),
                 ),
               Expanded(
@@ -510,7 +532,8 @@ You need to either use message[String], or messageText[Widget] or define a userI
                           left: left,
                           right: right,
                         ),
-                        child: widget.titleText ??
+                        child:
+                            widget.titleText ??
                             Text(
                               widget.title ?? "",
                               style: const TextStyle(
@@ -529,11 +552,14 @@ You need to either use message[String], or messageText[Widget] or define a userI
                         right: right,
                         bottom: widget.padding.bottom,
                       ),
-                      child: widget.messageText ??
+                      child:
+                          widget.messageText ??
                           Text(
                             widget.message ?? "",
                             style: const TextStyle(
-                                fontSize: 14.0, color: Colors.white),
+                              fontSize: 14.0,
+                              color: Colors.white,
+                            ),
                           ),
                     ),
                   ],
@@ -553,10 +579,7 @@ You need to either use message[String], or messageText[Widget] or define a userI
 
   Widget? _getIcon() {
     if (widget.icon != null && widget.icon is Icon && widget.shouldIconPulse) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: widget.icon,
-      );
+      return FadeTransition(opacity: _fadeAnimation, child: widget.icon);
     } else if (widget.icon != null) {
       return widget.icon;
     } else {

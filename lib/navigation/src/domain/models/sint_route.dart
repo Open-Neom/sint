@@ -54,8 +54,7 @@ class SintRoute<TArgs, TResult> {
   Uri uri({
     Map<String, String>? pathParams,
     Map<String, String>? queryParams,
-  }) =>
-      Uri.parse(location(pathParams: pathParams, queryParams: queryParams));
+  }) => Uri.parse(location(pathParams: pathParams, queryParams: queryParams));
 
   /// Creates a [SintPage] configured for this typed route.
   SintPage<TResult> page({
@@ -80,30 +79,29 @@ class SintRoute<TArgs, TResult> {
     bool preventDuplicates = true,
     PreventDuplicateHandlingMode preventDuplicateHandlingMode =
         PreventDuplicateHandlingMode.reorderRoutes,
-  }) =>
-      SintPage<TResult>(
-        name: path,
-        page: page,
-        title: title,
-        binding: binding,
-        bindings: bindings,
-        binds: binds,
-        middlewares: middlewares,
-        children: children,
-        transition: transition,
-        customTransition: customTransition,
-        curve: curve,
-        alignment: alignment,
-        transitionDuration: transitionDuration,
-        reverseTransitionDuration: reverseTransitionDuration,
-        opaque: opaque,
-        maintainState: maintainState,
-        popGesture: popGesture,
-        participatesInRootNavigator: participatesInRootNavigator,
-        fullscreenDialog: fullscreenDialog,
-        preventDuplicates: preventDuplicates,
-        preventDuplicateHandlingMode: preventDuplicateHandlingMode,
-      );
+  }) => SintPage<TResult>(
+    name: path,
+    page: page,
+    title: title,
+    binding: binding,
+    bindings: bindings,
+    binds: binds,
+    middlewares: middlewares,
+    children: children,
+    transition: transition,
+    customTransition: customTransition,
+    curve: curve,
+    alignment: alignment,
+    transitionDuration: transitionDuration,
+    reverseTransitionDuration: reverseTransitionDuration,
+    opaque: opaque,
+    maintainState: maintainState,
+    popGesture: popGesture,
+    participatesInRootNavigator: participatesInRootNavigator,
+    fullscreenDialog: fullscreenDialog,
+    preventDuplicates: preventDuplicates,
+    preventDuplicateHandlingMode: preventDuplicateHandlingMode,
+  );
 
   /// Pushes this route onto the navigation stack with typed [arguments].
   Future<TResult?>? to({
@@ -112,15 +110,14 @@ class SintRoute<TArgs, TResult> {
     bool preventDuplicates = true,
     Map<String, String>? pathParams,
     Map<String, String>? queryParams,
-  }) =>
-      Sint.toNamed<TResult>(
-        path,
-        arguments: arguments,
-        id: id,
-        preventDuplicates: preventDuplicates,
-        pathParams: pathParams,
-        queryParams: queryParams,
-      );
+  }) => Sint.toNamed<TResult>(
+    path,
+    arguments: arguments,
+    id: id,
+    preventDuplicates: preventDuplicates,
+    pathParams: pathParams,
+    queryParams: queryParams,
+  );
 
   /// Replaces the active route with this typed route.
   Future<TResult?>? off({
@@ -128,14 +125,13 @@ class SintRoute<TArgs, TResult> {
     String? id,
     Map<String, String>? pathParams,
     Map<String, String>? queryParams,
-  }) =>
-      Sint.offNamed<TResult>(
-        path,
-        arguments: arguments,
-        id: id,
-        pathParams: pathParams,
-        queryParams: queryParams,
-      );
+  }) => Sint.offNamed<TResult>(
+    path,
+    arguments: arguments,
+    id: id,
+    pathParams: pathParams,
+    queryParams: queryParams,
+  );
 
   /// Pops the current route (returning [result] to its caller) and pushes this
   /// typed route.
@@ -145,15 +141,14 @@ class SintRoute<TArgs, TResult> {
     String? id,
     Map<String, String>? pathParams,
     Map<String, String>? queryParams,
-  }) =>
-      Sint.offAndToNamed<TResult>(
-        path,
-        arguments: arguments,
-        result: result,
-        id: id,
-        pathParams: pathParams,
-        queryParams: queryParams,
-      );
+  }) => Sint.offAndToNamed<TResult>(
+    path,
+    arguments: arguments,
+    result: result,
+    id: id,
+    pathParams: pathParams,
+    queryParams: queryParams,
+  );
 
   /// Clears previous routes (optionally until [predicate]) and pushes this typed route.
   Future<TResult?>? offAll({

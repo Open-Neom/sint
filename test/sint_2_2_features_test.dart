@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -109,8 +110,8 @@ class _DynamicBindingMiddleware extends SintMiddleware {
 class _ParentRouteBinding extends Binding {
   @override
   List<Bind> dependencies() => [
-        Bind.put<_RealGreetController>(_RealGreetController()),
-      ];
+    Bind.put<_RealGreetController>(_RealGreetController()),
+  ];
 }
 
 class _CountingValueNotifier extends ValueNotifier<int> {
@@ -134,24 +135,43 @@ class _CountingValueNotifier extends ValueNotifier<int> {
 
 // 50 distinct dummy types to verify MultiBinder O(1) widget-tree depth:
 class _S01 {}
+
 class _S02 {}
+
 class _S03 {}
+
 class _S04 {}
+
 class _S05 {}
+
 class _S06 {}
+
 class _S07 {}
+
 class _S08 {}
+
 class _S09 {}
+
 class _S10 {}
+
 class _S11 {}
+
 class _S12 {}
+
 class _S13 {}
+
 class _S14 {}
+
 class _S15 {}
+
 class _S16 {}
+
 class _S17 {}
+
 class _S18 {}
+
 class _S19 {}
+
 class _S20 {}
 
 void main() {
@@ -207,8 +227,10 @@ void main() {
                   child: Builder(
                     builder: (inner) {
                       leafContext = inner;
-                      final resolved =
-                          Bind.of<_TransientController>(inner, rebuild: true);
+                      final resolved = Bind.of<_TransientController>(
+                        inner,
+                        rebuild: true,
+                      );
                       return Text('count:${resolved.count.value}');
                     },
                   ),
@@ -304,9 +326,7 @@ void main() {
               SintPage(
                 name: '/merged',
                 binding: _ParentRouteBinding(),
-                binds: [
-                  Bind.put<_TransientController>(_TransientController()),
-                ],
+                binds: [Bind.put<_TransientController>(_TransientController())],
                 page: () => Builder(
                   builder: (context) {
                     final draft = Bind.of<_LocalDraft>(context);
@@ -329,40 +349,37 @@ void main() {
       },
     );
 
-    test(
-      'Sint.putContractAsync, SintOverride.contract, and scope-aware findAll/findAt work together',
-      () async {
-        final asyncImpl =
-            await Sint.putContractAsync<_GreetService, _RealGreetController>(
-          () async => _RealGreetController(),
-          tag: 'primary',
-        );
-        expect(Sint.find<_GreetService>(), same(asyncImpl));
-        expect(Sint.find<_RealGreetController>(), same(asyncImpl));
+    test('Sint.putContractAsync, SintOverride.contract, and scope-aware findAll/findAt work together', () async {
+      final asyncImpl =
+          await Sint.putContractAsync<_GreetService, _RealGreetController>(
+            () async => _RealGreetController(),
+            tag: 'primary',
+          );
+      expect(Sint.find<_GreetService>(), same(asyncImpl));
+      expect(Sint.find<_RealGreetController>(), same(asyncImpl));
 
-        late _FakeGreetController scopedInstance;
-        final result = SintScope.run<String>(
-          overrides: [
-            SintOverride.contract<_GreetService, _FakeGreetController>(
-              () => scopedInstance = _FakeGreetController('scoped'),
-              tag: 'primary',
-              isDefault: true,
-            ),
-          ],
-          body: () {
-            expect(Sint.find<_GreetService>().greet(), 'scoped');
-            expect(Sint.find<_FakeGreetController>(), same(scopedInstance));
-            expect(Sint.findAll<_GreetService>().single.greet(), 'scoped');
-            expect(Sint.findAt<_GreetService>(0).greet(), 'scoped');
-            return Sint.find<_GreetService>().greet();
-          },
-        );
+      late _FakeGreetController scopedInstance;
+      final result = SintScope.run<String>(
+        overrides: [
+          SintOverride.contract<_GreetService, _FakeGreetController>(
+            () => scopedInstance = _FakeGreetController('scoped'),
+            tag: 'primary',
+            isDefault: true,
+          ),
+        ],
+        body: () {
+          expect(Sint.find<_GreetService>().greet(), 'scoped');
+          expect(Sint.find<_FakeGreetController>(), same(scopedInstance));
+          expect(Sint.findAll<_GreetService>().single.greet(), 'scoped');
+          expect(Sint.findAt<_GreetService>(0).greet(), 'scoped');
+          return Sint.find<_GreetService>().greet();
+        },
+      );
 
-        expect(result, 'scoped');
-        expect(scopedInstance.closes, 1);
-        expect(Sint.find<_GreetService>().greet(), 'real');
-      },
-    );
+      expect(result, 'scoped');
+      expect(scopedInstance.closes, 1);
+      expect(Sint.find<_GreetService>().greet(), 'real');
+    });
 
     testWidgets(
       'SintView, Obx, and SintBuilder resolve side-by-side sibling SintScopes and unscoped siblings cleanly',
@@ -388,16 +405,20 @@ void main() {
               children: [
                 SintScope(
                   overrides: [
-                    SintOverride.contractValue<_GreetService,
-                        _FakeGreetController>(_FakeGreetController('left')),
+                    SintOverride.contractValue<
+                      _GreetService,
+                      _FakeGreetController
+                    >(_FakeGreetController('left')),
                     SintOverride.value<_TransientController>(leftCounter),
                   ],
                   child: Column(
                     children: [
                       const _GreetSintView(),
-                      Obx(() => Text(
-                            'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
-                          )),
+                      Obx(
+                        () => Text(
+                          'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
+                        ),
+                      ),
                       SintBuilder<_TransientController>(
                         builder: (c) => Text('b:${c.count.value}'),
                       ),
@@ -406,16 +427,20 @@ void main() {
                 ),
                 SintScope(
                   overrides: [
-                    SintOverride.contractValue<_GreetService,
-                        _FakeGreetController>(_FakeGreetController('right')),
+                    SintOverride.contractValue<
+                      _GreetService,
+                      _FakeGreetController
+                    >(_FakeGreetController('right')),
                     SintOverride.value<_TransientController>(rightCounter),
                   ],
                   child: Column(
                     children: [
                       const _GreetSintView(),
-                      Obx(() => Text(
-                            'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
-                          )),
+                      Obx(
+                        () => Text(
+                          'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
+                        ),
+                      ),
                       SintBuilder<_TransientController>(
                         builder: (c) => Text('b:${c.count.value}'),
                       ),
@@ -425,9 +450,11 @@ void main() {
                 Column(
                   children: [
                     const _GreetSintView(),
-                    Obx(() => Text(
-                          'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
-                        )),
+                    Obx(
+                      () => Text(
+                        'obx:${Sint.find<_GreetService>().greet()}:${Sint.find<_TransientController>().count.value}',
+                      ),
+                    ),
                     SintBuilder<_TransientController>(
                       builder: (c) => Text('b:${c.count.value}'),
                     ),
@@ -443,7 +470,10 @@ void main() {
         expect(find.text('view:real'), findsOneWidget);
         expect(find.text('obx:left:10'), findsOneWidget);
         expect(find.text('obx:right:20'), findsOneWidget);
-        expect(find.text('obx:real:${globalCounter.count.value}'), findsOneWidget);
+        expect(
+          find.text('obx:real:${globalCounter.count.value}'),
+          findsOneWidget,
+        );
         expect(find.text('b:10'), findsOneWidget);
         expect(find.text('b:20'), findsOneWidget);
         expect(find.text('b:0'), findsOneWidget);
@@ -553,9 +583,7 @@ void main() {
             sintPages: [
               SintPage(
                 name: '/dyn',
-                middlewares: [
-                  _DynamicBindingMiddleware(),
-                ],
+                middlewares: [_DynamicBindingMiddleware()],
                 page: () => Text('dyn:${Sint.find<_LocalDraft>().id}'),
               ),
             ],
@@ -567,82 +595,87 @@ void main() {
     );
   });
 
-  group('SINT 2.2.0 — Pillar T + S: Reactive .tr & Zero-Reassemble updateLocale', () {
-    testWidgets(
-      'Obx(.tr) and Sint.computed(.tr) react in O(1) on Sint.updateLocale with lazy bundles and zero performReassemble crash',
-      (tester) async {
-        Sint.addTranslations({
-          'en': {'hello': 'Hello'},
-          'es': {'hello': 'Hola'},
-        });
-        Sint.registerLazyTranslations(
-          'fr',
-          () async => {'hello': 'Bonjour'},
-        );
-        Sint.locale = const Locale('en');
+  group(
+    'SINT 2.2.0 — Pillar T + S: Reactive .tr & Zero-Reassemble updateLocale',
+    () {
+      testWidgets(
+        'Obx(.tr) and Sint.computed(.tr) react in O(1) on Sint.updateLocale with lazy bundles and zero performReassemble crash',
+        (tester) async {
+          Sint.addTranslations({
+            'en': {'hello': 'Hello'},
+            'es': {'hello': 'Hola'},
+          });
+          Sint.registerLazyTranslations('fr', () async => {'hello': 'Bonjour'});
+          Sint.locale = const Locale('en');
 
-        final upperGreeting = Sint.computed(() => 'hello'.tr.toUpperCase());
-        var obxBuilds = 0;
+          final upperGreeting = Sint.computed(() => 'hello'.tr.toUpperCase());
+          var obxBuilds = 0;
 
-        await tester.pumpWidget(
-          SintMaterialApp(
-            locale: const Locale('en'),
-            initialRoute: '/',
-            sintPages: [
-              SintPage(
-                name: '/',
-                page: () => Column(
-                  children: [
-                    Obx(() {
-                      obxBuilds++;
-                      return Text('tr:${'hello'.tr}|${Sint.locale?.languageCode}');
-                    }),
-                    Obx(() => Text('comp:${upperGreeting.value}')),
-                  ],
+          await tester.pumpWidget(
+            SintMaterialApp(
+              locale: const Locale('en'),
+              initialRoute: '/',
+              sintPages: [
+                SintPage(
+                  name: '/',
+                  page: () => Column(
+                    children: [
+                      Obx(() {
+                        obxBuilds++;
+                        return Text(
+                          'tr:${'hello'.tr}|${Sint.locale?.languageCode}',
+                        );
+                      }),
+                      Obx(() => Text('comp:${upperGreeting.value}')),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-        await tester.pumpAndSettle();
+              ],
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('tr:Hello|en'), findsOneWidget);
-        expect(find.text('comp:HELLO'), findsOneWidget);
-        final buildsBefore = obxBuilds;
+          expect(find.text('tr:Hello|en'), findsOneWidget);
+          expect(find.text('comp:HELLO'), findsOneWidget);
+          final buildsBefore = obxBuilds;
 
-        // Switch to 'es' via Sint.updateLocale — no schedulerPhase crash!
-        await Sint.updateLocale(const Locale('es'));
-        await tester.pumpAndSettle();
+          // Switch to 'es' via Sint.updateLocale — no schedulerPhase crash!
+          await Sint.updateLocale(const Locale('es'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('tr:Hola|es'), findsOneWidget);
-        expect(find.text('comp:HOLA'), findsOneWidget);
-        expect(obxBuilds, greaterThan(buildsBefore));
+          expect(find.text('tr:Hola|es'), findsOneWidget);
+          expect(find.text('comp:HOLA'), findsOneWidget);
+          expect(obxBuilds, greaterThan(buildsBefore));
 
-        // Switch to lazy 'fr' bundle
-        await Sint.updateLocale(const Locale('fr'));
-        await tester.pumpAndSettle();
+          // Switch to lazy 'fr' bundle
+          await Sint.updateLocale(const Locale('fr'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('tr:Bonjour|fr'), findsOneWidget);
-        expect(find.text('comp:BONJOUR'), findsOneWidget);
+          expect(find.text('tr:Bonjour|fr'), findsOneWidget);
+          expect(find.text('comp:BONJOUR'), findsOneWidget);
 
-        upperGreeting.dispose();
-      },
-    );
+          upperGreeting.dispose();
+        },
+      );
 
-    test('Headless Sint.updateLocale works in pure unit tests without SintRoot', () async {
-      Sint.addTranslations({
-        'en': {'k': 'One'},
-        'es': {'k': 'Uno'},
-      });
-      Sint.locale = const Locale('en');
-      final derived = Sint.computed(() => 'k'.tr);
-      expect(derived.value, 'One');
+      test(
+        'Headless Sint.updateLocale works in pure unit tests without SintRoot',
+        () async {
+          Sint.addTranslations({
+            'en': {'k': 'One'},
+            'es': {'k': 'Uno'},
+          });
+          Sint.locale = const Locale('en');
+          final derived = Sint.computed(() => 'k'.tr);
+          expect(derived.value, 'One');
 
-      await Sint.updateLocale(const Locale('es'));
-      expect(derived.value, 'Uno');
-      derived.dispose();
-    });
-  });
+          await Sint.updateLocale(const Locale('es'));
+          expect(derived.value, 'Uno');
+          derived.dispose();
+        },
+      );
+    },
+  );
 
   group('SINT 2.2.0 — Pillar S: Single-Slot Obx, Incremental Externals & Collections', () {
     testWidgets(
@@ -658,11 +691,13 @@ void main() {
             child: Column(
               children: [
                 // Starts on 1-signal fast slot (mode == 0), then promotes to 2-signal (mode == 1)
-                Obx(() => Text(
-                      mode.value == 0
-                          ? 'single:${mode.value}'
-                          : 'multi:${mode.value + extra.value}',
-                    )),
+                Obx(
+                  () => Text(
+                    mode.value == 0
+                        ? 'single:${mode.value}'
+                        : 'multi:${mode.value + extra.value}',
+                  ),
+                ),
                 // Reads both an Rx and an external ValueNotifier
                 Obx(() => Text('ext:${mode.value + externalNotifier.rxValue}')),
               ],
@@ -698,70 +733,64 @@ void main() {
       },
     );
 
-    test(
-      'Rx.trigger notifies synchronous ListNotifier engine (ever / Obx / Computed) even when value is unchanged',
-      () {
-        final pulse = 2.obs;
-        var syncHits = 0;
-        final sub = pulse.addListener(() => syncHits++);
+    test('Rx.trigger notifies synchronous ListNotifier engine (ever / Obx / Computed) even when value is unchanged', () {
+      final pulse = 2.obs;
+      var syncHits = 0;
+      final sub = pulse.addListener(() => syncHits++);
 
-        pulse.value = 2; // unchanged after initial -> firstRebuild consumes 1st
-        final baseline = syncHits;
+      pulse.value = 2; // unchanged after initial -> firstRebuild consumes 1st
+      final baseline = syncHits;
 
-        pulse.value = 2; // identical value -> 0 notifications
-        expect(syncHits, baseline);
+      pulse.value = 2; // identical value -> 0 notifications
+      expect(syncHits, baseline);
 
-        pulse.trigger(2); // explicit trigger with identical value -> notifies!
-        expect(syncHits, baseline + 1);
+      pulse.trigger(2); // explicit trigger with identical value -> notifies!
+      expect(syncHits, baseline + 1);
 
-        sub();
-      },
-    );
+      sub();
+    });
 
-    test(
-      'RxList.insert/removeAt emit 1 notification (not O(N)) and RxMap/RxSet.assignAll short-circuit on equal contents',
-      () {
-        final list = <int>[1, 2, 3, 4, 5].obs;
-        var listHits = 0;
-        list.addListener(() => listHits++);
+    test('RxList.insert/removeAt emit 1 notification (not O(N)) and RxMap/RxSet.assignAll short-circuit on equal contents', () {
+      final list = <int>[1, 2, 3, 4, 5].obs;
+      var listHits = 0;
+      list.addListener(() => listHits++);
 
-        list.insert(0, 0);
-        expect(listHits, 1);
-        expect(list, [0, 1, 2, 3, 4, 5]);
+      list.insert(0, 0);
+      expect(listHits, 1);
+      expect(list, [0, 1, 2, 3, 4, 5]);
 
-        final removed = list.removeAt(0);
-        expect(removed, 0);
-        expect(listHits, 2);
+      final removed = list.removeAt(0);
+      expect(removed, 0);
+      expect(listHits, 2);
 
-        list.addAll(const <int>[]);
-        expect(listHits, 2); // empty addAll emits 0 spurious notifications
+      list.addAll(const <int>[]);
+      expect(listHits, 2); // empty addAll emits 0 spurious notifications
 
-        final map = <String, int>{'a': 1, 'b': 2}.obs;
-        var mapHits = 0;
-        map.addListener(() => mapHits++);
+      final map = <String, int>{'a': 1, 'b': 2}.obs;
+      var mapHits = 0;
+      map.addListener(() => mapHits++);
 
-        map.assignAll({'a': 1, 'b': 2}); // equal content -> 0 notifications
-        expect(mapHits, 0);
-        expect(map.containsKey('a'), isTrue);
+      map.assignAll({'a': 1, 'b': 2}); // equal content -> 0 notifications
+      expect(mapHits, 0);
+      expect(map.containsKey('a'), isTrue);
 
-        map.assign('x', 99);
-        expect(mapHits, 1);
-        expect(map, {'x': 99});
-        map.assign('x', 99); // equal single entry -> 0 notifications
-        expect(mapHits, 1);
+      map.assign('x', 99);
+      expect(mapHits, 1);
+      expect(map, {'x': 99});
+      map.assign('x', 99); // equal single entry -> 0 notifications
+      expect(mapHits, 1);
 
-        final set = <String>{'k1', 'k2'}.obs;
-        var setHits = 0;
-        set.addListener(() => setHits++);
+      final set = <String>{'k1', 'k2'}.obs;
+      var setHits = 0;
+      set.addListener(() => setHits++);
 
-        set.assignAll({'k2', 'k1'}); // equal content -> 0 notifications
-        expect(setHits, 0);
+      set.assignAll({'k2', 'k1'}); // equal content -> 0 notifications
+      expect(setHits, 0);
 
-        set.assign('only');
-        expect(setHits, 1);
-        set.assign('only'); // equal single item -> 0 notifications
-        expect(setHits, 1);
-      },
-    );
+      set.assign('only');
+      expect(setHits, 1);
+      set.assign('only'); // equal single item -> 0 notifications
+      expect(setHits, 1);
+    });
   });
 }

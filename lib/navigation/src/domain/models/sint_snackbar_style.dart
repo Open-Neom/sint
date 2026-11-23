@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_style.dart';
 

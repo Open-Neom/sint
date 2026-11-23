@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' show DialogRoute, ModalBottomSheetRoute;
+import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/navigation/src/router/sint_page_route.dart';
 import 'package:sint/navigation/src/ui/bottomsheet/modal_bottomsheet_route.dart';
@@ -29,11 +32,14 @@ class RouteData {
       isDialog:
           route is SintDialogRoute ||
           route is RawDialogRoute ||
-          route is DialogRoute,
+          route is DialogRoute ||
+          route is material.DialogRoute ||
+          route is cupertino.CupertinoDialogRoute,
       isBottomSheet:
           route is SintModalBottomSheetRoute ||
           route is ModalBottomSheetRoute ||
-          route is material.ModalBottomSheetRoute,
+          route is material.ModalBottomSheetRoute ||
+          route is cupertino.CupertinoModalPopupRoute,
     );
   }
 }

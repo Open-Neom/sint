@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart'; // Official entry point [cite: 23]
@@ -19,7 +20,9 @@ Future<int> valueNotifierBenchmark() {
   value.addListener(() {
     if (times == value.value) {
       timer.stop();
-      printValue("""$times updates | [VALUE_NOTIFIER] time: ${timer.elapsedMicroseconds}us""");
+      printValue(
+        """$times updates | [VALUE_NOTIFIER] time: ${timer.elapsedMicroseconds}us""",
+      );
       c.complete(timer.elapsedMicroseconds);
     }
   });
@@ -41,7 +44,9 @@ Future<int> sintRxBenchmark() {
   value.listen((v) {
     if (times == v) {
       timer.stop();
-      printValue("""$times updates | [SINT_RX] time: ${timer.elapsedMicroseconds}us""");
+      printValue(
+        """$times updates | [SINT_RX] time: ${timer.elapsedMicroseconds}us""",
+      );
       c.complete(timer.elapsedMicroseconds);
     }
   });
@@ -61,7 +66,9 @@ Future<int> dartStreamBenchmark() {
   controller.stream.listen((v) {
     if (times == v) {
       timer.stop();
-      printValue("""$times updates | [DART_STREAM] time: ${timer.elapsedMicroseconds}us""");
+      printValue(
+        """$times updates | [DART_STREAM] time: ${timer.elapsedMicroseconds}us""",
+      );
       c.complete(timer.elapsedMicroseconds);
       controller.close();
     }

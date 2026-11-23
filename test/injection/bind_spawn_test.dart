@@ -125,15 +125,18 @@ void main() {
   });
 
   group('double-registration', () {
-    test('Sint.put twice for same type RETURNS the existing one (no replace)', () {
-      // _insert short-circuits when the key exists and is not dirty.
-      final first = Sint.put<_Counter>(_Counter());
-      first.inc();
-      final second = Sint.put<_Counter>(_Counter());
-      // Sint sees the existing factory and returns it.
-      expect(identical(first, second), isTrue);
-      expect(second.n, 1);
-    });
+    test(
+      'Sint.put twice for same type RETURNS the existing one (no replace)',
+      () {
+        // _insert short-circuits when the key exists and is not dirty.
+        final first = Sint.put<_Counter>(_Counter());
+        first.inc();
+        final second = Sint.put<_Counter>(_Counter());
+        // Sint sees the existing factory and returns it.
+        expect(identical(first, second), isTrue);
+        expect(second.n, 1);
+      },
+    );
 
     test('replace<T> truly swaps the instance', () {
       final first = _Counter()..inc();

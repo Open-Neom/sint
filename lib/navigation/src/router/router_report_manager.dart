@@ -1,4 +1,5 @@
 import 'dart:collection';
+
 import 'package:sint/injection/src/domain/models/route_dependency.dart';
 
 import '../../../sint.dart';
@@ -89,8 +90,10 @@ class RouterReportManager<T> {
   }
 
   void _releaseDependencies(
-      Iterable<RouteDependency>? dependencies, Iterable<Function>? created,
-      {bool markOnly = false}) {
+    Iterable<RouteDependency>? dependencies,
+    Iterable<Function>? created, {
+    bool markOnly = false,
+  }) {
     Object? firstError;
     StackTrace? firstStack;
     if (created != null) {

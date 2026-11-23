@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 typedef SintPageBuilder = Widget Function();
 typedef SintRouteAwarePageBuilder<T> = Widget Function([PageRoute<T>? route]);
@@ -6,5 +6,7 @@ typedef SintRouteAwarePageBuilder<T> = Widget Function([PageRoute<T>? route]);
 @Deprecated('Use SintPageBuilder instead. Will be removed in SINT 3.0.0.')
 typedef GetPageBuilder = SintPageBuilder;
 
-@Deprecated('Use SintRouteAwarePageBuilder instead. Will be removed in SINT 3.0.0.')
+@Deprecated(
+  'Use SintRouteAwarePageBuilder instead. Will be removed in SINT 3.0.0.',
+)
 typedef GetRouteAwarePageBuilder<T> = SintRouteAwarePageBuilder<T>;

@@ -1,4 +1,4 @@
-# SINT (State · Injection · Navigation · Translation) — v2.2.1 LLM Reference
+# SINT (State · Injection · Navigation · Translation) — v2.2.2 LLM Reference
 
 > High-performance, Clean Architecture micro-framework for Flutter (`>=3.47.0`, Dart `^3.13.0`).
 > Repository: https://github.com/Open-Neom/sint

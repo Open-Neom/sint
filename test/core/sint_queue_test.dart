@@ -30,8 +30,9 @@ void main() {
         throwsException,
       );
 
-      final second =
-          await queue.add(() => 'ok').timeout(const Duration(seconds: 2));
+      final second = await queue
+          .add(() => 'ok')
+          .timeout(const Duration(seconds: 2));
       expect(second, 'ok');
     });
 

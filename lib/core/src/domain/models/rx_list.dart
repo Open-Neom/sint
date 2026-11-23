@@ -8,7 +8,7 @@ import 'package:sint/state_manager/src/sint_listenable.dart';
 class RxList<E> extends SintListenable<List<E>>
     with ListMixin<E>, RxObjectMixin<List<E>> {
   RxList([List<E> initial = const []])
-      : super(initial.isEmpty ? <E>[] : List<E>.of(initial));
+    : super(initial.isEmpty ? <E>[] : List<E>.of(initial));
 
   RxList._(super.initial);
 
@@ -31,8 +31,11 @@ class RxList<E> extends SintListenable<List<E>>
   }
 
   /// Generates a list of values.
-  factory RxList.generate(int length, E Function(int index) generator,
-      {bool growable = true}) {
+  factory RxList.generate(
+    int length,
+    E Function(int index) generator, {
+    bool growable = true,
+  }) {
     return RxList._(List.generate(length, generator, growable: growable));
   }
 
@@ -187,8 +190,8 @@ class RxList<E> extends SintListenable<List<E>>
     final target = peek;
     final source =
         (identical(this, newContents) || identical(target, newContents))
-            ? List<E>.of(target)
-            : newContents;
+        ? List<E>.of(target)
+        : newContents;
     final prevLength = target.length;
     target.replaceRange(start, end, source);
     if (end > start || target.length != prevLength) {

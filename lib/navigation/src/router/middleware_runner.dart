@@ -1,5 +1,4 @@
-
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/navigation/src/domain/interfaces/sint_middleware.dart';
 import 'package:sint/navigation/src/domain/typedefs/navigation_typedefs.dart';
 import 'package:sint/navigation/src/router/index.dart';
@@ -40,11 +39,9 @@ class MiddlewareRunner {
   /// original declaration order is preserved (Dart's List.sort is NOT
   /// stable). Shared by [MiddlewareRunner] and SintDelegate.runMiddleware
   /// so both middleware pipelines agree on ordering (1.5.0).
-  static List<SintMiddleware> sortByPriority(
-      List<SintMiddleware> middlewares) {
+  static List<SintMiddleware> sortByPriority(List<SintMiddleware> middlewares) {
     final indexed = <MapEntry<int, SintMiddleware>>[
-      for (var i = 0; i < middlewares.length; i++)
-        MapEntry(i, middlewares[i]),
+      for (var i = 0; i < middlewares.length; i++) MapEntry(i, middlewares[i]),
     ];
     indexed.sort((a, b) {
       final cmp = a.value.priority.compareTo(b.value.priority);

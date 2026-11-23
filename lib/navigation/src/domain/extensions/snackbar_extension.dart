@@ -1,5 +1,4 @@
-
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/src/domain/interfaces/sint_interface.dart';
 import 'package:sint/core/src/sint_engine.dart';
 import 'package:sint/navigation/src/domain/enums/snackbar_position.dart';
@@ -7,13 +6,18 @@ import 'package:sint/navigation/src/domain/enums/snackbar_style.dart';
 import 'package:sint/navigation/src/domain/extensions/navigation_extensions.dart';
 import 'package:sint/navigation/src/domain/models/sint_snackbar_style.dart';
 import 'package:sint/navigation/src/domain/navigation_typedef.dart';
+import 'package:sint/navigation/src/ui/sint_root.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar.dart';
 import 'package:sint/navigation/src/ui/snackbar/snackbar_controller.dart';
 
 extension SnackbarExtension on SintInterface {
+  static const Color _defaultTextColor = Color(0xFF000000);
+  static const Color _defaultBackgroundColor = Color(0x339E9E9E);
+  static const Color _transparentColor = Color(0x00000000);
 
   /// Resolves the global [SintSnackBarStyle] from [ConfigData], or null.
-  SintSnackBarStyle? get _globalStyle => rootController.config.snackBarStyle;
+  SintSnackBarStyle? get _globalStyle =>
+      SintRoot.treeInitialized ? rootController.config.snackBarStyle : null;
 
   SnackbarController rawSnackbar({
     String? title,
@@ -66,7 +70,8 @@ extension SnackbarExtension on SintInterface {
       margin: margin ?? s?.margin ?? const EdgeInsets.all(0.0),
       duration: duration ?? s?.duration ?? const Duration(seconds: 3),
       barBlur: barBlur ?? s?.barBlur ?? 0.0,
-      backgroundColor: backgroundColor ?? s?.backgroundColor ?? const Color(0xFF303030),
+      backgroundColor:
+          backgroundColor ?? s?.backgroundColor ?? const Color(0xFF303030),
       icon: icon ?? s?.icon,
       shouldIconPulse: shouldIconPulse ?? s?.shouldIconPulse ?? true,
       maxWidth: maxWidth ?? s?.maxWidth,
@@ -80,14 +85,24 @@ extension SnackbarExtension on SintInterface {
       onTap: onTap,
       isDismissible: isDismissible ?? s?.isDismissible ?? true,
       dismissDirection: dismissDirection,
-      showProgressIndicator: showProgressIndicator ?? s?.showProgressIndicator ?? false,
+      showProgressIndicator:
+          showProgressIndicator ?? s?.showProgressIndicator ?? false,
       progressIndicatorController: progressIndicatorController,
       progressIndicatorBackgroundColor: progressIndicatorBackgroundColor,
       progressIndicatorValueColor: progressIndicatorValueColor,
       snackStyle: snackStyle ?? s?.snackStyle ?? SnackStyle.floating,
-      forwardAnimationCurve: forwardAnimationCurve ?? s?.forwardAnimationCurve ?? Curves.easeOutCirc,
-      reverseAnimationCurve: reverseAnimationCurve ?? s?.reverseAnimationCurve ?? Curves.easeOutCirc,
-      animationDuration: animationDuration ?? s?.animationDuration ?? const Duration(seconds: 1),
+      forwardAnimationCurve:
+          forwardAnimationCurve ??
+          s?.forwardAnimationCurve ??
+          Curves.easeOutCirc,
+      reverseAnimationCurve:
+          reverseAnimationCurve ??
+          s?.reverseAnimationCurve ??
+          Curves.easeOutCirc,
+      animationDuration:
+          animationDuration ??
+          s?.animationDuration ??
+          const Duration(seconds: 1),
       overlayBlur: overlayBlur ?? s?.overlayBlur ?? 0.0,
       overlayColor: overlayColor ?? s?.overlayColor,
       userInputForm: userInputForm,
@@ -112,102 +127,120 @@ extension SnackbarExtension on SintInterface {
   }
 
   SnackbarController snackbar(
-      String title,
-      String message, {
-        Color? colorText,
-        Duration? duration,
+    String title,
+    String message, {
+    Color? colorText,
+    Duration? duration,
 
-        /// with instantInit = false you can put snackbar on initState
-        bool instantInit = true,
-        SnackPosition? snackPosition,
-        Widget? titleText,
-        Widget? messageText,
-        Widget? icon,
-        bool? shouldIconPulse,
-        double? maxWidth,
-        EdgeInsets? margin,
-        EdgeInsets? padding,
-        double? borderRadius,
-        Color? borderColor,
-        double? borderWidth,
-        Color? backgroundColor,
-        Color? leftBarIndicatorColor,
-        List<BoxShadow>? boxShadows,
-        Gradient? backgroundGradient,
-        Widget? mainButton,
-        OnTap? onTap,
-        OnHover? onHover,
-        bool? isDismissible,
-        bool? showProgressIndicator,
-        DismissDirection? dismissDirection,
-        AnimationController? progressIndicatorController,
-        Color? progressIndicatorBackgroundColor,
-        Animation<Color>? progressIndicatorValueColor,
-        SnackStyle? snackStyle,
-        Curve? forwardAnimationCurve,
-        Curve? reverseAnimationCurve,
-        Duration? animationDuration,
-        double? barBlur,
-        double? overlayBlur,
-        SnackbarStatusCallback? snackbarStatus,
-        Color? overlayColor,
-        Form? userInputForm,
-      }) {
+    /// with instantInit = false you can put snackbar on initState
+    bool instantInit = true,
+    SnackPosition? snackPosition,
+    Widget? titleText,
+    Widget? messageText,
+    Widget? icon,
+    bool? shouldIconPulse,
+    double? maxWidth,
+    EdgeInsets? margin,
+    EdgeInsets? padding,
+    double? borderRadius,
+    Color? borderColor,
+    double? borderWidth,
+    Color? backgroundColor,
+    Color? leftBarIndicatorColor,
+    List<BoxShadow>? boxShadows,
+    Gradient? backgroundGradient,
+    Widget? mainButton,
+    OnTap? onTap,
+    OnHover? onHover,
+    bool? isDismissible,
+    bool? showProgressIndicator,
+    DismissDirection? dismissDirection,
+    AnimationController? progressIndicatorController,
+    Color? progressIndicatorBackgroundColor,
+    Animation<Color>? progressIndicatorValueColor,
+    SnackStyle? snackStyle,
+    Curve? forwardAnimationCurve,
+    Curve? reverseAnimationCurve,
+    Duration? animationDuration,
+    double? barBlur,
+    double? overlayBlur,
+    SnackbarStatusCallback? snackbarStatus,
+    Color? overlayColor,
+    Form? userInputForm,
+  }) {
     // Cascade: call-site param > global SintSnackBarStyle > hardcoded default
     final s = _globalStyle;
-    final resolvedColorText = colorText ?? s?.colorText ?? iconColor ?? Colors.black;
+    final resolvedColorText =
+        colorText ??
+        s?.colorText ??
+        (SintRoot.treeInitialized ? iconColor : null) ??
+        _defaultTextColor;
 
     final getSnackBar = SintSnackBar(
-        snackbarStatus: snackbarStatus,
-        titleText: titleText ??
-            Text(
-              title,
-              style: TextStyle(
-                color: resolvedColorText,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
+      snackbarStatus: snackbarStatus,
+      titleText:
+          titleText ??
+          Text(
+            title,
+            style: TextStyle(
+              color: resolvedColorText,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
             ),
-        messageText: messageText ??
-            Text(
-              message,
-              style: TextStyle(
-                color: resolvedColorText,
-                fontWeight: FontWeight.w300,
-                fontSize: 14,
-              ),
+          ),
+      messageText:
+          messageText ??
+          Text(
+            message,
+            style: TextStyle(
+              color: resolvedColorText,
+              fontWeight: FontWeight.w300,
+              fontSize: 14,
             ),
-        snackPosition: snackPosition ?? s?.snackPosition ?? SnackPosition.top,
-        borderRadius: borderRadius ?? s?.borderRadius ?? 15,
-        margin: margin ?? s?.margin ?? const EdgeInsets.symmetric(horizontal: 10),
-        duration: duration ?? s?.duration ?? const Duration(seconds: 3),
-        barBlur: barBlur ?? s?.barBlur ?? 7.0,
-        backgroundColor: backgroundColor ?? s?.backgroundColor ?? Colors.grey.withValues(alpha: 0.2),
-        icon: icon ?? s?.icon,
-        shouldIconPulse: shouldIconPulse ?? s?.shouldIconPulse ?? true,
-        maxWidth: maxWidth ?? s?.maxWidth,
-        padding: padding ?? s?.padding ?? const EdgeInsets.all(16),
-        borderColor: borderColor ?? s?.borderColor,
-        borderWidth: borderWidth ?? s?.borderWidth,
-        leftBarIndicatorColor: leftBarIndicatorColor ?? s?.leftBarIndicatorColor,
-        boxShadows: boxShadows ?? s?.boxShadows,
-        backgroundGradient: backgroundGradient ?? s?.backgroundGradient,
-        mainButton: mainButton ?? s?.mainButton,
-        onTap: onTap,
-        onHover: onHover,
-        isDismissible: isDismissible ?? s?.isDismissible ?? true,
-        dismissDirection: dismissDirection,
-        showProgressIndicator: showProgressIndicator ?? s?.showProgressIndicator ?? false,
-        progressIndicatorController: progressIndicatorController,
-        progressIndicatorBackgroundColor: progressIndicatorBackgroundColor,
-        progressIndicatorValueColor: progressIndicatorValueColor,
-        snackStyle: snackStyle ?? s?.snackStyle ?? SnackStyle.floating,
-        forwardAnimationCurve: forwardAnimationCurve ?? s?.forwardAnimationCurve ?? Curves.easeOutCirc,
-        reverseAnimationCurve: reverseAnimationCurve ?? s?.reverseAnimationCurve ?? Curves.easeOutCirc,
-        animationDuration: animationDuration ?? s?.animationDuration ?? const Duration(seconds: 1),
-        overlayBlur: overlayBlur ?? s?.overlayBlur ?? 0.0,
-        overlayColor: overlayColor ?? s?.overlayColor ?? Colors.transparent,
-        userInputForm: userInputForm);
+          ),
+      snackPosition: snackPosition ?? s?.snackPosition ?? SnackPosition.top,
+      borderRadius: borderRadius ?? s?.borderRadius ?? 15,
+      margin: margin ?? s?.margin ?? const EdgeInsets.symmetric(horizontal: 10),
+      duration: duration ?? s?.duration ?? const Duration(seconds: 3),
+      barBlur: barBlur ?? s?.barBlur ?? 7.0,
+      backgroundColor:
+          backgroundColor ?? s?.backgroundColor ?? _defaultBackgroundColor,
+      icon: icon ?? s?.icon,
+      shouldIconPulse: shouldIconPulse ?? s?.shouldIconPulse ?? true,
+      maxWidth: maxWidth ?? s?.maxWidth,
+      padding: padding ?? s?.padding ?? const EdgeInsets.all(16),
+      borderColor: borderColor ?? s?.borderColor,
+      borderWidth: borderWidth ?? s?.borderWidth ?? 1.0,
+      leftBarIndicatorColor: leftBarIndicatorColor ?? s?.leftBarIndicatorColor,
+      boxShadows: boxShadows ?? s?.boxShadows,
+      backgroundGradient: backgroundGradient ?? s?.backgroundGradient,
+      mainButton: mainButton ?? s?.mainButton,
+      onTap: onTap,
+      onHover: onHover,
+      isDismissible: isDismissible ?? s?.isDismissible ?? true,
+      dismissDirection: dismissDirection,
+      showProgressIndicator:
+          showProgressIndicator ?? s?.showProgressIndicator ?? false,
+      progressIndicatorController: progressIndicatorController,
+      progressIndicatorBackgroundColor: progressIndicatorBackgroundColor,
+      progressIndicatorValueColor: progressIndicatorValueColor,
+      snackStyle: snackStyle ?? s?.snackStyle ?? SnackStyle.floating,
+      forwardAnimationCurve:
+          forwardAnimationCurve ??
+          s?.forwardAnimationCurve ??
+          Curves.easeOutCirc,
+      reverseAnimationCurve:
+          reverseAnimationCurve ??
+          s?.reverseAnimationCurve ??
+          Curves.easeOutCirc,
+      animationDuration:
+          animationDuration ??
+          s?.animationDuration ??
+          const Duration(seconds: 1),
+      overlayBlur: overlayBlur ?? s?.overlayBlur ?? 0.0,
+      overlayColor: overlayColor ?? s?.overlayColor ?? _transparentColor,
+      userInputForm: userInputForm,
+    );
 
     final controller = SnackbarController(getSnackBar);
 

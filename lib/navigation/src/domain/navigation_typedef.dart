@@ -4,6 +4,8 @@ import 'package:sint/navigation/src/ui/snackbar/snackbar.dart';
 
 typedef OnTap = void Function(SintSnackBar snack);
 typedef OnHover = void Function(
-    SintSnackBar snack, SnackHoverState snackHoverState);
+  SintSnackBar snack,
+  SnackHoverState snackHoverState,
+);
 
 typedef SnackbarStatusCallback = void Function(SnackbarStatus? status);

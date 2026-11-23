@@ -29,8 +29,11 @@ void main() {
       final baseline = fired;
       rx.value = 0; // identical
       await Future<void>.delayed(Duration.zero);
-      expect(fired, baseline,
-          reason: 'Setting same value should be a no-op for listeners');
+      expect(
+        fired,
+        baseline,
+        reason: 'Setting same value should be a no-op for listeners',
+      );
     });
 
     test('refresh() forces a notification even with same value', () async {
@@ -46,8 +49,11 @@ void main() {
       // ignore: invalid_use_of_protected_member
       rx.refresh();
       await Future<void>.delayed(Duration.zero);
-      expect(fired, baseline + 1,
-          reason: 'Explicit refresh must publish the unchanged value');
+      expect(
+        fired,
+        baseline + 1,
+        reason: 'Explicit refresh must publish the unchanged value',
+      );
     });
 
     test('trigger() with a different value pushes through stream', () async {
@@ -93,8 +99,11 @@ void main() {
       // variable — it is the same Rx, with a different value.
       final a = RxInt(10);
       final b = a + 5;
-      expect(identical(a, b), isTrue,
-          reason: 'sint quirk: + returns the same RxInt instance');
+      expect(
+        identical(a, b),
+        isTrue,
+        reason: 'sint quirk: + returns the same RxInt instance',
+      );
       expect(a.value, 15);
       final c = a - 3;
       expect(c.value, 12);

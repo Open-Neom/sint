@@ -50,10 +50,9 @@ class BindingsBuilder<T> extends Bindings {
     InstanceBuilderCallback<T> builder, {
     String? tag,
     bool permanent = false,
-  }) =>
-      BindingsBuilder<T>(
-        () => Sint.put<T>(builder(), tag: tag, permanent: permanent),
-      );
+  }) => BindingsBuilder<T>(
+    () => Sint.put<T>(builder(), tag: tag, permanent: permanent),
+  );
 
   final void Function() builder;
 

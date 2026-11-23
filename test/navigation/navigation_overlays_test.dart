@@ -2,6 +2,7 @@
 // High-Fidelity Infrastructure for Open Neom
 // ignore_for_file: avoid_print
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sint/sint.dart';
@@ -11,11 +12,11 @@ void main() {
   tearDown(() => Sint.reset());
 
   testWidgets('Benchmark: Overlay Queue Management', (tester) async {
-    print('\n${'='*50}');
+    print('\n${'=' * 50}');
     print('SINT PILLAR N: OVERLAY MANAGEMENT LESSON');
     print('Philosophy: "Do the right things"');
     print('Infrastructure: Open Neom Standard');
-    print('='*50 + '\n');
+    print('=' * 50 + '\n');
 
     // STEP 0: Settle initial environment
     await tester.pumpWidget(
@@ -62,19 +63,23 @@ void main() {
 
     await tester.pump();
     expect(Sint.isDialogOpen, true);
-    print('Success: Dialog presented successfully using Pillar N global state.');
+    print(
+      'Success: Dialog presented successfully using Pillar N global state.',
+    );
 
     // STEP 4: Final Cleanup
     Sint.back();
     await tester.pumpAndSettle();
 
-    print('\n${'-'*30}');
+    print('\n${'-' * 30}');
     print('BENCHMARK RESULTS (Open Neom Standard)');
-    print('Queue Logic Speed: ${(timer.elapsedMicroseconds / 50).toStringAsFixed(4)}us/op');
+    print(
+      'Queue Logic Speed: ${(timer.elapsedMicroseconds / 50).toStringAsFixed(4)}us/op',
+    );
     print('Integrity: Overlays and Dialogs verified.');
-    print('-'*30);
+    print('-' * 30);
 
     print('\n[FINAL VALIDATION] Success: Pillar N infrastructure is stable.');
-    print('='*50 + '\n');
+    print('=' * 50 + '\n');
   });
 }

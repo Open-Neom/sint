@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/navigation/src/router/sint_page_route.dart';
@@ -26,7 +27,8 @@ extension BottomSheetExtension on SintInterface {
     Curve? curve,
   }) {
     final fallbackNav = resolveNavigator(rootNavigator: useRootNavigator);
-    final source = overlayContext ??
+    final source =
+        overlayContext ??
         context ??
         fallbackNav?.overlay?.context ??
         fallbackNav?.context;
@@ -44,9 +46,8 @@ extension BottomSheetExtension on SintInterface {
             from: src,
             to: navigator.context,
           ),
-          barrierLabel: material.MaterialLocalizations.of(
-            src,
-          ).modalBarrierDismissLabel,
+          barrierLabel: material.MaterialLocalizations.of(src)
+              .modalBarrierDismissLabel,
           backgroundColor: backgroundColor ?? Colors.transparent,
           elevation: elevation,
           shape: shape,
@@ -80,9 +81,8 @@ extension BottomSheetExtension on SintInterface {
         theme: Theme.of(themeCtx),
         isScrollControlled: isScrollControlled,
 
-        barrierLabel: MaterialLocalizations.of(
-          themeCtx,
-        ).modalBarrierDismissLabel,
+        barrierLabel: MaterialLocalizations.of(themeCtx)
+            .modalBarrierDismissLabel,
 
         backgroundColor: backgroundColor ?? Colors.transparent,
         elevation: elevation,

@@ -1,5 +1,6 @@
 import 'package:cupertino_ui/cupertino_ui.dart' as cupertino;
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart' as legacy;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,51 +28,49 @@ class _Counter extends SintController {
 void main() {
   tearDown(Sint.reset);
 
-  testWidgets(
-    'auto selects one host and the matching typed theme',
-    (tester) async {
-      final materialTheme = material.ThemeData(
-        primaryColor: const Color(0xff123456),
-      );
-      const cupertinoTheme = cupertino.CupertinoThemeData(
-        primaryColor: Color(0xff654321),
-      );
-      late BuildContext pageContext;
-      await tester.pumpWidget(
-        SintApp(
-          materialTheme: materialTheme,
-          cupertinoTheme: cupertinoTheme,
-          sintPages: _pages(
-            Builder(
-              builder: (context) {
-                pageContext = context;
-                return const SizedBox();
-              },
-            ),
+  testWidgets('auto selects one host and the matching typed theme', (
+    tester,
+  ) async {
+    final materialTheme = material.ThemeData(
+      primaryColor: const Color(0xff123456),
+    );
+    const cupertinoTheme = cupertino.CupertinoThemeData(
+      primaryColor: Color(0xff654321),
+    );
+    late BuildContext pageContext;
+    await tester.pumpWidget(
+      SintApp(
+        materialTheme: materialTheme,
+        cupertinoTheme: cupertinoTheme,
+        sintPages: _pages(
+          Builder(
+            builder: (context) {
+              pageContext = context;
+              return const SizedBox();
+            },
           ),
         ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SintRoot), findsOneWidget);
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      expect(find.byType(cupertino.CupertinoApp), findsOneWidget);
+      expect(
+        pageContext.cupertinoTheme.primaryColor,
+        cupertinoTheme.primaryColor,
       );
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      expect(find.byType(SintRoot), findsOneWidget);
-      if (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.macOS) {
-        expect(find.byType(cupertino.CupertinoApp), findsOneWidget);
-        expect(
-          pageContext.cupertinoTheme.primaryColor,
-          cupertinoTheme.primaryColor,
-        );
-      } else {
-        expect(find.byType(material.MaterialApp), findsOneWidget);
-        expect(
-          pageContext.materialTheme.primaryColor,
-          materialTheme.primaryColor,
-        );
-      }
-      await tester.pumpWidget(const SizedBox());
-    },
-    variant: TargetPlatformVariant.all(),
-  );
+    } else {
+      expect(find.byType(material.MaterialApp), findsOneWidget);
+      expect(
+        pageContext.materialTheme.primaryColor,
+        materialTheme.primaryColor,
+      );
+    }
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.all());
 
   testWidgets(
     'imperative theme changes preserve reactive controller and root',

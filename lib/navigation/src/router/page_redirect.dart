@@ -1,5 +1,4 @@
-
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../../sint.dart';
 
@@ -18,7 +17,10 @@ class PageRedirect {
 
   // redirect all pages that needes redirecting
   SintPageRoute<T> getPageToRoute<T>(
-      SintPage rou, SintPage? unk, BuildContext context) {
+    SintPage rou,
+    SintPage? unk,
+    BuildContext context,
+  ) {
     var redirectDepth = 0;
     while (needRecheck(context)) {
       // Redirect-cycle guard (1.5.0): chained redirects beyond this
@@ -51,7 +53,8 @@ class PageRedirect {
       bindings: r.bindings,
       binding: r.binding,
       binds: r.binds,
-      transitionDuration: r.transitionDuration ?? Sint.defaultTransitionDuration,
+      transitionDuration:
+          r.transitionDuration ?? Sint.defaultTransitionDuration,
       reverseTransitionDuration:
           r.reverseTransitionDuration ?? Sint.defaultTransitionDuration,
       // performIncomeAnimation: _r.performIncomeAnimation,

@@ -1,5 +1,5 @@
 //TODO: Use copyWith, and remove mutate variables
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class Routing {
   String current;

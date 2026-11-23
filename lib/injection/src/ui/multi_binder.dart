@@ -18,11 +18,7 @@ import 'package:sint/state_manager/sint_state_manager.dart';
 /// lookup, granular per-`Type` rebuilds, `Bind.create`, `onInit`/`onClose`, and
 /// generation-safe `autoRemove` disposal.
 class MultiBinder extends InheritedModel<Type> {
-  const MultiBinder({
-    super.key,
-    required this.binds,
-    required super.child,
-  });
+  const MultiBinder({super.key, required this.binds, required super.child});
 
   final List<Bind<dynamic>> binds;
 
@@ -36,8 +32,7 @@ class MultiBinder extends InheritedModel<Type> {
   bool updateShouldNotifyDependent(
     covariant MultiBinder oldWidget,
     Set<Type> dependencies,
-  ) =>
-      false;
+  ) => false;
 
   /// Finds the nearest ancestor `(MultiBindElement, MultiBindSlot)` matching
   /// [type] (including contract/alias types) and optional [tag].
@@ -46,8 +41,9 @@ class MultiBinder extends InheritedModel<Type> {
     Type type, {
     String? tag,
   }) {
-    var element = context.getElementForInheritedWidgetOfExactType<MultiBinder>()
-        as MultiBindElement?;
+    var element =
+        context.getElementForInheritedWidgetOfExactType<MultiBinder>()
+            as MultiBindElement?;
     while (element != null) {
       final slot = element.lookupSlot(type, tag: tag);
       if (slot != null) {
@@ -110,9 +106,9 @@ class MultiBindElement extends InheritedModelElement<Type> {
 
   @override
   void mount(Element? parent, Object? newSlot) {
-    _parentMultiBinder = parent
-        ?.getElementForInheritedWidgetOfExactType<MultiBinder>()
-        as MultiBindElement?;
+    _parentMultiBinder =
+        parent?.getElementForInheritedWidgetOfExactType<MultiBinder>()
+            as MultiBindElement?;
     if (InjectionExtension.hasActiveScopes) {
       final scopes = parent == null
           ? const <SintScopeContainer>[]
@@ -132,8 +128,9 @@ class MultiBindElement extends InheritedModelElement<Type> {
     super.activate();
     var ancestor = false;
     visitAncestorElements((el) {
-      final found = el.getElementForInheritedWidgetOfExactType<MultiBinder>()
-          as MultiBindElement?;
+      final found =
+          el.getElementForInheritedWidgetOfExactType<MultiBinder>()
+              as MultiBindElement?;
       _parentMultiBinder = identical(found, this) ? null : found;
       ancestor = true;
       return false;
@@ -302,10 +299,7 @@ class MultiBindSlot<T> {
   VoidCallback? _remove;
   Object? _filter;
 
-  void mountSlot(
-    BuildContext context,
-    void Function(Type type) onDirty,
-  ) {
+  void mountSlot(BuildContext context, void Function(Type type) onDirty) {
     _bind.onMountCallback?.call();
 
     var isRegistered = Sint.isRegistered<T>(tag: _bind.tag);
@@ -318,8 +312,8 @@ class MultiBindSlot<T> {
         _isCreator = Sint.isPrepared<T>(tag: _bind.tag);
         _controllerBuilder = () => Sint.find<T>(tag: _bind.tag);
       } else {
-        _controllerBuilder =
-            () => (_bind.createSource?.call(context) ?? _bind.init!.call());
+        _controllerBuilder = () =>
+            (_bind.createSource?.call(context) ?? _bind.init!.call());
         _isCreator = true;
         Sint.lazyPut<T>(_controllerBuilder!, tag: _bind.tag);
       }

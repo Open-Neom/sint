@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:sint/core/sint_core.dart';
@@ -25,18 +26,21 @@ extension DialogExtension on SintInterface {
   }) {
     final standalone =
         SintRoot.treeInitialized && rootController.config.useStandaloneDesign;
-    final navState = navigatorKey?.currentState ??
+    final navState =
+        navigatorKey?.currentState ??
         (SintRoot.treeInitialized && id != null
             ? Sint.nestedKey(id)?.navigatorKey.currentState
             : null) ??
         resolveNavigator(id: id, rootNavigator: true);
     final ctx = context ?? navState?.overlay?.context ?? navState?.context;
-    final themes = ctx != null ? InheritedTheme.capture(from: ctx, to: null) : null;
+    final themes = ctx != null
+        ? InheritedTheme.capture(from: ctx, to: null)
+        : null;
     final barrierLabel = ctx == null
         ? 'Dismiss'
         : standalone
-            ? material.MaterialLocalizations.of(ctx).modalBarrierDismissLabel
-            : MaterialLocalizations.of(ctx).modalBarrierDismissLabel;
+        ? material.MaterialLocalizations.of(ctx).modalBarrierDismissLabel
+        : MaterialLocalizations.of(ctx).modalBarrierDismissLabel;
     return generalDialog<T>(
       pageBuilder: (buildContext, animation, secondaryAnimation) {
         Widget dialog = themes != null ? themes.wrap(widget) : widget;
@@ -77,15 +81,17 @@ extension DialogExtension on SintInterface {
     String? id,
   }) {
     assert(!barrierDismissible || barrierLabel != null);
-    final key = navigatorKey ??
+    final key =
+        navigatorKey ??
         (SintRoot.treeInitialized ? Sint.nestedKey(id)?.navigatorKey : null);
-    final nav = key?.currentState ??
+    final nav =
+        key?.currentState ??
         (overlayContext != null
-            ? Navigator.of(
-                overlayContext!,
+            ? Navigator.of(overlayContext!, rootNavigator: true)
+            : resolveNavigator(
+                id: id,
                 rootNavigator: true,
-              )
-            : resolveNavigator(id: id, rootNavigator: true)!); //overlay context will always return the root navigator
+              )!); //overlay context will always return the root navigator
     return nav.push<T>(
       SintDialogRoute<T>(
         pageBuilder: pageBuilder,
@@ -272,11 +278,7 @@ extension DialogExtension on SintInterface {
                     height: 34.0,
                     child: actionsWrap,
                   )
-                : ButtonTheme(
-                    minWidth: 78.0,
-                    height: 34.0,
-                    child: actionsWrap,
-                  ),
+                : ButtonTheme(minWidth: 78.0, height: 34.0, child: actionsWrap),
           ],
         );
 

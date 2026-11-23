@@ -14,11 +14,8 @@ class RouterOutlet<TDelegate extends RouterDelegate<T>, T extends Object>
   final TDelegate routerDelegate;
   final Widget Function(BuildContext context) builder;
 
-  RouterOutlet.builder({
-    super.key,
-    TDelegate? delegate,
-    required this.builder,
-  }) : routerDelegate = delegate ?? Sint.delegate<TDelegate, T>()!;
+  RouterOutlet.builder({super.key, TDelegate? delegate, required this.builder})
+    : routerDelegate = delegate ?? Sint.delegate<TDelegate, T>()!;
 
   RouterOutlet({
     Key? key,
@@ -28,21 +25,21 @@ class RouterOutlet<TDelegate extends RouterDelegate<T>, T extends Object>
       BuildContext context,
       TDelegate delegate,
       Iterable<SintPage>? page,
-    ) pageBuilder,
+    )
+    pageBuilder,
   }) : this.builder(
-          builder: (context) {
-            final rDelegate = (delegate ?? context.delegate) as TDelegate;
-            final currentConfig = rDelegate.currentConfiguration;
-            var picked =
-                currentConfig == null ? null : pickPages(currentConfig);
-            if (picked?.isEmpty ?? true) {
-              picked = null;
-            }
-            return pageBuilder(context, rDelegate, picked);
-          },
-          delegate: delegate,
-          key: key,
-        );
+         builder: (context) {
+           final rDelegate = (delegate ?? context.delegate) as TDelegate;
+           final currentConfig = rDelegate.currentConfiguration;
+           var picked = currentConfig == null ? null : pickPages(currentConfig);
+           if (picked?.isEmpty ?? true) {
+             picked = null;
+           }
+           return pageBuilder(context, rDelegate, picked);
+         },
+         delegate: delegate,
+         key: key,
+       );
 
   @override
   RouterOutletState<TDelegate, T> createState() =>
@@ -74,8 +71,8 @@ class RouterOutletState<TDelegate extends RouterDelegate<T>, T extends Object>
     super.didChangeDependencies();
     _bindDelegate();
     final router = Router.maybeOf(context);
-    _backButtonDispatcher =
-        router?.backButtonDispatcher?.createChildBackButtonDispatcher();
+    _backButtonDispatcher = router?.backButtonDispatcher
+        ?.createChildBackButtonDispatcher();
   }
 
   @override
@@ -110,28 +107,25 @@ class SintRouterOutlet extends RouterOutlet<SintDelegate, RouteDecoder> {
     SintDelegate? delegate,
     String? restorationScopeId,
   }) : this.pickPages(
-          restorationScopeId: restorationScopeId,
-          pickPages: (config) {
-            Iterable<SintPage<dynamic>> ret;
-            if (anchorRoute == null) {
-              final length = Uri.parse(initialRoute).pathSegments.length;
-              return config.currentTreeBranch
-                  .skip(length)
-                  .take(length)
-                  .toList();
-            }
-            ret = config.currentTreeBranch.pickAfterRoute(anchorRoute);
-            if (filterPages != null) {
-              ret = filterPages(ret);
-            }
-            return ret;
-          },
-          key: key,
-          emptyPage: (delegate) =>
-              delegate.matchRoute(initialRoute).route ?? delegate.notFoundRoute,
-          navigatorKey: Sint.nestedKey(anchorRoute)?.navigatorKey,
-          delegate: delegate,
-        );
+         restorationScopeId: restorationScopeId,
+         pickPages: (config) {
+           Iterable<SintPage<dynamic>> ret;
+           if (anchorRoute == null) {
+             final length = Uri.parse(initialRoute).pathSegments.length;
+             return config.currentTreeBranch.skip(length).take(length).toList();
+           }
+           ret = config.currentTreeBranch.pickAfterRoute(anchorRoute);
+           if (filterPages != null) {
+             ret = filterPages(ret);
+           }
+           return ret;
+         },
+         key: key,
+         emptyPage: (delegate) =>
+             delegate.matchRoute(initialRoute).route ?? delegate.notFoundRoute,
+         navigatorKey: Sint.nestedKey(anchorRoute)?.navigatorKey,
+         delegate: delegate,
+       );
 
   SintRouterOutlet.pickPages({
     super.key,
@@ -143,35 +137,37 @@ class SintRouterOutlet extends RouterOutlet<SintDelegate, RouteDecoder> {
     GlobalKey<NavigatorState>? navigatorKey,
     SintDelegate? delegate,
   }) : super(
-          pageBuilder: (context, rDelegate, pages) {
-            final pageRes = <SintPage?>[
-              ...?pages,
-              if (pages == null || pages.isEmpty) emptyPage?.call(rDelegate),
-            ].whereType<SintPage>();
+         pageBuilder: (context, rDelegate, pages) {
+           final pageRes = <SintPage?>[
+             ...?pages,
+             if (pages == null || pages.isEmpty) emptyPage?.call(rDelegate),
+           ].whereType<SintPage>();
 
-            if (pageRes.isNotEmpty) {
-              return InheritedNavigator(
-                navigatorKey: navigatorKey ??
-                    Sint.rootController.rootDelegate.navigatorKey,
-                child: SintNavigator(
-                  restorationScopeId: restorationScopeId,
-                  onPopPage: onPopPage ??
-                      (route, result) {
-                        final didPop = route.didPop(result);
-                        if (!didPop) {
-                          return false;
-                        }
-                        return true;
-                      },
-                  pages: pageRes.toList(),
-                  key: navigatorKey,
-                ),
-              );
-            }
-            return (emptyWidget?.call(rDelegate) ?? const SizedBox.shrink());
-          },
-          delegate: delegate ?? Sint.rootController.rootDelegate,
-        );
+           if (pageRes.isNotEmpty) {
+             return InheritedNavigator(
+               navigatorKey:
+                   navigatorKey ??
+                   Sint.rootController.rootDelegate.navigatorKey,
+               child: SintNavigator(
+                 restorationScopeId: restorationScopeId,
+                 onPopPage:
+                     onPopPage ??
+                     (route, result) {
+                       final didPop = route.didPop(result);
+                       if (!didPop) {
+                         return false;
+                       }
+                       return true;
+                     },
+                 pages: pageRes.toList(),
+                 key: navigatorKey,
+               ),
+             );
+           }
+           return (emptyWidget?.call(rDelegate) ?? const SizedBox.shrink());
+         },
+         delegate: delegate ?? Sint.rootController.rootDelegate,
+       );
 
   SintRouterOutlet.builder({
     super.key,
@@ -179,11 +175,12 @@ class SintRouterOutlet extends RouterOutlet<SintDelegate, RouteDecoder> {
     String? route,
     SintDelegate? routerDelegate,
   }) : super.builder(
-          delegate: routerDelegate ??
-              (route != null
-                  ? Sint.nestedKey(route)
-                  : Sint.rootController.rootDelegate),
-        );
+         delegate:
+             routerDelegate ??
+             (route != null
+                 ? Sint.nestedKey(route)
+                 : Sint.rootController.rootDelegate),
+       );
 }
 
 class InheritedNavigator extends InheritedWidget {
@@ -246,7 +243,8 @@ class IndexedRouteBuilder<T> extends StatelessWidget {
     var bestLength = -1;
     for (int i = 0; i < routes.length; i++) {
       final route = routes[i];
-      final isMatch = cleanLoc == route ||
+      final isMatch =
+          cleanLoc == route ||
           (route != '/' &&
               cleanLoc.startsWith(route.endsWith('/') ? route : '$route/'));
       if (isMatch && route.length > bestLength) {
@@ -300,10 +298,7 @@ mixin RouterListenerMixin<T extends StatefulWidget> on State<T> {
 }
 
 class RouterListenerInherited extends InheritedWidget {
-  const RouterListenerInherited({
-    super.key,
-    required super.child,
-  });
+  const RouterListenerInherited({super.key, required super.child});
 
   static RouterListenerInherited? of(BuildContext context) {
     return context
@@ -317,10 +312,7 @@ class RouterListenerInherited extends InheritedWidget {
 }
 
 class RouterListener extends StatefulWidget {
-  const RouterListener({
-    super.key,
-    required this.builder,
-  });
+  const RouterListener({super.key, required this.builder});
   final WidgetBuilder builder;
 
   @override
@@ -351,8 +343,8 @@ class RouterListenerState extends State<BackButtonCallback>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final router = Router.of(context);
-    backButtonDispatcher =
-        router.backButtonDispatcher?.createChildBackButtonDispatcher();
+    backButtonDispatcher = router.backButtonDispatcher
+        ?.createChildBackButtonDispatcher();
   }
 
   @override

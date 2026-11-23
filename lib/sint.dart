@@ -4,9 +4,10 @@
 /// injection, route management in a practical way and quick translations.
 ///
 /// ## Material and Cupertino migration notice
-/// SintApp provides standalone Material/Cupertino support in SINT 1.7.0.
-/// SintMaterialApp and SintCupertinoApp remain supported SDK integrations;
-/// keep SDK types in their parameters, or migrate to SintApp's typed themes.
+/// `SintApp` provides standalone `material_ui` / `cupertino_ui` support on
+/// Flutter 3.47+ (and Flutter 3.50+). `SintMaterialApp` and `SintCupertinoApp`
+/// remain supported SDK integrations throughout SINT 2.x; keep SDK types in
+/// their parameters, or migrate to `SintApp`'s typed standalone themes.
 /// This notice does not deprecate SINT's state, injection or translation APIs.
 /// See the [migration guide](https://github.com/Open-Neom/sint/blob/main/MIGRATION_DESIGN_SYSTEMS.md).
 ///

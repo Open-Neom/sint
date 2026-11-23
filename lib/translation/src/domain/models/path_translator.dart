@@ -41,7 +41,8 @@ class PathTranslator {
     final forwardMaps = <String, Map<String, String>>{};
     final reverseMap = <String, String>{};
     final canonicalNormalized = <String>{
-      for (final seg in routeSegments) _removeDiacritics(seg.toLowerCase()).trim(),
+      for (final seg in routeSegments)
+        _removeDiacritics(seg.toLowerCase()).trim(),
     };
 
     for (final localeEntry in translations.entries) {

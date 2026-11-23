@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/core/sint_core.dart';
 import 'package:sint/injection/src/ui/binder.dart';
 import 'package:sint/injection/src/ui/sint_scope.dart';
@@ -82,8 +82,8 @@ class BindElement<T> extends InheritedElement {
 
         _controllerBuilder = () => Sint.find<T>(tag: widget.tag);
       } else {
-        _controllerBuilder =
-            () => (widget.create?.call(this) ?? widget.init?.call());
+        _controllerBuilder = () =>
+            (widget.create?.call(this) ?? widget.init?.call());
         _isCreator = true;
         if (widget.lazy) {
           Sint.lazyPut<T>(_controllerBuilder!, tag: widget.tag);

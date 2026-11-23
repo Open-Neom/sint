@@ -36,13 +36,16 @@ void main() {
       expect(a.toString(), b.toString());
     });
 
-    test('tag se almacena pero no aparece en el mensaje (comportamiento actual)', () {
-      // Si el comportamiento cambia y el tag empieza a aparecer, este test
-      // es la primera línea de aviso.
-      final err = BindError(controller: 'C', tag: 'mySpecialTag');
-      expect(err.tag, 'mySpecialTag');
-      expect(err.toString().contains('mySpecialTag'), isFalse);
-    });
+    test(
+      'tag se almacena pero no aparece en el mensaje (comportamiento actual)',
+      () {
+        // Si el comportamiento cambia y el tag empieza a aparecer, este test
+        // es la primera línea de aviso.
+        final err = BindError(controller: 'C', tag: 'mySpecialTag');
+        expect(err.tag, 'mySpecialTag');
+        expect(err.toString().contains('mySpecialTag'), isFalse);
+      },
+    );
   });
 
   group('ObxError', () {

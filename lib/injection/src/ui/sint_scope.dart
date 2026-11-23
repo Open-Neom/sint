@@ -28,11 +28,7 @@ import 'package:sint/injection/src/domain/extensions/injection_extension.dart';
 /// );
 /// ```
 class SintScope extends StatefulWidget {
-  const SintScope({
-    super.key,
-    required this.overrides,
-    required this.child,
-  });
+  const SintScope({super.key, required this.overrides, required this.child});
 
   final List<SintOverride<dynamic>> overrides;
   final Widget child;
@@ -42,16 +38,19 @@ class SintScope extends StatefulWidget {
   static FutureOr<R> run<R>({
     required List<SintOverride<dynamic>> overrides,
     required FutureOr<R> Function() body,
-  }) =>
-      InjectionExtension.runScoped<R>(overrides: overrides, body: body);
+  }) => InjectionExtension.runScoped<R>(overrides: overrides, body: body);
 
   /// Resolves [T] from the nearest ancestor [SintScope] in [context], falling
   /// back to the global container when not overridden in an ancestor scope.
   static T find<T>(BuildContext context, {String? tag}) {
     if (context is Element) {
-      _InheritedSintScope? inherited = context
-          .getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
-          ?.widget as _InheritedSintScope?;
+      _InheritedSintScope? inherited =
+          context
+                  .getElementForInheritedWidgetOfExactType<
+                    _InheritedSintScope
+                  >()
+                  ?.widget
+              as _InheritedSintScope?;
       while (inherited != null) {
         final match = InjectionExtension.findInScope<T>(
           inherited.container,
@@ -59,9 +58,13 @@ class SintScope extends StatefulWidget {
         );
         if (match != null) return match;
         final parentElement = inherited.parentContext;
-        inherited = parentElement
-            ?.getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
-            ?.widget as _InheritedSintScope?;
+        inherited =
+            parentElement
+                    ?.getElementForInheritedWidgetOfExactType<
+                      _InheritedSintScope
+                    >()
+                    ?.widget
+                as _InheritedSintScope?;
       }
       return InjectionExtension.findGlobal<T>(tag: tag);
     }
@@ -72,17 +75,23 @@ class SintScope extends StatefulWidget {
   /// for subtree build scoping (e.g. side-by-side sibling `SintScope`s).
   static List<SintScopeContainer> ancestorContainersOf(BuildContext context) {
     if (context is! Element) return const <SintScopeContainer>[];
-    _InheritedSintScope? inherited = context
-        .getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
-        ?.widget as _InheritedSintScope?;
+    _InheritedSintScope? inherited =
+        context
+                .getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
+                ?.widget
+            as _InheritedSintScope?;
     if (inherited == null) return const <SintScopeContainer>[];
     final chain = <SintScopeContainer>[];
     while (inherited != null) {
       chain.add(inherited.container);
       final parentElement = inherited.parentContext;
-      inherited = parentElement
-          ?.getElementForInheritedWidgetOfExactType<_InheritedSintScope>()
-          ?.widget as _InheritedSintScope?;
+      inherited =
+          parentElement
+                  ?.getElementForInheritedWidgetOfExactType<
+                    _InheritedSintScope
+                  >()
+                  ?.widget
+              as _InheritedSintScope?;
     }
     if (chain.length == 1) return chain;
     return chain.reversed.toList(growable: false);

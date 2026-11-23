@@ -25,9 +25,9 @@ class SintTestMode {
 
   /// Non-null query parameters configured in test mode.
   static Map<String, String> get queryParameters => {
-        for (final entry in _queryParameters.entries)
-          if (entry.value != null) entry.key: entry.value!,
-      };
+    for (final entry in _queryParameters.entries)
+      if (entry.value != null) entry.key: entry.value!,
+  };
 
   /// Test mode support for routeParam — returns first parameter value.
   static String? get routeParam =>

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sint/injection/src/domain/typedefs/injection_typedefs.dart';
 import 'package:sint/state_manager/sint_state_manager.dart';
 import 'package:sint/injection/src/ui/bind_element.dart';
@@ -43,7 +43,7 @@ class Binder<T> extends InheritedWidget {
       dispose,
       didChangeDependencies;
   final void Function(Binder<T> oldWidget, BindElement<T> state)?
-      didUpdateWidget;
+  didUpdateWidget;
   final VoidCallback? onMount;
   final VoidCallback? onUnmount;
   final VoidCallback? ensureRegistered;

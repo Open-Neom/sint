@@ -17,16 +17,18 @@ void main() {
     const int iterations = 10000;
 
     test('Benchmark & Injection Walkthrough', () async {
-      print('\n${'='*50}');
+      print('\n${'=' * 50}');
       print('SINT PILLAR I: INJECTION ARCHITECTURE LESSON');
       print('Philosophy: "Do the right things"');
       print('Infrastructure: Open Neom Standard');
-      print('='*50 + '\n');
+      print('=' * 50 + '\n');
 
       // STEP 1: Immediate Registration
       print('[STEP 1] Immediate Registration (Sint.put)');
       final instance = Sint.put<Controller>(Controller());
-      print('Note: Instance is created and stored immediately in the registry.');
+      print(
+        'Note: Instance is created and stored immediately in the registry.',
+      );
 
       // STEP 2: Resolution Speed
       print('[STEP 2] Dependency Retrieval (Sint.find)');
@@ -36,7 +38,11 @@ void main() {
 
       // STEP 3: Lazy Registration & Fenix Mode
       print('\n[STEP 3] Testing Lazy Registration & Fenix Mode');
-      Sint.lazyPut<Controller>(() => Controller(), tag: 'fenix_demo', fenix: true);
+      Sint.lazyPut<Controller>(
+        () => Controller(),
+        tag: 'fenix_demo',
+        fenix: true,
+      );
       print('Action: Registered factory with fenix: true.');
 
       Sint.find<Controller>(tag: 'fenix_demo').increment();
@@ -50,7 +56,9 @@ void main() {
       print('Success: Fenix mode successfully restored the dependency.');
 
       // STEP 4: High-Load Registration Benchmark
-      print('\n[STEP 4] Starting High-Load Registration Benchmark ($iterations instances)');
+      print(
+        '\n[STEP 4] Starting High-Load Registration Benchmark ($iterations instances)',
+      );
       final putTimer = Stopwatch()..start();
 
       for (var i = 0; i < iterations; i++) {
@@ -72,15 +80,21 @@ void main() {
       final findTotal = findTimer.elapsedMicroseconds;
 
       // RESULTS ANALYSIS
-      print('\n${'-'*30}');
+      print('\n${'-' * 30}');
       print('BENCHMARK RESULTS (Open Neom Standard)');
-      print('Registration Total: ${putTotal}us | Avg: ${(putTotal/iterations).toStringAsFixed(4)}us/op');
-      print('Lookup Total:       ${findTotal}us | Avg: ${(findTotal/iterations).toStringAsFixed(4)}us/op');
-      print('-'*30);
+      print(
+        'Registration Total: ${putTotal}us | Avg: ${(putTotal / iterations).toStringAsFixed(4)}us/op',
+      );
+      print(
+        'Lookup Total:       ${findTotal}us | Avg: ${(findTotal / iterations).toStringAsFixed(4)}us/op',
+      );
+      print('-' * 30);
 
       print('\n[FINAL VALIDATION] Checking Infrastructure Stability...');
-      print('SINT Pillar I: Validated for high-fidelity modular architectures.');
-      print('='*50 + '\n');
+      print(
+        'SINT Pillar I: Validated for high-fidelity modular architectures.',
+      );
+      print('=' * 50 + '\n');
     });
   });
 }

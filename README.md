@@ -238,6 +238,7 @@ In debug and profile builds (`!kReleaseMode`), `SintRoot` automatically register
 - **Pillar Guides**: [State](documentation/en_US/state_management.md) · [Injection](documentation/en_US/injection_management.md) · [Navigation](documentation/en_US/navigation_management.md) · [Translation](documentation/en_US/translation_management.md)
 - **AI Coding Assistant Reference**: [llms.txt](llms.txt)
 - **Standalone Material / Cupertino Migration**: [MIGRATION_DESIGN_SYSTEMS.md](MIGRATION_DESIGN_SYSTEMS.md)
+- **Large GetX App Migration Guide**: [docs/MIGRATING_LARGE_GETX_APPS.md](docs/MIGRATING_LARGE_GETX_APPS.md)
 - **Benchmarks & Methodology**: [test/benchmarks/README.md](test/benchmarks/README.md) · [performance/README.md](performance/README.md)
 - **Release History & Roadmap**: [CHANGELOG.md](CHANGELOG.md) · [ROADMAP.md](ROADMAP.md)
 
